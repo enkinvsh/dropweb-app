@@ -1,5 +1,5 @@
 import 'package:emoji_regex/emoji_regex.dart';
-import 'package:flclashx/enum/enum.dart';
+import 'package:dropweb/enum/enum.dart';
 import 'package:flutter/material.dart';
 
 import '../state.dart';

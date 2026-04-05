@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flclashx/common/common.dart';
+import 'package:dropweb/common/common.dart';
 
 class SingleInstanceLock {
 

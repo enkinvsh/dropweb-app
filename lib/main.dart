@@ -5,10 +5,10 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
-import 'package:flclashx/plugins/app.dart';
-import 'package:flclashx/plugins/tile.dart';
-import 'package:flclashx/plugins/vpn.dart';
-import 'package:flclashx/state.dart';
+import 'package:dropweb/plugins/app.dart';
+import 'package:dropweb/plugins/tile.dart';
+import 'package:dropweb/plugins/vpn.dart';
+import 'package:dropweb/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -203,7 +203,7 @@ Future<void> _service(List<String> flags) async {
     try {
       final traffic = clashLibHandler.getTraffic();
       final profile = globalState.config.currentProfile;
-      final profileName = profile?.label ?? profile?.id ?? "FlClashX";
+      final profileName = profile?.label ?? profile?.id ?? "dropweb";
 
       // Get server group name from header (may be base64-encoded)
       String? groupName = profile?.providerHeaders['flclashx-serverinfo'];
@@ -249,7 +249,7 @@ Future<void> _service(List<String> flags) async {
     } catch (_) {
       // Fallback minimal
       return json.encode({
-        "title": "FlClashX",
+        "title": "dropweb",
         "server": "",
         "content": ""
       });

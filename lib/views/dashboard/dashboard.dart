@@ -1,10 +1,10 @@
 import 'dart:math';
 
 import 'package:defer_pointer/defer_pointer.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

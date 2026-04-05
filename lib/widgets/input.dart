@@ -1,9 +1,9 @@
-import 'package:flclashx/common/app_localizations.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/models/common.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/dialog.dart';
-import 'package:flclashx/widgets/null_status.dart';
+import 'package:dropweb/common/app_localizations.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/models/common.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/widgets/dialog.dart';
+import 'package:dropweb/widgets/null_status.dart';
 import 'package:flutter/material.dart';
 
 import 'card.dart';

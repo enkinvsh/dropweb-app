@@ -1,13 +1,13 @@
 import 'dart:io';
 
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/l10n/l10n.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/providers/config.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:dropweb/clash/clash.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/l10n/l10n.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/providers/config.dart';
+import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' hide context;

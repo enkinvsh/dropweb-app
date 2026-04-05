@@ -1,11 +1,11 @@
 script_template: inno_setup.iss
 app_id: 728B3532-C74B-4870-9068-BE70FE12A3E6
-app_name: FlClashX
+app_name: dropweb
 publisher: pluralplay
 publisher_url: https://github.com/pluralplay/FlClashX
-display_name: FlClashX
-executable_name: FlClashX.exe
-output_base_file_name: FlClashX.exe
+display_name: dropweb
+executable_name: dropweb.exe
+output_base_file_name: dropweb.exe
 setup_icon_file: ..\windows\runner\resources\app_icon.ico
 locales:
   - lang: ru

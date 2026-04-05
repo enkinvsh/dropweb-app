@@ -1,6 +1,6 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/widgets/fade_box.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/widgets/fade_box.dart';
 import 'package:flutter/material.dart';
 
 import 'text.dart';

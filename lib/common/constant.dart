@@ -3,18 +3,18 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/models.dart';
 import 'package:flutter/material.dart';
 
-const appName = "FlClashX";
+const appName = "dropweb";
 const appHelperService = "FlClashHelperService";
 const coreName = "clashx.meta";
 const browserUa =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-const packageName = "com.follow.clashx";
-final unixSocketPath = "/tmp/FlClashXSocket_${Random().nextInt(10000)}.sock";
+const packageName = "org.dropweb.vpn";
+final unixSocketPath = "/tmp/dropwebSocket_${Random().nextInt(10000)}.sock";
 const helperPort = 47890;
 const maxTextScale = 1.4;
 const minTextScale = 0.8;
@@ -45,7 +45,7 @@ const localhost = "127.0.0.1";
 const clashConfigKey = "clash_config";
 const configKey = "config";
 const double dialogCommonWidth = 300;
-const repository = "pluralplay/FlClashX";
+const repository = "enkinvsh/FlClashX";
 const defaultExternalController = "127.0.0.1:9090";
 const maxMobileWidth = 600;
 const maxLaptopWidth = 840;
@@ -88,9 +88,9 @@ double getWidgetHeight(num lines) => max(lines * 84 + (lines - 1) * 16, 0).ap;
 
 const maxLength = 150;
 
-const mainIsolate = "FlClashXMainIsolate";
+const mainIsolate = "dropwebMainIsolate";
 
-const serviceIsolate = "FlClashXServiceIsolate";
+const serviceIsolate = "dropwebServiceIsolate";
 
 const defaultPrimaryColors = [
   0xFF795548,

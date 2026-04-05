@@ -1,2 +1,2 @@
 
--keep class com.follow.clashx.models.**{ *; }
+-keep class org.dropweb.vpn.models.**{ *; }

@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/models.dart';
 import 'package:flutter/foundation.dart';
 
 class ClashMessage {

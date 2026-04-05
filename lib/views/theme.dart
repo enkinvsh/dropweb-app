@@ -3,12 +3,12 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/selector.dart';
-import 'package:flclashx/providers/config.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/selector.dart';
+import 'package:dropweb/providers/config.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';

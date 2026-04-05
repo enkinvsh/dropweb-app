@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
+import 'package:dropweb/clash/clash.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -51,7 +51,7 @@ class Vpn {
   String _cachedServerName = "";
   
   /// Cached profile info for foreground notification
-  String _cachedProfileName = "FlClashX";
+  String _cachedProfileName = "dropweb";
   String _cachedServiceName = "";
   
   /// Update cached server name (called from UI when proxy changes)
@@ -93,7 +93,7 @@ class Vpn {
     try {
       final traffic = clashCore.getTraffic();
       final profile = globalState.config.currentProfile;
-      final profileName = profile?.label ?? profile?.id ?? "FlClashX";
+      final profileName = profile?.label ?? profile?.id ?? "dropweb";
       
       // Resolve current proxy name using appController (always up-to-date via Riverpod)
       String? proxyName;
@@ -126,7 +126,7 @@ class Vpn {
       });
     } catch (e) {
       return json.encode({
-        "title": "FlClashX",
+        "title": "dropweb",
         "server": "",
         "content": ""
       });

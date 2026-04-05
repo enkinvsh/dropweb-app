@@ -1,7 +1,7 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/plugins/tile.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/plugins/tile.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/state.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'generated/config.g.dart';

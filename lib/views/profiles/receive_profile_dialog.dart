@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flclashx/common/common.dart';
+import 'package:dropweb/common/common.dart';
 import 'package:flutter/material.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -51,7 +51,7 @@ class _ReceiveProfileDialogState extends State<ReceiveProfileDialog> {
 
       setState(() {
         _qrData = jsonEncode({
-          'type': 'flclashx_tv_sync',
+          'type': 'dropweb_tv_sync',
           'ip': _server?.address.host,
           'port': _server?.port,
         });

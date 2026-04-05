@@ -1,6 +1,6 @@
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/views/views.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/views/views.dart';
 import 'package:flutter/material.dart';
 
 class Navigation {
@@ -46,52 +46,7 @@ class Navigation {
           ),
         ),
       ),
-      const NavigationItem(
-        icon: Icon(Icons.view_timeline),
-        label: PageLabel.requests,
-        view: RequestsView(
-          key: GlobalObjectKey(
-            PageLabel.requests,
-          ),
-        ),
-        description: "requestsDesc",
-        modes: [NavigationItemMode.desktop, NavigationItemMode.more],
-      ),
-      const NavigationItem(
-        icon: Icon(Icons.ballot),
-        label: PageLabel.connections,
-        view: ConnectionsView(
-          key: GlobalObjectKey(
-            PageLabel.connections,
-          ),
-        ),
-        description: "connectionsDesc",
-        modes: [NavigationItemMode.desktop, NavigationItemMode.more],
-      ),
-      const NavigationItem(
-        icon: Icon(Icons.storage),
-        label: PageLabel.resources,
-        description: "resourcesDesc",
-        view: ResourcesView(
-          key: GlobalObjectKey(
-            PageLabel.resources,
-          ),
-        ),
-        modes: [NavigationItemMode.more],
-      ),
-      NavigationItem(
-        icon: const Icon(Icons.adb),
-        label: PageLabel.logs,
-        view: const LogsView(
-          key: GlobalObjectKey(
-            PageLabel.logs,
-          ),
-        ),
-        description: "logsDesc",
-        modes: openLogs
-            ? [NavigationItemMode.desktop, NavigationItemMode.more]
-            : [],
-      ),
+
       const NavigationItem(
         icon: Icon(Icons.construction),
         label: PageLabel.tools,

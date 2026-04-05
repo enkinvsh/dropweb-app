@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:dropweb/clash/clash.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

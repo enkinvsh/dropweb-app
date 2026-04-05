@@ -6,11 +6,11 @@ import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:ffi/ffi.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/plugins/service.dart';
-import 'package:flclashx/state.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/plugins/service.dart';
+import 'package:dropweb/state.dart';
 
 import 'generated/clash_ffi.dart';
 import 'interface.dart';

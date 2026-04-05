@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/plugins/app.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/input.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/plugins/app.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/widgets/input.dart';
 import 'package:flutter/services.dart';
 
 class System {

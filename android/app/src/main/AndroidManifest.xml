@@ -27,10 +27,10 @@
         android:banner="@mipmap/ic_banner"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="FlClashX"
+        android:label="dropweb"
         android:memtagMode="off">
         <activity
-            android:name="com.follow.clashx.MainActivity"
+            android:name="org.dropweb.vpn.MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"
@@ -57,7 +57,7 @@
 
                 <data android:scheme="clash" />
                 <data android:scheme="flclash" />
-                <data android:scheme="flclashx" />
+                <data android:scheme="dropweb" />
 
                 <data android:host="install-config" />
             </intent-filter>
@@ -89,7 +89,7 @@
             android:name=".services.FlClashXTileService"
             android:exported="true"
             android:icon="@drawable/ic"
-            android:label="FlClashX"
+            android:label="dropweb"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:targetApi="n">
             <intent-filter>

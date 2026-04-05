@@ -1,6 +1,6 @@
-import 'package:flclashx/common/file_logger.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
+import 'package:dropweb/common/file_logger.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/state.dart';
 import 'package:flutter/cupertino.dart';
 
 class CommonPrint {
@@ -14,7 +14,7 @@ class CommonPrint {
   static CommonPrint? _instance;
 
   void log(String? text) {
-    final payload = "[FlClashX] $text";
+    final payload = "[dropweb] $text";
     debugPrint(payload);
     
     // Write to file log

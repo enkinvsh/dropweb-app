@@ -5,9 +5,9 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/state.dart';
 import 'package:flutter/cupertino.dart';
 
 class Request {

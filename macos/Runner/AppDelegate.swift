@@ -136,7 +136,7 @@ class AppDelegate: FlutterAppDelegate {
     func showPermissionRequiredAlert() {
         let alert = NSAlert()
         alert.messageText = "Administrator Access Required"
-        alert.informativeText = "FlClashX requires administrator privileges to set up the network core. The application cannot run without these permissions.\n\nPlease restart the application and grant administrator access when prompted."
+        alert.informativeText = "dropweb requires administrator privileges to set up the network core. The application cannot run without these permissions.\n\nPlease restart the application and grant administrator access when prompted."
         alert.alertStyle = .critical
         alert.addButton(withTitle: "Quit")
         alert.runModal()

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'package:flclashx/state.dart';
+import 'package:dropweb/state.dart';
 import 'package:flutter/services.dart';
 
 import '../clash/lib.dart';

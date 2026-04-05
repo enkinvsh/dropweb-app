@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:flclashx/common/app_localizations.dart';
-import 'package:flclashx/models/models.dart';
+import 'package:dropweb/common/app_localizations.dart';
+import 'package:dropweb/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';

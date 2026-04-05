@@ -1,4 +1,4 @@
-display_name: FlClashX
+display_name: dropweb
 
 packager: pluralplay
 packagerEmail: mail@pluralplay.rw
@@ -11,11 +11,11 @@ essential: false
 icon: ./assets/images/icon.png
 
 keywords:
-  - FlClashX
+  - dropweb
   - Clash
     - Proxy
 
-generic_name: FlClashX
+generic_name: dropweb
 
 group: Applications/Internet
 

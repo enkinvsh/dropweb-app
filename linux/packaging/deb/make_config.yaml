@@ -1,5 +1,5 @@
-display_name: FlClashX
-package_name: FlClashX
+display_name: dropweb
+package_name: dropweb
 maintainer:
   name: pluralplay
   email: mail@pluralplay.rw
@@ -15,12 +15,12 @@ dependencies:
   - libkeybinder-3.0-dev
 
 keywords:
-  - FlClashX
+  - dropweb
   - Clash
   - ClashMeta
   - Proxy
 
-generic_name: FlClashX
+generic_name: dropweb
 
 categories:
   - Network

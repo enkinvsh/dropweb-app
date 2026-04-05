@@ -1,15 +1,15 @@
 import 'dart:ui';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart' hide Action;
-import 'package:flclashx/pages/pages.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/views/profiles/edit_profile.dart';
-import 'package:flclashx/views/profiles/override_profile.dart';
-import 'package:flclashx/views/profiles/scripts.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/models.dart' hide Action;
+import 'package:dropweb/pages/pages.dart';
+import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/views/profiles/edit_profile.dart';
+import 'package:dropweb/views/profiles/override_profile.dart';
+import 'package:dropweb/views/profiles/scripts.dart';
+import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';

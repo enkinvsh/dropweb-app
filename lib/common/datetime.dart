@@ -1,4 +1,4 @@
-import 'package:flclashx/common/app_localizations.dart';
+import 'package:dropweb/common/app_localizations.dart';
 
 extension DateTimeExtension on DateTime {
   bool get isBeforeNow => isBefore(DateTime.now());

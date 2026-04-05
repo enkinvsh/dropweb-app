@@ -4,14 +4,14 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:archive/archive.dart';
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/common/archive.dart';
-import 'package:flclashx/services/subscription_notification_service.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/plugins/app.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/dialog.dart';
+import 'package:dropweb/clash/clash.dart';
+import 'package:dropweb/common/archive.dart';
+import 'package:dropweb/services/subscription_notification_service.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/plugins/app.dart';
+import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/widgets/dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1049,7 +1049,7 @@ class AppController {
       final filesToDelete = [
         'cache.db',
         'libCachedImageData.json',
-        'FlClashX.lock',
+        'dropweb.lock',
       ];
 
       for (final fileName in filesToDelete) {

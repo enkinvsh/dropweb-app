@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flclashx/common/app_localizations.dart';
-import 'package:flclashx/common/print.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/plugins/vpn.dart';
+import 'package:dropweb/common/app_localizations.dart';
+import 'package:dropweb/common/print.dart';
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/plugins/vpn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service for showing subscription expiration notifications.

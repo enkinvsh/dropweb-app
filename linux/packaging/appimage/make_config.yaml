@@ -1,14 +1,14 @@
-display_name: FlClashX
+display_name: dropweb
 
 icon: ./assets/images/icon.png
 
 keywords:
-  - FlClashX
+  - dropweb
   - Clash
   - ClashMeta
   - Proxy
 
-generic_name: FlClashX
+generic_name: dropweb
 
 categories:
   - Network

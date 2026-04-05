@@ -5,14 +5,14 @@
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_follow_clashx_core_Core_startTun(JNIEnv *env, jobject, const jint fd, jobject cb) {
+Java_org_dropweb_vpn_core_Core_startTun(JNIEnv *env, jobject, const jint fd, jobject cb) {
     const auto interface = new_global(cb);
     startTUN(fd, interface);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_follow_clashx_core_Core_stopTun(JNIEnv *) {
+Java_org_dropweb_vpn_core_Core_stopTun(JNIEnv *) {
     stopTun();
 }
 
@@ -58,7 +58,7 @@ JNI_OnLoad(JavaVM *vm, void *) {
 
     initialize_jni(vm, env);
 
-    const auto c_tun_interface = find_class("com/follow/clashx/core/TunInterface");
+    const auto c_tun_interface = find_class("org/dropweb/vpn/core/TunInterface");
 
     m_tun_interface_protect = find_method(c_tun_interface, "protect", "(I)V");
     m_tun_interface_resolve_process = find_method(c_tun_interface, "resolverProcess",

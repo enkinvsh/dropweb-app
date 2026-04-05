@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flclashx/enum/enum.dart';
+import 'package:dropweb/enum/enum.dart';
 
 class Debouncer {
   final Map<FunctionTag, Timer?> _operations = {};
