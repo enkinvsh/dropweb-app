@@ -14,7 +14,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'chip.dart';
 
 class CommonScaffold extends ConsumerStatefulWidget {
-
   const CommonScaffold({
     super.key,
     this.appBar,
@@ -258,26 +257,26 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
   }
 
   Widget _buildTitle(AppBarSearchState? startState) => _isSearch
-        ? TextField(
-            autofocus: true,
-            controller: _textController,
-            style: context.textTheme.titleLarge,
-            onChanged: (value) {
-              if (startState != null) {
-                startState.onSearch(value);
-              }
-            },
-            decoration: InputDecoration(
-              hintText: appLocalizations.search,
-            ),
-          )
-        : Text(
-            !_isEdit
-                ? widget.title!
-                : appLocalizations.selectedCountTitle(
-                    "${_appBarState.value.editState?.editCount ?? 0}",
-                  ),
-          );
+      ? TextField(
+          autofocus: true,
+          controller: _textController,
+          style: context.textTheme.titleLarge,
+          onChanged: (value) {
+            if (startState != null) {
+              startState.onSearch(value);
+            }
+          },
+          decoration: InputDecoration(
+            hintText: appLocalizations.search,
+          ),
+        )
+      : Text(
+          !_isEdit
+              ? widget.title!
+              : appLocalizations.selectedCountTitle(
+                  "${_appBarState.value.editState?.editCount ?? 0}",
+                ),
+        );
 
   List<Widget> _buildActions(
     AppBarSearchState? searchState,
@@ -325,7 +324,6 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
       searchButton,
       ...actions,
     ]);
-  
   }
 
   Widget _buildAppBarWrap(Widget child) {
@@ -349,9 +347,10 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final backgroundUrl = widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
+    final backgroundUrl =
+        widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
     final isTransparent = backgroundUrl != null;
-    
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
       child: Theme(
@@ -367,9 +366,7 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
                   Theme.of(context).brightness == Brightness.dark
                       ? Brightness.light
                       : Brightness.dark,
-              systemNavigationBarColor: widget.bottomNavigationBar != null
-                  ? context.colorScheme.surfaceContainer
-                  : context.colorScheme.surface,
+              systemNavigationBarColor: context.colorScheme.surface,
               systemNavigationBarDividerColor: Colors.transparent,
             ),
           ),
@@ -381,28 +378,28 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
                 ValueListenableBuilder<AppBarState>(
                   valueListenable: _appBarState,
                   builder: (_, state, __) => _buildAppBarWrap(
-                      AppBar(
-                        backgroundColor: isTransparent ? Colors.transparent : null,
-                        elevation: isTransparent ? 0 : null,
-                        centerTitle: widget.centerTitle ?? false,
-                        automaticallyImplyLeading:
-                            widget.automaticallyImplyLeading,
-                        leading: _buildLeading(),
-                        title: _buildTitle(state.searchState),
-                        actions: _buildActions(
-                          state.searchState,
-                          state.actions.isNotEmpty
-                              ? state.actions
-                              : widget.actions ?? [],
-                        ),
+                    AppBar(
+                      backgroundColor:
+                          isTransparent ? Colors.transparent : null,
+                      elevation: isTransparent ? 0 : null,
+                      centerTitle: widget.centerTitle ?? false,
+                      automaticallyImplyLeading:
+                          widget.automaticallyImplyLeading,
+                      leading: _buildLeading(),
+                      title: _buildTitle(state.searchState),
+                      actions: _buildActions(
+                        state.searchState,
+                        state.actions.isNotEmpty
+                            ? state.actions
+                            : widget.actions ?? [],
                       ),
                     ),
+                  ),
                 ),
             ValueListenableBuilder(
               valueListenable: _loading,
-              builder: (_, value, __) => value == true
-                    ? const LinearProgressIndicator()
-                    : Container(),
+              builder: (_, value, __) =>
+                  value == true ? const LinearProgressIndicator() : Container(),
             ),
           ],
         ),
@@ -445,8 +442,9 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
   @override
   Widget build(BuildContext context) {
     assert(widget.appBar != null || widget.title != null);
-    final backgroundUrl = widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
-    
+    final backgroundUrl =
+        widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
+
     final body = SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,26 +488,28 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
         ],
       ),
     );
-    
+
     final scaffold = Scaffold(
       appBar: _buildAppBar(),
       body: body,
+      extendBody: widget.bottomNavigationBar != null,
       resizeToAvoidBottomInset: true,
-      backgroundColor: backgroundUrl != null ? Colors.transparent : widget.backgroundColor,
+      backgroundColor:
+          backgroundUrl != null ? Colors.transparent : widget.backgroundColor,
       floatingActionButton: widget.floatingActionButton ??
           ValueListenableBuilder<Widget?>(
             valueListenable: _floatingActionButton,
             builder: (_, value, __) => IntrinsicWidth(
-                child: IntrinsicHeight(
-                  child: FadeScaleBox(
-                    child: value ?? const SizedBox(),
-                  ),
+              child: IntrinsicHeight(
+                child: FadeScaleBox(
+                  child: value ?? const SizedBox(),
                 ),
               ),
+            ),
           ),
       bottomNavigationBar: widget.bottomNavigationBar,
     );
-    
+
     final scaffoldWithBackground = backgroundUrl != null
         ? Stack(
             children: [
@@ -519,7 +519,7 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
             ],
           )
         : scaffold;
-    
+
     return _sideNavigationBar != null
         ? Row(
             mainAxisSize: MainAxisSize.min,
@@ -536,12 +536,12 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
 }
 
 List<Widget> genActions(List<Widget> actions, {double? space}) => <Widget>[
-    ...actions.separated(
-      SizedBox(
-        width: space ?? 4,
+      ...actions.separated(
+        SizedBox(
+          width: space ?? 4,
+        ),
       ),
-    ),
-    const SizedBox(
-      width: 8,
-    )
-  ];
+      const SizedBox(
+        width: 8,
+      )
+    ];

@@ -10,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'widgets/start_button.dart';
 
-
 class DashboardView extends ConsumerStatefulWidget {
   const DashboardView({super.key});
 
@@ -47,65 +46,28 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
   Widget? get floatingActionButton => null; // Moved to bottom of body
 
   Widget _buildIsEdit(Widget Function(bool) builder) => ValueListenableBuilder(
-      valueListenable: _isEditNotifier,
-      builder: (_, isEdit, ___) => builder(isEdit),
-    );
+        valueListenable: _isEditNotifier,
+        builder: (_, isEdit, ___) => builder(isEdit),
+      );
 
   @override
-  List<Widget> get actions => [
-        _buildIsEdit((isEdit) => isEdit
-              ? ValueListenableBuilder(
-                  valueListenable: _addedWidgetsNotifier,
-                  builder: (_, addedChildren, child) {
-                    if (addedChildren.isEmpty) {
-                      return Container();
-                    }
-                    return child!;
-                  },
-                  child: IconButton(
-                    onPressed: _showAddWidgetsModal,
-                    icon: const Icon(
-                      Icons.add_circle,
-                    ),
-                  ),
-                )
-              : const SizedBox()),
-        Consumer(
-          builder: (context, ref, child) {
-            final denyEditing = ref.watch(currentProfileProvider
-                .select((profile) => profile?.providerHeaders['flclashx-denywidgets']));
-
-            if (denyEditing == 'true') {
-              return const SizedBox.shrink();
-            }
-
-            return IconButton(
-              icon: _buildIsEdit((isEdit) => isEdit
-                    ? const Icon(Icons.save)
-                    : const Icon(
-                        Icons.edit,
-                      )),
-              onPressed: _handleUpdateIsEdit,
-            );
-          },
-        ),
-      ];
+  List<Widget> get actions => [];
 
   void _showAddWidgetsModal() {
     showSheet(
       builder: (_, type) => ValueListenableBuilder(
-          valueListenable: _addedWidgetsNotifier,
-          builder: (_, value, __) => AdaptiveSheetScaffold(
-              type: type,
-              body: _AddDashboardWidgetModal(
-                items: value,
-                onAdd: (gridItem) {
-                  key.currentState?.handleAdd(gridItem);
-                },
-              ),
-              title: appLocalizations.add,
-            ),
+        valueListenable: _addedWidgetsNotifier,
+        builder: (_, value, __) => AdaptiveSheetScaffold(
+          type: type,
+          body: _AddDashboardWidgetModal(
+            items: value,
+            onAdd: (gridItem) {
+              key.currentState?.handleAdd(gridItem);
+            },
+          ),
+          title: appLocalizations.add,
         ),
+      ),
       context: context,
     );
   }
@@ -144,14 +106,14 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
     if (!item.platforms.contains(SupportPlatform.currentPlatform)) {
       return false;
     }
-    
+
     if (!globalModeEnabled) {
-      if (item == DashboardWidget.outboundMode || 
+      if (item == DashboardWidget.outboundMode ||
           item == DashboardWidget.outboundModeV2) {
         return false;
       }
     }
-    
+
     if (item == DashboardWidget.announce && !hasAnnounceData) {
       return false;
     }
@@ -161,7 +123,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
     if (item == DashboardWidget.changeServerButton && !hasServerInfoData) {
       return false;
     }
-    
+
     return true;
   }
 
@@ -174,19 +136,17 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
     final hasServerInfo = ref.watch(hasServerInfoDataProvider);
     final columns = max(4 * ((dashboardState.viewWidth / 320).ceil()), 8);
     final spacing = 16.ap;
-    
+
     bool isAllowed(DashboardWidget item) => _isAllowedWidget(
-      item,
-      globalModeEnabled: globalModeEnabled,
-      hasAnnounceData: hasAnnounce,
-      hasServiceInfoData: hasServiceInfo,
-      hasServerInfoData: hasServerInfo,
-    );
-    
+          item,
+          globalModeEnabled: globalModeEnabled,
+          hasAnnounceData: hasAnnounce,
+          hasServiceInfoData: hasServiceInfo,
+          hasServerInfoData: hasServerInfo,
+        );
+
     final children = [
-      ...dashboardState.dashboardWidgets
-          .where(isAllowed)
-          .map(
+      ...dashboardState.dashboardWidgets.where(isAllowed).map(
             (item) => item.widget,
           ),
     ];
@@ -198,56 +158,47 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
           .map((item) => item.widget)
           .toList();
     });
-    return Column(
-      children: [
-        Expanded(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16).copyWith(
-                bottom: 16,
-              ),
-              child: _buildIsEdit((isEdit) => isEdit
-                    ? SystemBackBlock(
-                        child: CommonPopScope(
-                          child: SuperGrid(
-                            key: key,
-                            crossAxisCount: columns,
-                            crossAxisSpacing: spacing,
-                            mainAxisSpacing: spacing,
-                            onUpdate: _handleSave,
-                            children: [
-                              ...dashboardState.dashboardWidgets
-                                  .where(isAllowed)
-                                  .map(
-                                    (item) => item.widget,
-                                  ),
-                            ],
-                          ),
-                          onPop: () {
-                            _handleUpdateIsEdit();
-                            return false;
-                          },
-                        ),
-                      )
-                    : Grid(
-                        crossAxisCount: columns,
-                        crossAxisSpacing: spacing,
-                        mainAxisSpacing: spacing,
-                        children: children,
-                      )),
-            ),
-          ),
-        ),
-        // Start/Stop button at the bottom
-        const StartButton(),
-      ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16).copyWith(
+        bottom: 16,
+      ),
+      child: Column(
+        children: [
+          // Dashboard widgets
+          _buildIsEdit((isEdit) => isEdit
+              ? SystemBackBlock(
+                  child: CommonPopScope(
+                    child: SuperGrid(
+                      key: key,
+                      crossAxisCount: columns,
+                      crossAxisSpacing: spacing,
+                      mainAxisSpacing: spacing,
+                      onUpdate: _handleSave,
+                      children: [
+                        ...dashboardState.dashboardWidgets.where(isAllowed).map(
+                              (item) => item.widget,
+                            ),
+                      ],
+                    ),
+                    onPop: () {
+                      _handleUpdateIsEdit();
+                      return false;
+                    },
+                  ),
+                )
+              : Grid(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: spacing,
+                  mainAxisSpacing: spacing,
+                  children: children,
+                )),
+        ],
+      ),
     );
   }
 }
 
 class _AddDashboardWidgetModal extends StatelessWidget {
-
   const _AddDashboardWidgetModal({
     required this.items,
     required this.onAdd,
@@ -257,33 +208,32 @@ class _AddDashboardWidgetModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DeferredPointerHandler(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(
-          16,
-        ),
-        child: Grid(
-          crossAxisCount: 8,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: items
-              .map(
-                (item) => item.wrap(
-                  builder: (child) => _AddedContainer(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(
+            16,
+          ),
+          child: Grid(
+            crossAxisCount: 8,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            children: items
+                .map(
+                  (item) => item.wrap(
+                    builder: (child) => _AddedContainer(
                       onAdd: () {
                         onAdd(item);
                       },
                       child: child,
                     ),
-                ),
-              )
-              .toList(),
+                  ),
+                )
+                .toList(),
+          ),
         ),
-      ),
-    );
+      );
 }
 
 class _AddedContainer extends StatefulWidget {
-
   const _AddedContainer({
     required this.child,
     required this.onAdd,
@@ -318,29 +268,29 @@ class _AddedContainerState extends State<_AddedContainer> {
 
   @override
   Widget build(BuildContext context) => Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ActivateBox(
-          child: widget.child,
-        ),
-        Positioned(
-          top: -8,
-          right: -8,
-          child: DeferPointer(
-            child: SizedBox(
-              width: 24,
-              height: 24,
-              child: IconButton.filled(
-                iconSize: 20,
-                padding: const EdgeInsets.all(2),
-                onPressed: _handleAdd,
-                icon: const Icon(
-                  Icons.add,
+        clipBehavior: Clip.none,
+        children: [
+          ActivateBox(
+            child: widget.child,
+          ),
+          Positioned(
+            top: -8,
+            right: -8,
+            child: DeferPointer(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: IconButton.filled(
+                  iconSize: 20,
+                  padding: const EdgeInsets.all(2),
+                  onPressed: _handleAdd,
+                  icon: const Icon(
+                    Icons.add,
+                  ),
                 ),
               ),
             ),
-          ),
-        )
-      ],
-    );
+          )
+        ],
+      );
 }

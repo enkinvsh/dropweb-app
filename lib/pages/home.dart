@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/views/dashboard/widgets/start_button.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/providers.dart';
@@ -32,15 +34,16 @@ class HomePage extends StatelessWidget {
               navigationItems: navigationItems,
               currentIndex: currentIndex,
             );
-            final bottomNavigationBar =
-                viewMode == ViewMode.mobile ? navigationBar : null;
+            final bottomNavigationBar = viewMode == ViewMode.mobile
+                ? _BottomBarWithConnect(navigationBar: navigationBar)
+                : null;
             final sideNavigationBar =
                 viewMode != ViewMode.mobile ? navigationBar : null;
             return CommonScaffold(
               key: globalState.homeScaffoldKey,
-              title: Intl.message(
-                pageLabel.name,
-              ),
+              title: pageLabel == PageLabel.dashboard
+                  ? ''
+                  : Intl.message(pageLabel.name),
               sideNavigationBar: sideNavigationBar,
               body: child!,
               bottomNavigationBar: bottomNavigationBar,
@@ -149,6 +152,64 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
   }
 }
 
+class _BottomBarWithConnect extends StatelessWidget {
+  final Widget navigationBar;
+
+  const _BottomBarWithConnect({required this.navigationBar});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.transparent,
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+        top: 8,
+      ),
+      child: Row(
+        children: [
+          // Tab bar island — takes remaining space
+          Expanded(child: _buildTabBarIsland(context)),
+          const SizedBox(width: 10),
+          // Connect button circle — same height
+          _buildConnectCircle(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBarIsland(BuildContext context) {
+    // Extract the inner content from navigationBar
+    // We rebuild it here to control the outer container
+    return navigationBar;
+  }
+
+  Widget _buildConnectCircle(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainer.withValues(alpha: 0.75),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const StartButton(),
+    );
+  }
+}
+
 class CommonNavigationBar extends ConsumerWidget {
   final ViewMode viewMode;
   final List<NavigationItem> navigationItems;
@@ -164,21 +225,77 @@ class CommonNavigationBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, ref) {
     if (viewMode == ViewMode.mobile) {
-      return NavigationBarTheme(
-        data: _NavigationBarDefaultsM3(context),
-        child: NavigationBar(
-          destinations: navigationItems
-              .map(
-                (e) => NavigationDestination(
-                  icon: e.icon,
-                  label: Intl.message(e.label.name),
+      final colorScheme = Theme.of(context).colorScheme;
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              height: 64,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainer.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  width: 1,
                 ),
-              )
-              .toList(),
-          onDestinationSelected: (index) {
-            globalState.appController.toPage(navigationItems[index].label);
-          },
-          selectedIndex: currentIndex,
+              ),
+              child: Row(
+                children: List.generate(navigationItems.length, (index) {
+                  final item = navigationItems[index];
+                  final isSelected = index == currentIndex;
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        globalState.appController.toPage(item.label);
+                      },
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconTheme(
+                            data: IconThemeData(
+                              size: 22,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                            child: item.icon,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            Intl.message(item.label.name),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
         ),
       );
     }
@@ -312,14 +429,15 @@ class _NavigationBarDefaultsM3 extends NavigationBarThemeData {
 
   @override
   WidgetStateProperty<IconThemeData?>? get iconTheme =>
-      WidgetStateProperty.resolveWith((Set<WidgetState> states) => IconThemeData(
-            size: 24.0,
-            color: states.contains(WidgetState.disabled)
-                ? _colors.onSurfaceVariant.opacity38
-                : states.contains(WidgetState.selected)
-                    ? _colors.onSecondaryContainer
-                    : _colors.onSurfaceVariant,
-          ));
+      WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => IconThemeData(
+                size: 24.0,
+                color: states.contains(WidgetState.disabled)
+                    ? _colors.onSurfaceVariant.opacity38
+                    : states.contains(WidgetState.selected)
+                        ? _colors.onSecondaryContainer
+                        : _colors.onSurfaceVariant,
+              ));
 
   @override
   Color? get indicatorColor => _colors.secondaryContainer;
@@ -329,8 +447,8 @@ class _NavigationBarDefaultsM3 extends NavigationBarThemeData {
 
   @override
   WidgetStateProperty<TextStyle?>? get labelTextStyle =>
-      WidgetStateProperty.resolveWith((Set<WidgetState> states) =>
-          _textTheme.labelMedium!.apply(
+      WidgetStateProperty.resolveWith(
+          (Set<WidgetState> states) => _textTheme.labelMedium!.apply(
               overflow: TextOverflow.ellipsis,
               color: states.contains(WidgetState.disabled)
                   ? _colors.onSurfaceVariant.opacity38

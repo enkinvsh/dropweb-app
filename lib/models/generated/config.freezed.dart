@@ -2215,7 +2215,7 @@ class _$ThemePropsImpl implements _ThemeProps {
       final List<int> primaryColors = defaultPrimaryColors,
       this.themeMode = ThemeMode.dark,
       this.schemeVariant = DynamicSchemeVariant.content,
-      this.pureBlack = false,
+      this.pureBlack = true,
       this.textScale = const TextScale()})
       : _primaryColors = primaryColors;
 

@@ -100,7 +100,7 @@ flutter:
         - asset: assets/fonts/Icons.ttf
     - family: Unbounded
       fonts:
-        - asset: assets/fonts/Unbounded-Regular.ttf
+        - asset: assets/fonts/Unbounded-Variable.ttf
 
 ffigen:
   name: "ClashFFI"

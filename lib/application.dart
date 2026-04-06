@@ -180,25 +180,15 @@ class ApplicationState extends ConsumerState<Application> {
                 locale: utils.getLocaleForString(locale),
                 supportedLocales: AppLocalizations.delegate.supportedLocales,
                 themeMode: themeProps.themeMode,
-                theme: ThemeData(
-                  useMaterial3: true,
-                  pageTransitionsTheme: _pageTransitionsTheme,
-                  colorScheme: _getAppColorScheme(
-                    brightness: Brightness.light,
-                    primaryColor: themeProps.primaryColor,
-                  ),
-                  // Reduce animation duration for snappier feel
-                  visualDensity: VisualDensity.adaptivePlatformDensity,
+                theme: _buildThemeData(
+                  brightness: Brightness.light,
+                  primaryColor: themeProps.primaryColor,
+                  pureBlack: false,
                 ),
-                darkTheme: ThemeData(
-                  useMaterial3: true,
-                  pageTransitionsTheme: _pageTransitionsTheme,
-                  colorScheme: _getAppColorScheme(
-                    brightness: Brightness.dark,
-                    primaryColor: themeProps.primaryColor,
-                  ).toPureBlack(themeProps.pureBlack),
-                  // Reduce animation duration for snappier feel
-                  visualDensity: VisualDensity.adaptivePlatformDensity,
+                darkTheme: _buildThemeData(
+                  brightness: Brightness.dark,
+                  primaryColor: themeProps.primaryColor,
+                  pureBlack: themeProps.pureBlack,
                 ),
                 home: child,
               );
@@ -207,6 +197,34 @@ class ApplicationState extends ConsumerState<Application> {
           ),
         ),
       );
+
+  ThemeData _buildThemeData({
+    required Brightness brightness,
+    required int? primaryColor,
+    required bool pureBlack,
+  }) {
+    final colorScheme = _getAppColorScheme(
+      brightness: brightness,
+      primaryColor: primaryColor,
+    );
+    const unbounded = TextTheme(
+      displayLarge: TextStyle(fontFamily: 'Unbounded'),
+      displayMedium: TextStyle(fontFamily: 'Unbounded'),
+      displaySmall: TextStyle(fontFamily: 'Unbounded'),
+      headlineLarge: TextStyle(fontFamily: 'Unbounded'),
+      headlineMedium: TextStyle(fontFamily: 'Unbounded'),
+      headlineSmall: TextStyle(fontFamily: 'Unbounded'),
+      titleLarge: TextStyle(fontFamily: 'Unbounded'),
+      titleMedium: TextStyle(fontFamily: 'Unbounded'),
+    );
+    return ThemeData(
+      useMaterial3: true,
+      pageTransitionsTheme: _pageTransitionsTheme,
+      colorScheme: pureBlack ? colorScheme.toPureBlack(true) : colorScheme,
+      textTheme: unbounded,
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
 
   @override
   Future<void> dispose() async {
