@@ -4,6 +4,7 @@ import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/views/profiles/add_profile.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class StartButton extends ConsumerStatefulWidget {
@@ -73,6 +74,7 @@ class _StartButtonState extends ConsumerState<StartButton>
   }
 
   void handleSwitchStart() {
+    HapticFeedback.mediumImpact();
     isStart = !isStart;
     setState(() {});
     debouncer.call(
@@ -85,6 +87,7 @@ class _StartButtonState extends ConsumerState<StartButton>
   }
 
   void _handleAddProfile() async {
+    HapticFeedback.lightImpact();
     final url = await globalState.showCommonDialog<String>(
       child: const URLFormDialog(),
     );

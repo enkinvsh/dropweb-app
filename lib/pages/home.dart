@@ -168,34 +168,115 @@ class _BottomBarWithConnect extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Tab bar island — takes remaining space
-          Expanded(child: _buildTabBarIsland(context)),
+          Expanded(child: navigationBar),
           const SizedBox(width: 10),
-          // Connect button circle — same height
-          _buildConnectCircle(context),
+          const _ConnectCircle(),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTabBarIsland(BuildContext context) {
-    // Extract the inner content from navigationBar
-    // We rebuild it here to control the outer container
-    return navigationBar;
+/// Connect button with animated ring pulse when VPN is active.
+///
+/// Uses animated [BoxShadow] on the outer Container — boxShadow renders
+/// OUTSIDE widget bounds natively in Flutter, no CustomPaint or overflow
+/// hacks needed. Three shadows at different spread radii + staggered
+/// animation create the expanding ring illusion.
+class _ConnectCircle extends ConsumerStatefulWidget {
+  const _ConnectCircle();
+
+  @override
+  ConsumerState<_ConnectCircle> createState() => _ConnectCircleState();
+}
+
+class _ConnectCircleState extends ConsumerState<_ConnectCircle>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _rings;
+
+  @override
+  void initState() {
+    super.initState();
+    _rings = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    );
   }
 
-  Widget _buildConnectCircle(BuildContext context) {
+  @override
+  void dispose() {
+    _rings.dispose();
+    super.dispose();
+  }
+
+  /// Compute ring shadows for current animation value.
+  List<BoxShadow> _buildRingShadows(Color color) {
+    const count = 3;
+    final t = _rings.value;
+    return List.generate(count, (i) {
+      final phase = (t + i / count) % 1.0;
+      final alpha = (1.0 - phase) * 0.25;
+      final spread = 2.0 + phase * 18.0;
+      final blur = 1.0 + phase * 4.0;
+      return BoxShadow(
+        color: color.withValues(alpha: alpha),
+        blurRadius: blur,
+        spreadRadius: spread,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
+    final isConnected = ref.watch(runTimeProvider) != null;
 
-    if (isDark) {
+    // Start/stop ring animation based on VPN state
+    if (isConnected && isDark) {
+      if (!_rings.isAnimating) _rings.repeat();
+    } else {
+      if (_rings.isAnimating) {
+        _rings.stop();
+        _rings.reset();
+      }
+    }
+
+    if (!isDark) {
       return RepaintBoundary(
         child: Container(
           width: 64,
           height: 64,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
-            boxShadow: Lumina.glassShadow,
+            color: colorScheme.surfaceContainer,
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x14000000),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const StartButton(),
+        ),
+      );
+    }
+
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _rings,
+        builder: (_, __) => Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: isConnected
+                ? _buildRingShadows(colorScheme.primary)
+                : Lumina.glassShadow,
           ),
           child: ClipOval(
             child: BackdropFilter(
@@ -207,30 +288,6 @@ class _BottomBarWithConnect extends StatelessWidget {
             ),
           ),
         ),
-      );
-    }
-
-    // Light theme: solid surface, no blur
-    return RepaintBoundary(
-      child: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: colorScheme.surfaceContainer,
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            width: 1,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const StartButton(),
       ),
     );
   }

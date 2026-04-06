@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppStateManager extends ConsumerStatefulWidget {
-
   const AppStateManager({
     super.key,
     required this.child,
@@ -93,15 +92,14 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
 
   @override
   Widget build(BuildContext context) => Listener(
-      onPointerHover: (_) {
-        render?.resume();
-      },
-      child: widget.child,
-    );
+        onPointerHover: (_) {
+          render?.resume();
+        },
+        child: widget.child,
+      );
 }
 
 class AppEnvManager extends StatelessWidget {
-
   const AppEnvManager({
     super.key,
     required this.child,
@@ -110,22 +108,6 @@ class AppEnvManager extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kDebugMode) {
-      if (globalState.isPre) {
-        return Banner(
-          message: 'DEBUG',
-          location: BannerLocation.topEnd,
-          child: child,
-        );
-      }
-    }
-    if (globalState.isPre) {
-      return Banner(
-        message: 'PRE',
-        location: BannerLocation.topEnd,
-        child: child,
-      );
-    }
     return child;
   }
 }
