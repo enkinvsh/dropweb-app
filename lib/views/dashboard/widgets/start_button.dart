@@ -2,6 +2,7 @@ import 'package:dropweb/common/common.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
+import 'package:dropweb/views/profiles/add_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -83,14 +84,22 @@ class _StartButtonState extends ConsumerState<StartButton>
     );
   }
 
+  void _handleAddProfile() async {
+    final url = await globalState.showCommonDialog<String>(
+      child: const URLFormDialog(),
+    );
+    if (url != null) {
+      globalState.appController.addProfileFormURL(url);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(startButtonSelectorStateProvider);
-    if (!state.isInit || !state.hasProfile) {
-      return const SizedBox.shrink();
-    }
+    if (!state.isInit) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
+    final hasProfile = state.hasProfile;
 
     return AnimatedBuilder(
       animation: _pressController,
@@ -102,7 +111,7 @@ class _StartButtonState extends ConsumerState<StartButton>
         onTapDown: (_) => _pressController.forward(),
         onTapUp: (_) => _pressController.reverse(),
         onTapCancel: () => _pressController.reverse(),
-        onTap: handleSwitchStart,
+        onTap: hasProfile ? handleSwitchStart : _handleAddProfile,
         child: Center(
           child: AnimatedBuilder(
             animation: _breatheAnimation,
@@ -110,8 +119,7 @@ class _StartButtonState extends ConsumerState<StartButton>
               return Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  // Bioluminescent breathe glow when active
-                  boxShadow: isStart
+                  boxShadow: isStart && hasProfile
                       ? [
                           BoxShadow(
                             color: colorScheme.primary
@@ -123,13 +131,17 @@ class _StartButtonState extends ConsumerState<StartButton>
                       : [],
                 ),
                 child: Icon(
-                  isStart
-                      ? Icons.stop_rounded
-                      : Icons.power_settings_new_rounded,
+                  !hasProfile
+                      ? Icons.add_rounded
+                      : isStart
+                          ? Icons.stop_rounded
+                          : Icons.power_settings_new_rounded,
                   size: 26,
-                  color: isStart
+                  color: !hasProfile
                       ? colorScheme.primary
-                      : Colors.white.withValues(alpha: 0.5),
+                      : isStart
+                          ? colorScheme.primary
+                          : Colors.white.withValues(alpha: 0.5),
                 ),
               );
             },

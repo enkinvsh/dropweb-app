@@ -380,9 +380,14 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
                   valueListenable: _appBarState,
                   builder: (_, state, __) => _buildAppBarWrap(
                     AppBar(
-                      backgroundColor:
-                          isTransparent ? Colors.transparent : null,
-                      elevation: isTransparent ? 0 : null,
+                      backgroundColor: (isTransparent ||
+                              Theme.of(context).brightness == Brightness.dark)
+                          ? Colors.transparent
+                          : null,
+                      elevation: (isTransparent ||
+                              Theme.of(context).brightness == Brightness.dark)
+                          ? 0
+                          : null,
                       centerTitle: widget.centerTitle ?? false,
                       automaticallyImplyLeading:
                           widget.automaticallyImplyLeading,
@@ -490,13 +495,37 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
       ),
     );
 
-    final scaffold = Scaffold(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ── Build the scaffold body with mesh gradient INSIDE ──
+    // Instead of layering MeshBackground behind the scaffold in a Stack
+    // (which fails because the Scaffold's Material can paint opaque even
+    // when scaffoldBackgroundColor is transparent), we wrap the body so
+    // that the mesh renders INSIDE the scaffold's body area — on top of
+    // the opaque void fill, below the actual content.
+    final Widget bodyWithMesh;
+    if (isDark && !widget.disableBackground) {
+      bodyWithMesh = Stack(
+        children: [
+          const Positioned.fill(child: MeshBackground()),
+          Positioned.fill(child: body),
+        ],
+      );
+    } else {
+      bodyWithMesh = body;
+    }
+
+    final scaffoldFinal = Scaffold(
       appBar: _buildAppBar(),
-      body: body,
+      body: bodyWithMesh,
       extendBody: widget.bottomNavigationBar != null,
+      extendBodyBehindAppBar: isDark,
       resizeToAvoidBottomInset: true,
-      backgroundColor:
-          backgroundUrl != null ? Colors.transparent : widget.backgroundColor,
+      backgroundColor: isDark
+          ? Lumina.void_
+          : (backgroundUrl != null
+              ? Colors.transparent
+              : widget.backgroundColor),
       floatingActionButton: widget.floatingActionButton ??
           ValueListenableBuilder<Widget?>(
             valueListenable: _floatingActionButton,
@@ -514,18 +543,17 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     final scaffoldWithBackground = backgroundUrl != null
         ? Stack(
             children: [
-              const MeshBackground(),
               _buildBackground(backgroundUrl),
               _buildOverlay(context),
-              scaffold,
+              Theme(
+                data: Theme.of(context).copyWith(
+                  scaffoldBackgroundColor: Colors.transparent,
+                ),
+                child: scaffoldFinal,
+              ),
             ],
           )
-        : Stack(
-            children: [
-              const MeshBackground(),
-              scaffold,
-            ],
-          );
+        : scaffoldFinal;
 
     return _sideNavigationBar != null
         ? Row(

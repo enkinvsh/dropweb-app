@@ -83,6 +83,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  shaders:
+    - shaders/color_bends.frag
   assets:
     - assets/data/
     - assets/fonts/

@@ -97,7 +97,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.service.quicksettings.TOGGLEABLE_TILE"
-                android:value="true" />
+            android:value="false" />
         </service>
 
         <provider

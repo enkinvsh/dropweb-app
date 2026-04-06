@@ -1,6 +1,10 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
+/// Animated vertical light pillars that drift slowly upward.
+///
+/// Renders four translucent vertical bars with a horizontal fade-out gradient.
+/// Used as an ambient background effect on the dashboard screen.
 class LightPillar extends StatefulWidget {
   const LightPillar({super.key});
 
@@ -36,8 +40,9 @@ class _LightPillarState extends State<LightPillar>
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) => CustomPaint(
+          // Let the CustomPaint fill whatever constraints it receives
+          // from Positioned.fill — never use Size.infinite.
           painter: _PillarPainter(_controller.value),
-          size: Size.infinite,
         ),
       ),
     );
@@ -50,15 +55,19 @@ class _PillarPainter extends CustomPainter {
   final double progress;
 
   // Define pillars: (xFraction, width, opacity, speed)
+  // Opacities bumped from 2.5-4% → 6-10% so they are actually visible
+  // on near-black backgrounds.
   static const _pillars = [
-    (0.15, 60.0, 0.03, 1.0),
-    (0.4, 100.0, 0.04, 0.7),
-    (0.65, 40.0, 0.025, 1.3),
-    (0.85, 80.0, 0.035, 0.9),
+    (0.15, 60.0, 0.06, 1.0),
+    (0.4, 100.0, 0.08, 0.7),
+    (0.65, 40.0, 0.06, 1.3),
+    (0.85, 80.0, 0.07, 0.9),
   ];
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return; // guard against zero-size
+
     for (final (xFrac, width, opacity, speed) in _pillars) {
       final x = size.width * xFrac;
       // Slow vertical drift — each pillar drifts at different speed

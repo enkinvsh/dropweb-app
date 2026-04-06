@@ -1,5 +1,5 @@
 PODS:
-  - app_links (1.0.0):
+  - app_links (6.4.1):
     - FlutterMacOS
   - connectivity_plus (0.0.1):
     - FlutterMacOS
@@ -40,6 +40,9 @@ PODS:
     - FlutterMacOS
   - url_launcher_macos (0.0.1):
     - FlutterMacOS
+  - webview_flutter_wkwebview (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - window_ext (0.0.1):
     - FlutterMacOS
   - window_manager (0.5.0):
@@ -64,6 +67,7 @@ DEPENDENCIES:
   - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
   - tray_manager (from `Flutter/ephemeral/.symlinks/plugins/tray_manager/macos`)
   - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
+  - webview_flutter_wkwebview (from `Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin`)
   - window_ext (from `Flutter/ephemeral/.symlinks/plugins/window_ext/macos`)
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
 
@@ -108,13 +112,15 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/tray_manager/macos
   url_launcher_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
+  webview_flutter_wkwebview:
+    :path: Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin
   window_ext:
     :path: Flutter/ephemeral/.symlinks/plugins/window_ext/macos
   window_manager:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  app_links: afe860c55c7ef176cea7fb630a2b7d7736de591d
+  app_links: 05a6ec2341985eb05e9f97dc63f5837c39895c3f
   connectivity_plus: 4adf20a405e25b42b9c9f87feff8f4b6fde18a4e
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   dynamic_color: cb7c2a300ee67ed3bd96c3e852df3af0300bf610
@@ -125,7 +131,7 @@ SPEC CHECKSUMS:
   HotKey: e96d8a2ddbf4591131e2bb3f54e69554d90cdca6
   hotkey_manager_macos: a4317849af96d2430fa89944d3c58977ca089fbe
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
-  network_info_plus: f52abf61c7a311ecf3ac1b482be8a28908b4604d
+  network_info_plus: 21d1cd6a015ccb2fdff06a1fbfa88d54b4e92f61
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
@@ -133,6 +139,7 @@ SPEC CHECKSUMS:
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   tray_manager: a104b5c81b578d83f3c3d0f40a997c8b10810166
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
+  webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
   window_ext: 4afef727fe428b30c68ce800ba92e890fd329f63
   window_manager: b729e31d38fb04905235df9ea896128991cad99e
 

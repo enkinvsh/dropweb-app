@@ -1,8 +1,16 @@
-import 'dart:ui' as ui;
-
 import 'package:dropweb/common/lumina.dart';
 import 'package:flutter/material.dart';
 
+/// Mesh gradient background built from layered radial gradients.
+///
+/// Uses a simple [DecoratedBox] stack instead of [CustomPaint]+[ImageFiltered].
+/// This avoids two critical Flutter rendering pitfalls:
+///   1. `Size.infinite` inside `ImageFiltered` can clip to zero.
+///   2. `ImageFiltered` blur on unbounded paint areas may produce no output.
+///
+/// The radial gradients are intentionally large (radius = 120% of shortest
+/// side) so that they bleed softly into each other, producing a mesh-like
+/// effect without needing an explicit blur pass.
 class MeshBackground extends StatelessWidget {
   const MeshBackground({super.key});
 
@@ -11,52 +19,61 @@ class MeshBackground extends StatelessWidget {
     if (Theme.of(context).brightness == Brightness.light) {
       return const SizedBox.shrink();
     }
+    // Three radial gradient layers painted on top of each other.
+    // Each one is a DecoratedBox that fills the available space.
     return RepaintBoundary(
-      child: ImageFiltered(
-        imageFilter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: CustomPaint(
-          painter: _MeshPainter(),
-          size: Size.infinite,
-        ),
+      child: Stack(
+        children: [
+          // Layer 1 — top-left green glow
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topLeft,
+                  radius: 1.2,
+                  colors: [
+                    Lumina.glowPrimary.withValues(alpha: 0.18),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // Layer 2 — top-right light-green glow
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topRight,
+                  radius: 1.2,
+                  colors: [
+                    Lumina.glowSecondary.withValues(alpha: 0.14),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // Layer 3 — bottom-right blue glow
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.bottomRight,
+                  radius: 1.2,
+                  colors: [
+                    Lumina.glowAccent.withValues(alpha: 0.18),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-}
-
-class _MeshPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Top-left: green glow
-    final paint1 = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset.zero,
-        size.longestSide * 0.5,
-        [Lumina.glowPrimary.withValues(alpha: 0.10), Colors.transparent],
-        [0.0, 1.0],
-      );
-    canvas.drawRect(Offset.zero & size, paint1);
-
-    // Top-right: light green glow
-    final paint2 = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(size.width, 0),
-        size.longestSide * 0.5,
-        [Lumina.glowSecondary.withValues(alpha: 0.08), Colors.transparent],
-        [0.0, 1.0],
-      );
-    canvas.drawRect(Offset.zero & size, paint2);
-
-    // Bottom-right: blue glow
-    final paint3 = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(size.width, size.height),
-        size.longestSide * 0.5,
-        [Lumina.glowAccent.withValues(alpha: 0.10), Colors.transparent],
-        [0.0, 1.0],
-      );
-    canvas.drawRect(Offset.zero & size, paint3);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
