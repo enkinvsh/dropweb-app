@@ -21,18 +21,18 @@ import 'models/models.dart';
 Future<void> main() async {
   globalState.isService = false;
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Enable Skia graphics for better performance on desktop
   if (Platform.isWindows || Platform.isLinux) {
     DartPluginRegistrant.ensureInitialized();
   }
-  
+
   final version = await system.version;
   await clashCore.preload();
   await globalState.initApp(version);
   await android?.init();
   await window?.init(version);
-  
+
   // Initialize VPN plugin on Android to handle method channel calls from VPN service
   if (Platform.isAndroid) {
     vpn; // Accessing the getter initializes the singleton
@@ -46,21 +46,21 @@ Future<void> main() async {
 @pragma('vm:entry-point')
 Future<void> _service(List<String> flags) async {
   commonPrint.log("=== [DART] _service entrypoint started, flags: $flags");
-  
+
   globalState.isService = true;
   commonPrint.log("[DART] Setting isService = true");
-  
+
   WidgetsFlutterBinding.ensureInitialized();
   // Flush any logs that were queued before bindings were initialized
   fileLogger.flushPendingLogs();
   commonPrint.log("[DART] WidgetsFlutterBinding initialized");
-  
+
   final quickStart = flags.contains("quick");
   commonPrint.log("[DART] quickStart = $quickStart");
-  
+
   final clashLibHandler = ClashLibHandler();
   commonPrint.log("[DART] ClashLibHandler created");
-  
+
   commonPrint.log("[DART] BEFORE try-catch block");
   try {
     commonPrint.log("[DART] Calling globalState.init()...");
@@ -84,37 +84,42 @@ Future<void> _service(List<String> flags) async {
         try {
           commonPrint.log("TileService: Showing start notification");
           unawaited(app?.tip(appLocalizations.startVpn));
-          
+
           // Initialize GeoIP/GeoSite only if profile enables it (geodata-mode == true)
           try {
             final currentProfileId = globalState.config.currentProfileId;
             if (currentProfileId != null) {
-              final profileConfig = await globalState.getProfileConfig(currentProfileId);
+              final profileConfig =
+                  await globalState.getProfileConfig(currentProfileId);
               final geodataMode = profileConfig["geodata-mode"];
               if (geodataMode == true) {
-                commonPrint.log("TileService: Initializing GeoIP/GeoSite (geodata-mode=true)...");
+                commonPrint.log(
+                    "TileService: Initializing GeoIP/GeoSite (geodata-mode=true)...");
                 await ClashCore.initGeo();
                 commonPrint.log("TileService: GeoIP/GeoSite initialized");
               } else {
-                commonPrint.log("TileService: Skipping Geo init (geodata-mode != true)");
+                commonPrint.log(
+                    "TileService: Skipping Geo init (geodata-mode != true)");
               }
             } else {
-              commonPrint.log("TileService: Skipping Geo init (no current profile)");
+              commonPrint
+                  .log("TileService: Skipping Geo init (no current profile)");
             }
           } catch (e) {
             commonPrint.log("TileService: Skipping Geo init due to error: $e");
           }
-          
+
           commonPrint.log("TileService: Getting paths...");
           final homeDirPath = await appPath.homeDirPath;
           final version = await system.version;
-          commonPrint.log("TileService: homeDirPath=$homeDirPath, version=$version");
-          
+          commonPrint
+              .log("TileService: homeDirPath=$homeDirPath, version=$version");
+
           commonPrint.log("TileService: Creating config...");
           final clashConfig = globalState.config.patchClashConfig.copyWith.tun(
             enable: false,
           );
-          
+
           final profileId = globalState.config.currentProfileId;
           commonPrint.log("TileService: currentProfileId=$profileId");
           if (profileId == null) {
@@ -127,7 +132,7 @@ Future<void> _service(List<String> flags) async {
             pathConfig: clashConfig,
           );
           commonPrint.log("TileService: Setup params ready");
-          
+
           commonPrint.log("TileService: Starting ClashCore with quickStart");
           final res = await clashLibHandler.quickStart(
             InitParams(
@@ -138,7 +143,7 @@ Future<void> _service(List<String> flags) async {
             globalState.getCoreState(),
           );
           commonPrint.log("TileService: quickStart result: $res");
-          
+
           if (res.isNotEmpty) {
             commonPrint.log("TileService: Start failed with error: $res");
             unawaited(app?.tip("Start failed: $res"));
@@ -149,7 +154,7 @@ Future<void> _service(List<String> flags) async {
             }
             exit(0);
           }
-          
+
           commonPrint.log("TileService: Starting VPN service");
           try {
             await vpn?.start(
@@ -159,9 +164,10 @@ Future<void> _service(List<String> flags) async {
           } catch (e) {
             // MissingPluginException may occur if VpnPlugin not yet attached
             // VPN is started by native side via VpnPlugin.handleStart()
-            commonPrint.log("TileService: vpn.start() error (may be handled by native): $e");
+            commonPrint.log(
+                "TileService: vpn.start() error (may be handled by native): $e");
           }
-          
+
           commonPrint.log("TileService: Starting listener");
           clashLibHandler.startListener();
           commonPrint.log("=== TileService onStart completed successfully ===");
@@ -226,7 +232,9 @@ Future<void> _service(List<String> flags) async {
 
       // Build title using active server (keep flags/emojis)
       final serverDisplay = serverName.trim();
-      final title = serverDisplay.isNotEmpty ? "$profileName / $serverDisplay" : profileName;
+      final title = serverDisplay.isNotEmpty
+          ? "$profileName / $serverDisplay"
+          : profileName;
 
       // Service name (subtext) from header flclashx-servicename (constant per profile)
       String serviceName = "";
@@ -241,18 +249,11 @@ Future<void> _service(List<String> flags) async {
         }
       } catch (_) {}
 
-      return json.encode({
-        "title": title,
-        "server": serviceName,
-        "content": "$traffic"
-      });
+      return json.encode(
+          {"title": title, "server": serviceName, "content": "$traffic"});
     } catch (_) {
       // Fallback minimal
-      return json.encode({
-        "title": "dropweb",
-        "server": "",
-        "content": ""
-      });
+      return json.encode({"title": "dropweb", "server": "", "content": ""});
     }
   };
 
@@ -265,13 +266,13 @@ Future<void> _service(List<String> flags) async {
       },
     ),
   );
-  
+
   // Signal to native side that Dart service is ready to receive commands
   // This must be called AFTER adding tile listener so pending actions can be handled
   commonPrint.log("[DART] Signaling service ready to native side");
   await tile?.signalServiceReady();
   commonPrint.log("[DART] Service ready signal sent");
-  
+
   commonPrint.log("[DART] quickStart=$quickStart");
   if (!quickStart) {
     // App is in memory - set up IPC for communication with main isolate
@@ -280,7 +281,8 @@ Future<void> _service(List<String> flags) async {
   } else {
     // App was not in memory - VPN will be started via pending action triggered by signalServiceReady()
     // The onStart callback in tile listener will handle the actual VPN startup
-    commonPrint.log("[DART] QuickStart mode - VPN will be started via pending action from tile service");
+    commonPrint.log(
+        "[DART] QuickStart mode - VPN will be started via pending action from tile service");
   }
 }
 
@@ -304,9 +306,9 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
           newSelectedMap[groupName] = serverName;
           final updatedProfile = profile.copyWith(selectedMap: newSelectedMap);
           globalState.config = globalState.config.copyWith(
-            profiles: globalState.config.profiles.map((p) => 
-              p.id == profile.id ? updatedProfile : p
-            ).toList(),
+            profiles: globalState.config.profiles
+                .map((p) => p.id == profile.id ? updatedProfile : p)
+                .toList(),
           );
         }
         sendPort.send({'success': true});
@@ -326,13 +328,12 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
 
 @immutable
 class _TileListenerWithService with TileListener {
-
   const _TileListenerWithService({
     required Function() onStart,
     required Function() onStop,
-  }) : _onStart = onStart,
-       _onStop = onStop;
-  
+  })  : _onStart = onStart,
+        _onStop = onStop;
+
   final Function() _onStart;
   final Function() _onStop;
 
@@ -349,7 +350,6 @@ class _TileListenerWithService with TileListener {
 
 @immutable
 class _VpnListenerWithService with VpnListener {
-
   const _VpnListenerWithService({
     required Function(String dns) onDnsChanged,
   }) : _onDnsChanged = onDnsChanged;

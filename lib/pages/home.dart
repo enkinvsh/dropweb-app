@@ -8,6 +8,7 @@ import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -177,12 +178,10 @@ class _BottomBarWithConnect extends StatelessWidget {
   }
 }
 
-/// Connect button with animated ring pulse when VPN is active.
+/// Connect button — glass circle. Reports its screen position via
+/// [connectButtonCenter] so [MagicRingsOverlay] can draw rings from it.
 ///
-/// Uses animated [BoxShadow] on the outer Container — boxShadow renders
-/// OUTSIDE widget bounds natively in Flutter, no CustomPaint or overflow
-/// hacks needed. Three shadows at different spread radii + staggered
-/// animation create the expanding ring illusion.
+/// No glow — just glassShadow always.
 class _ConnectCircle extends ConsumerStatefulWidget {
   const _ConnectCircle();
 
@@ -190,60 +189,31 @@ class _ConnectCircle extends ConsumerStatefulWidget {
   ConsumerState<_ConnectCircle> createState() => _ConnectCircleState();
 }
 
-class _ConnectCircleState extends ConsumerState<_ConnectCircle>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _rings;
+/// Global notifier for the connect button's screen-space center.
+/// Written by [_ConnectCircle], read by [MagicRingsOverlay].
+final connectButtonCenter = ValueNotifier<Offset?>(null);
 
-  @override
-  void initState() {
-    super.initState();
-    _rings = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    );
-  }
+class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
+  final _key = GlobalKey();
 
-  @override
-  void dispose() {
-    _rings.dispose();
-    super.dispose();
-  }
-
-  /// Compute ring shadows for current animation value.
-  List<BoxShadow> _buildRingShadows(Color color) {
-    const count = 3;
-    final t = _rings.value;
-    return List.generate(count, (i) {
-      final phase = (t + i / count) % 1.0;
-      final alpha = (1.0 - phase) * 0.25;
-      final spread = 2.0 + phase * 18.0;
-      final blur = 1.0 + phase * 4.0;
-      return BoxShadow(
-        color: color.withValues(alpha: alpha),
-        blurRadius: blur,
-        spreadRadius: spread,
-      );
-    });
+  void _reportPosition() {
+    final box = _key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final center =
+        box.localToGlobal(Offset(box.size.width / 2, box.size.height / 2));
+    connectButtonCenter.value = center;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
-    final isConnected = ref.watch(runTimeProvider) != null;
 
-    // Start/stop ring animation based on VPN state
-    if (isConnected && isDark) {
-      if (!_rings.isAnimating) _rings.repeat();
-    } else {
-      if (_rings.isAnimating) {
-        _rings.stop();
-        _rings.reset();
-      }
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reportPosition());
 
     if (!isDark) {
       return RepaintBoundary(
+        key: _key,
         child: Container(
           width: 64,
           height: 64,
@@ -267,24 +237,20 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle>
     }
 
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _rings,
-        builder: (_, __) => Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: isConnected
-                ? _buildRingShadows(colorScheme.primary)
-                : Lumina.glassShadow,
-          ),
-          child: ClipOval(
-            child: BackdropFilter(
-              filter: Lumina.glassBlur,
-              child: Container(
-                decoration: Lumina.glassCircle(),
-                child: const StartButton(),
-              ),
+      key: _key,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: Lumina.glassShadow,
+        ),
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: Lumina.glassBlur,
+            child: Container(
+              decoration: Lumina.glassCircle(),
+              child: const StartButton(),
             ),
           ),
         ),
@@ -332,6 +298,7 @@ class CommonNavigationBar extends ConsumerWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
+                HapticFeedback.selectionClick();
                 globalState.appController.toPage(item.label);
               },
               child: Column(
