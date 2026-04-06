@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/views/dashboard/widgets/magic_rings.dart';
 import 'package:dropweb/views/dashboard/widgets/start_button.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart';

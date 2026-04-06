@@ -170,7 +170,6 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
           warpStrength: 0.7,
           noise: 0.03,
         )),
-        // Fullscreen rings — expand from connect button position
         const Positioned.fill(child: MagicRingsOverlay()),
         SingleChildScrollView(
           padding: const EdgeInsets.all(16).copyWith(
