@@ -158,42 +158,49 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
           .map((item) => item.widget)
           .toList();
     });
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16).copyWith(
-        bottom: 16,
-      ),
-      child: Column(
-        children: [
-          // Dashboard widgets
-          _buildIsEdit((isEdit) => isEdit
-              ? SystemBackBlock(
-                  child: CommonPopScope(
-                    child: SuperGrid(
-                      key: key,
+    return Stack(
+      children: [
+        const LightPillar(),
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(16).copyWith(
+            bottom: 16,
+          ),
+          child: Column(
+            children: [
+              // Dashboard widgets
+              _buildIsEdit((isEdit) => isEdit
+                  ? SystemBackBlock(
+                      child: CommonPopScope(
+                        child: SuperGrid(
+                          key: key,
+                          crossAxisCount: columns,
+                          crossAxisSpacing: spacing,
+                          mainAxisSpacing: spacing,
+                          onUpdate: _handleSave,
+                          children: [
+                            ...dashboardState.dashboardWidgets
+                                .where(isAllowed)
+                                .map(
+                                  (item) => item.widget,
+                                ),
+                          ],
+                        ),
+                        onPop: () {
+                          _handleUpdateIsEdit();
+                          return false;
+                        },
+                      ),
+                    )
+                  : Grid(
                       crossAxisCount: columns,
                       crossAxisSpacing: spacing,
                       mainAxisSpacing: spacing,
-                      onUpdate: _handleSave,
-                      children: [
-                        ...dashboardState.dashboardWidgets.where(isAllowed).map(
-                              (item) => item.widget,
-                            ),
-                      ],
-                    ),
-                    onPop: () {
-                      _handleUpdateIsEdit();
-                      return false;
-                    },
-                  ),
-                )
-              : Grid(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: spacing,
-                  mainAxisSpacing: spacing,
-                  children: children,
-                )),
-        ],
-      ),
+                      children: children,
+                    )),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

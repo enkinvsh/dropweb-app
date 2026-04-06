@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/views/dashboard/widgets/start_button.dart';
@@ -186,26 +185,53 @@ class _BottomBarWithConnect extends StatelessWidget {
   }
 
   Widget _buildConnectCircle(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainer.withValues(alpha: 0.75),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+
+    if (isDark) {
+      return RepaintBoundary(
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: Lumina.glassShadow,
           ),
-        ],
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: Lumina.glassBlur,
+              child: Container(
+                decoration: Lumina.glassCircle(),
+                child: const StartButton(),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Light theme: solid surface, no blur
+    return RepaintBoundary(
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colorScheme.surfaceContainer,
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const StartButton(),
       ),
-      child: const StartButton(),
     );
   }
 }
@@ -222,79 +248,116 @@ class CommonNavigationBar extends ConsumerWidget {
     required this.currentIndex,
   });
 
+  Widget _buildTabBarContent(
+    BuildContext context,
+    ColorScheme colorScheme,
+    bool isDark,
+  ) {
+    return Container(
+      height: 64,
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: Lumina.glassOpacity)
+            : colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(Lumina.radiusXl),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: Lumina.glassBorderOpacity)
+              : colorScheme.outlineVariant.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: List.generate(navigationItems.length, (index) {
+          final item = navigationItems[index];
+          final isSelected = index == currentIndex;
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                globalState.appController.toPage(item.label);
+              },
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconTheme(
+                    data: IconThemeData(
+                      size: 22,
+                      color: isSelected
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                    child: item.icon,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    Intl.message(item.label.name),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // Bioluminescent glow dot under selected tab (dark theme only)
+                  if (isSelected && isDark)
+                    Container(
+                      margin: const EdgeInsets.only(top: 2),
+                      width: 20,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: colorScheme.primary.withValues(alpha: 0.6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.primary.withValues(alpha: 0.5),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 6),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, ref) {
     if (viewMode == ViewMode.mobile) {
       final colorScheme = Theme.of(context).colorScheme;
-      return Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              height: 64,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainer.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: List.generate(navigationItems.length, (index) {
-                  final item = navigationItems[index];
-                  final isSelected = index == currentIndex;
-                  return Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        globalState.appController.toPage(item.label);
-                      },
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconTheme(
-                            data: IconThemeData(
-                              size: 22,
-                              color: isSelected
-                                  ? colorScheme.primary
-                                  : colorScheme.onSurfaceVariant,
-                            ),
-                            child: item.icon,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            Intl.message(item.label.name),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: isSelected
-                                  ? colorScheme.primary
-                                  : colorScheme.onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return RepaintBoundary(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Lumina.radiusXl),
+            boxShadow: isDark
+                ? Lumina.glassShadow
+                : [
+                    const BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
                     ),
-                  );
-                }),
-              ),
-            ),
+                  ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(Lumina.radiusXl),
+            child: isDark
+                ? BackdropFilter(
+                    filter: Lumina.glassBlur,
+                    child: _buildTabBarContent(context, colorScheme, isDark),
+                  )
+                : _buildTabBarContent(context, colorScheme, isDark),
           ),
         ),
       );

@@ -217,12 +217,38 @@ class ApplicationState extends ConsumerState<Application> {
       titleLarge: TextStyle(fontFamily: 'Unbounded'),
       titleMedium: TextStyle(fontFamily: 'Unbounded'),
     );
+    var scheme = pureBlack ? colorScheme.toPureBlack(true) : colorScheme;
+    // LUMINA: override surfaces for dark theme — tactile void
+    if (brightness == Brightness.dark) {
+      scheme = scheme.copyWith(
+        surface: Lumina.void_,
+        surfaceContainerLowest: Lumina.surface1,
+        surfaceContainerLow: Lumina.surface2,
+        surfaceContainer: Lumina.surface3,
+        surfaceContainerHigh: Lumina.surface4,
+        surfaceContainerHighest: Lumina.surface5,
+      );
+    }
     return ThemeData(
       useMaterial3: true,
       pageTransitionsTheme: _pageTransitionsTheme,
-      colorScheme: pureBlack ? colorScheme.toPureBlack(true) : colorScheme,
+      colorScheme: scheme,
       textTheme: unbounded,
       visualDensity: VisualDensity.adaptivePlatformDensity,
+      // LUMINA: cards use void-level elevation
+      cardTheme: CardThemeData(
+        color: brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: Lumina.glassOpacity)
+            : null,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Lumina.radiusLg),
+          side: brightness == Brightness.dark
+              ? BorderSide(
+                  color:
+                      Colors.white.withValues(alpha: Lumina.glassBorderOpacity))
+              : BorderSide.none,
+        ),
+      ),
     );
   }
 

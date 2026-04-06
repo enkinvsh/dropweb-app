@@ -13,9 +13,11 @@ class StartButton extends ConsumerStatefulWidget {
 }
 
 class _StartButtonState extends ConsumerState<StartButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _pressController;
   late Animation<double> _scaleAnimation;
+  late AnimationController _breatheController;
+  late Animation<double> _breatheAnimation;
   bool isStart = false;
 
   @override
@@ -27,12 +29,21 @@ class _StartButtonState extends ConsumerState<StartButton>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.93).animate(
-      CurvedAnimation(
-        parent: _pressController,
-        curve: Curves.easeOut,
-      ),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.90).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeOut),
     );
+
+    _breatheController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+    _breatheAnimation = Tween<double>(begin: 0.2, end: 0.5).animate(
+      CurvedAnimation(parent: _breatheController, curve: Lumina.luminaCurve),
+    );
+
+    if (isStart) {
+      _breatheController.repeat(reverse: true);
+    }
 
     ref.listenManual(
       runTimeProvider.select((state) => state != null),
@@ -41,6 +52,12 @@ class _StartButtonState extends ConsumerState<StartButton>
           setState(() {
             isStart = next;
           });
+          if (next) {
+            _breatheController.repeat(reverse: true);
+          } else {
+            _breatheController.stop();
+            _breatheController.reset();
+          }
         }
       },
       fireImmediately: true,
@@ -49,6 +66,7 @@ class _StartButtonState extends ConsumerState<StartButton>
 
   @override
   void dispose() {
+    _breatheController.dispose();
     _pressController.dispose();
     super.dispose();
   }
@@ -63,18 +81,6 @@ class _StartButtonState extends ConsumerState<StartButton>
       },
       duration: commonDuration,
     );
-  }
-
-  void _onTapDown(TapDownDetails details) {
-    _pressController.forward();
-  }
-
-  void _onTapUp(TapUpDetails details) {
-    _pressController.reverse();
-  }
-
-  void _onTapCancel() {
-    _pressController.reverse();
   }
 
   @override
@@ -93,26 +99,40 @@ class _StartButtonState extends ConsumerState<StartButton>
         child: child,
       ),
       child: GestureDetector(
-        onTapDown: _onTapDown,
-        onTapUp: _onTapUp,
-        onTapCancel: _onTapCancel,
+        onTapDown: (_) => _pressController.forward(),
+        onTapUp: (_) => _pressController.reverse(),
+        onTapCancel: () => _pressController.reverse(),
         onTap: handleSwitchStart,
         child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            decoration: BoxDecoration(
-              color: isStart ? colorScheme.primary : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Icon(
-                isStart ? Icons.stop_rounded : Icons.power_settings_new_rounded,
-                size: 28,
-                color: isStart
-                    ? colorScheme.onPrimary
-                    : colorScheme.onSurfaceVariant,
-              ),
-            ),
+          child: AnimatedBuilder(
+            animation: _breatheAnimation,
+            builder: (_, __) {
+              return Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  // Bioluminescent breathe glow when active
+                  boxShadow: isStart
+                      ? [
+                          BoxShadow(
+                            color: colorScheme.primary
+                                .withValues(alpha: _breatheAnimation.value),
+                            blurRadius: 16,
+                            spreadRadius: 2,
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Icon(
+                  isStart
+                      ? Icons.stop_rounded
+                      : Icons.power_settings_new_rounded,
+                  size: 26,
+                  color: isStart
+                      ? colorScheme.primary
+                      : Colors.white.withValues(alpha: 0.5),
+                ),
+              );
+            },
           ),
         ),
       ),

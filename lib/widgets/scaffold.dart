@@ -5,6 +5,7 @@ import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/fade_box.dart';
+import 'package:dropweb/widgets/mesh_background.dart';
 import 'package:dropweb/widgets/pop_scope.dart';
 import 'package:dropweb/widgets/search_order_marker.dart';
 import 'package:flutter/material.dart';
@@ -513,12 +514,18 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     final scaffoldWithBackground = backgroundUrl != null
         ? Stack(
             children: [
+              const MeshBackground(),
               _buildBackground(backgroundUrl),
               _buildOverlay(context),
               scaffold,
             ],
           )
-        : scaffold;
+        : Stack(
+            children: [
+              const MeshBackground(),
+              scaffold,
+            ],
+          );
 
     return _sideNavigationBar != null
         ? Row(
