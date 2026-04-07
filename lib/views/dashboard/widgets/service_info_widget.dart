@@ -6,6 +6,7 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class ServiceInfoWidget extends ConsumerWidget {
@@ -27,8 +28,8 @@ class ServiceInfoWidget extends ConsumerWidget {
     const borderRadius = 8.0;
 
     if (logoUrl == null || logoUrl.isEmpty) {
-      return Icon(
-        Icons.contact_mail,
+      return HugeIcon(
+        icon: HugeIcons.strokeRoundedMail01,
         size: logoSize,
         color: context.colorScheme.primary,
       );
@@ -42,8 +43,8 @@ class ServiceInfoWidget extends ConsumerWidget {
         logoUrl,
         width: logoSize,
         height: logoSize,
-        placeholderBuilder: (context) => Icon(
-          Icons.contact_mail,
+        placeholderBuilder: (context) => HugeIcon(
+          icon: HugeIcons.strokeRoundedMail01,
           size: logoSize,
           color: context.colorScheme.primary,
         ),
@@ -54,13 +55,13 @@ class ServiceInfoWidget extends ConsumerWidget {
         width: logoSize,
         height: logoSize,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Icon(
-          Icons.contact_mail,
+        placeholder: (context, url) => HugeIcon(
+          icon: HugeIcons.strokeRoundedMail01,
           size: logoSize,
           color: context.colorScheme.primary,
         ),
-        errorWidget: (context, url, error) => Icon(
-          Icons.contact_mail,
+        errorWidget: (context, url, error) => HugeIcon(
+          icon: HugeIcons.strokeRoundedMail01,
           size: logoSize,
           color: context.colorScheme.primary,
         ),
@@ -136,8 +137,8 @@ class ServiceInfoWidget extends ConsumerWidget {
                     color: context.colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.support_agent,
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedCustomerSupport,
                     size: 28,
                     color: context.colorScheme.onPrimary,
                   ),

@@ -13,6 +13,7 @@ import 'package:dropweb/views/hotkey.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' show dirname, join;
 
@@ -28,53 +29,55 @@ class ToolsView extends ConsumerStatefulWidget {
 }
 
 class _ToolboxViewState extends ConsumerState<ToolsView> {
-  ListItem<dynamic> _buildNavigationMenuItem(NavigationItem navigationItem) => ListItem.open(
-      leading: navigationItem.icon,
-      title: Text(Intl.message(navigationItem.label.name)),
-      subtitle: navigationItem.description != null
-          ? Text(Intl.message(navigationItem.description!))
-          : null,
-      delegate: OpenDelegate(
-        title: Intl.message(navigationItem.label.name),
-        widget: navigationItem.view,
-      ),
-    );
+  ListItem<dynamic> _buildNavigationMenuItem(NavigationItem navigationItem) =>
+      ListItem.open(
+        leading: navigationItem.icon,
+        title: Text(Intl.message(navigationItem.label.name)),
+        subtitle: navigationItem.description != null
+            ? Text(Intl.message(navigationItem.description!))
+            : null,
+        delegate: OpenDelegate(
+          title: Intl.message(navigationItem.label.name),
+          widget: navigationItem.view,
+        ),
+      );
 
   Widget _buildNavigationMenu(List<NavigationItem> navigationItems) => Column(
-      children: [
-        for (final navigationItem in navigationItems) ...[
-          _buildNavigationMenuItem(navigationItem),
-          navigationItems.last != navigationItem
-              ? const Divider(
-                  height: 0,
-                )
-              : Container(),
-        ]
-      ],
-    );
+        children: [
+          for (final navigationItem in navigationItems) ...[
+            _buildNavigationMenuItem(navigationItem),
+            navigationItems.last != navigationItem
+                ? const Divider(
+                    height: 0,
+                  )
+                : Container(),
+          ]
+        ],
+      );
 
-  List<Widget> _getOtherList(BuildContext context, bool enableDeveloperMode) => generateSection(
-      title: AppLocalizations.of(context).other,
-      items: [
-        const _DisclaimerItem(),
-        if (enableDeveloperMode) const _DeveloperItem(),
-        const _InfoItem(),
-      ],
-    );
+  List<Widget> _getOtherList(BuildContext context, bool enableDeveloperMode) =>
+      generateSection(
+        title: AppLocalizations.of(context).other,
+        items: [
+          const _DisclaimerItem(),
+          if (enableDeveloperMode) const _DeveloperItem(),
+          const _InfoItem(),
+        ],
+      );
 
   List<Widget> _getSettingList(BuildContext context) => generateSection(
-      title: AppLocalizations.of(context).settings,
-      items: [
-        const _LocaleItem(),
-        const _ThemeItem(),
-        const _BackupItem(),
-        if (system.isDesktop) const _HotkeyItem(),
-        if (Platform.isWindows) const _LoopbackItem(),
-        if (Platform.isAndroid) const _AccessItem(),
-        const _ConfigItem(),
-        const _SettingItem(),
-      ],
-    );
+        title: AppLocalizations.of(context).settings,
+        items: [
+          const _LocaleItem(),
+          const _ThemeItem(),
+          const _BackupItem(),
+          if (system.isDesktop) const _HotkeyItem(),
+          if (Platform.isWindows) const _LoopbackItem(),
+          if (Platform.isAndroid) const _AccessItem(),
+          const _ConfigItem(),
+          const _SettingItem(),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +129,7 @@ class _LocaleItem extends ConsumerWidget {
     final subTitle = locale ?? appLocale.defaultText;
     final currentLocale = utils.getLocaleForString(locale);
     return ListItem<Locale?>.options(
-      leading: const Icon(Icons.language_outlined),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedGlobe02, size: 24),
       title: Text(appLocale.language),
       subtitle: Text(Intl.message(subTitle)),
       delegate: OptionsDelegate(
@@ -151,7 +154,7 @@ class _ThemeItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.style),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedEdgeStyle, size: 24),
       title: Text(appLocale.theme),
       subtitle: Text(appLocale.themeDesc),
       delegate: OpenDelegate(
@@ -169,7 +172,7 @@ class _BackupItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.cloud_sync),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedCloudUpload, size: 24),
       title: Text(appLocale.backupAndRecovery),
       subtitle: Text(appLocale.backupAndRecoveryDesc),
       delegate: OpenDelegate(
@@ -187,7 +190,7 @@ class _HotkeyItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.keyboard),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedKeyboard, size: 24),
       title: Text(appLocale.hotkeyManagement),
       subtitle: Text(appLocale.hotkeyManagementDesc),
       delegate: OpenDelegate(
@@ -205,7 +208,7 @@ class _LoopbackItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem(
-      leading: const Icon(Icons.lock),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedLockPassword, size: 24),
       title: Text(appLocale.loopback),
       subtitle: Text(appLocale.loopbackDesc),
       onTap: () {
@@ -225,7 +228,7 @@ class _AccessItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.view_list),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedListView, size: 24),
       title: Text(appLocale.accessControl),
       subtitle: Text(appLocale.accessControlDesc),
       delegate: OpenDelegate(
@@ -243,7 +246,7 @@ class _ConfigItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.edit),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedEdit01, size: 24),
       title: Text(appLocale.basicConfig),
       subtitle: Text(appLocale.basicConfigDesc),
       delegate: OpenDelegate(
@@ -261,7 +264,7 @@ class _SettingItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.settings),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedSettings02, size: 24),
       title: Text(appLocale.application),
       subtitle: Text(appLocale.applicationDesc),
       delegate: OpenDelegate(
@@ -279,7 +282,7 @@ class _DisclaimerItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem(
-      leading: const Icon(Icons.gavel),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedLegalHammer, size: 24),
       title: Text(appLocale.disclaimer),
       onTap: () async {
         final isDisclaimerAccepted =
@@ -299,7 +302,8 @@ class _InfoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.info),
+      leading:
+          HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, size: 24),
       title: Text(appLocale.about),
       delegate: OpenDelegate(
         title: appLocale.about,
@@ -316,7 +320,7 @@ class _DeveloperItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     return ListItem.open(
-      leading: const Icon(Icons.developer_board),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedCpu, size: 24),
       title: Text(appLocale.developerMode),
       delegate: OpenDelegate(
         title: appLocale.developerMode,

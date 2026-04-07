@@ -9,11 +9,11 @@ import 'package:dropweb/widgets/card.dart';
 import 'package:dropweb/widgets/grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 typedef VoidCallback = void Function();
 
 class SuperGrid extends StatefulWidget {
-
   const SuperGrid({
     super.key,
     required this.children,
@@ -84,7 +84,8 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
         (context.findRenderObject()! as RenderBox).localToGlobal(Offset.zero);
     _offsets = _itemContexts
         .map((item) =>
-            (item!.findRenderObject()! as RenderBox).localToGlobal(Offset.zero) -
+            (item!.findRenderObject()! as RenderBox)
+                .localToGlobal(Offset.zero) -
             _parentOffset)
         .toList();
     _containerSize = context.size!;
@@ -346,25 +347,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   }
 
   Widget _buildTransform(Widget rawChild, int index) => ValueListenableBuilder(
-      valueListenable: _animating,
-      builder: (_, animating, child) {
-        if (animating && _dragIndexNotifier.value == index) {
-          return _buildSizeBox(
-            Container(),
-            index,
-          );
-        }
-        return child!;
-      },
-      child: AnimatedBuilder(
-        builder: (_, child) => Transform.translate(
+        valueListenable: _animating,
+        builder: (_, animating, child) {
+          if (animating && _dragIndexNotifier.value == index) {
+            return _buildSizeBox(
+              Container(),
+              index,
+            );
+          }
+          return child!;
+        },
+        child: AnimatedBuilder(
+          builder: (_, child) => Transform.translate(
             offset: _transformAnimationMap[index]?.value ?? Offset.zero,
             child: child,
           ),
-        animation: _transformController.view,
-        child: rawChild,
-      ),
-    );
+          animation: _transformController.view,
+          child: rawChild,
+        ),
+      );
 
   Offset _getNextOffset(List<Offset> offsets, Size size) {
     final length = offsets.length;
@@ -397,27 +398,27 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   }
 
   Widget _buildSizeBox(Widget child, int index) => ValueListenableBuilder(
-      valueListenable: _dragWidgetSizeNotifier,
-      builder: (_, size, child) => SizedBox.fromSize(
+        valueListenable: _dragWidgetSizeNotifier,
+        builder: (_, size, child) => SizedBox.fromSize(
           size: size,
           child: child,
         ),
-      child: child,
-    );
+        child: child,
+      );
 
   Widget _buildInactivate(Widget child) => ValueListenableBuilder(
-      valueListenable: _animating,
-      builder: (_, animating, child) {
-        if (animating) {
-          return ActivateBox(
-            child: child!,
-          );
-        } else {
-          return child!;
-        }
-      },
-      child: child,
-    );
+        valueListenable: _animating,
+        builder: (_, animating, child) {
+          if (animating) {
+            return ActivateBox(
+              child: child!,
+            );
+          } else {
+            return child!;
+          }
+        },
+        child: child,
+      );
 
   Widget _buildShake(Widget child) {
     final random = 0.7 + Random().nextDouble() * 0.3;
@@ -426,9 +427,9 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
     return AnimatedBuilder(
       animation: _shakeAnimation,
       builder: (_, child) => Transform.rotate(
-          angle: _shakeAnimation.value * random,
-          child: child,
-        ),
+        angle: _shakeAnimation.value * random,
+        child: child,
+      ),
       child: child,
     );
   }
@@ -441,8 +442,8 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   }) {
     final target = DragTarget<int>(
       builder: (_, __, ___) => AbsorbPointer(
-          child: item,
-        ),
+        child: item,
+      ),
       onWillAcceptWithDetails: (_) {
         debouncer.call(
           FunctionTag.handleWill,
@@ -551,27 +552,27 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   }
 
   Widget _buildFakeTransformWidget() => ValueListenableBuilder<bool>(
-      valueListenable: _animating,
-      builder: (_, animating, __) {
-        final index = _dragIndexNotifier.value;
-        if (!animating || _fakeDragWidgetAnimation == null || index == -1) {
-          return Container();
-        }
-        return _buildSizeBox(
-          AnimatedBuilder(
-            animation: _fakeDragWidgetAnimation!,
-            builder: (_, child) => Transform.translate(
+        valueListenable: _animating,
+        builder: (_, animating, __) {
+          final index = _dragIndexNotifier.value;
+          if (!animating || _fakeDragWidgetAnimation == null || index == -1) {
+            return Container();
+          }
+          return _buildSizeBox(
+            AnimatedBuilder(
+              animation: _fakeDragWidgetAnimation!,
+              builder: (_, child) => Transform.translate(
                 offset: _fakeDragWidgetAnimation!.value,
                 child: child,
               ),
-            child: ActivateBox(
-              child: _childrenNotifier.value[index].child,
+              child: ActivateBox(
+                child: _childrenNotifier.value[index].child,
+              ),
             ),
-          ),
-          index,
-        );
-      },
-    );
+            index,
+          );
+        },
+      );
 
   @override
   void dispose() {
@@ -587,33 +588,32 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) => DeferredPointerHandler(
-      child: Stack(
-        children: [
-          _buildInactivate(
-            ValueListenableBuilder(
-              valueListenable: _childrenNotifier,
-              builder: (_, children, __) {
-                _onChildrenChange();
-                return Grid(
-                  axisDirection: AxisDirection.down,
-                  crossAxisCount: crossCount,
-                  crossAxisSpacing: widget.crossAxisSpacing,
-                  mainAxisSpacing: widget.mainAxisSpacing,
-                  children: [
-                    for (int i = 0; i < children.length; i++) _builderItem(i),
-                  ],
-                );
-              },
+        child: Stack(
+          children: [
+            _buildInactivate(
+              ValueListenableBuilder(
+                valueListenable: _childrenNotifier,
+                builder: (_, children, __) {
+                  _onChildrenChange();
+                  return Grid(
+                    axisDirection: AxisDirection.down,
+                    crossAxisCount: crossCount,
+                    crossAxisSpacing: widget.crossAxisSpacing,
+                    mainAxisSpacing: widget.mainAxisSpacing,
+                    children: [
+                      for (int i = 0; i < children.length; i++) _builderItem(i),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-          _buildFakeTransformWidget(),
-        ],
-      ),
-    );
+            _buildFakeTransformWidget(),
+          ],
+        ),
+      );
 }
 
 class _DeletableContainer extends StatefulWidget {
-
   const _DeletableContainer({
     required this.child,
     required this.onDelete,
@@ -680,38 +680,37 @@ class _DeletableContainerState extends State<_DeletableContainer>
 
   @override
   Widget build(BuildContext context) => Stack(
-      clipBehavior: Clip.none,
-      children: [
-        AnimatedBuilder(
-          animation: _controller.view,
-          builder: (_, child) => Transform.scale(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedBuilder(
+            animation: _controller.view,
+            builder: (_, child) => Transform.scale(
               scale: _scaleAnimation.value,
               child: Opacity(
                 opacity: _fadeAnimation.value,
                 child: child,
               ),
             ),
-          child: widget.child,
-        ),
-        if (_deleteButtonVisible)
-          Positioned(
-            top: -8,
-            right: -8,
-            child: DeferPointer(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: IconButton.filled(
-                  iconSize: 20,
-                  padding: const EdgeInsets.all(2),
-                  onPressed: _handleDel,
-                  icon: const Icon(
-                    Icons.close,
+            child: widget.child,
+          ),
+          if (_deleteButtonVisible)
+            Positioned(
+              top: -8,
+              right: -8,
+              child: DeferPointer(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: IconButton.filled(
+                    iconSize: 20,
+                    padding: const EdgeInsets.all(2),
+                    onPressed: _handleDel,
+                    icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedCancel01, size: 20),
                   ),
                 ),
               ),
-            ),
-          )
-      ],
-    );
+            )
+        ],
+      );
 }

@@ -12,6 +12,7 @@ import 'package:dropweb/views/profiles/scripts.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 import 'add_profile.dart';
@@ -30,12 +31,12 @@ class _ProfilesViewState extends State<ProfilesView> with PageMixin {
     showExtend(
       globalState.navigatorKey.currentState!.context,
       builder: (_, type) => AdaptiveSheetScaffold(
-          type: type,
-          body: AddProfileView(
-            context: globalState.navigatorKey.currentState!.context,
-          ),
-          title: "${appLocalizations.add}${appLocalizations.profile}",
+        type: type,
+        body: AddProfileView(
+          context: globalState.navigatorKey.currentState!.context,
         ),
+        title: "${appLocalizations.add}${appLocalizations.profile}",
+      ),
     );
   }
 
@@ -79,7 +80,7 @@ class _ProfilesViewState extends State<ProfilesView> with PageMixin {
   List<Widget> get actions => [
         IconButton(
           onPressed: _updateProfiles,
-          icon: const Icon(Icons.sync),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 24),
         ),
         IconButton(
           onPressed: () {
@@ -92,8 +93,9 @@ class _ProfilesViewState extends State<ProfilesView> with PageMixin {
             builder: (context, ref, __) {
               final isScriptMode = ref.watch(
                   scriptStateProvider.select((state) => state.realId != null));
-              return Icon(
-                Icons.functions,
+              return HugeIcon(
+                icon: HugeIcons.strokeRoundedFunctionCircle,
+                size: 24,
                 color: isScriptMode ? context.colorScheme.primary : null,
               );
             },
@@ -105,12 +107,12 @@ class _ProfilesViewState extends State<ProfilesView> with PageMixin {
             showSheet(
               context: context,
               builder: (_, type) => ReorderableProfilesSheet(
-                  type: type,
-                  profiles: profiles,
-                ),
+                type: type,
+                profiles: profiles,
+              ),
             );
           },
-          icon: const Icon(Icons.sort),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedSorting01, size: 26),
           iconSize: 26,
         ),
       ];
@@ -119,65 +121,68 @@ class _ProfilesViewState extends State<ProfilesView> with PageMixin {
   Widget? get floatingActionButton => FloatingActionButton(
         heroTag: null,
         onPressed: _handleShowAddExtendPage,
-        child: const Icon(
-          Icons.add,
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedAdd01,
+          size: 24,
         ),
       );
 
   @override
   Widget build(BuildContext context) => Consumer(
-      builder: (_, ref, __) {
-        ref.listenManual(
-          isCurrentPageProvider(PageLabel.profiles),
-          (prev, next) {
-            if (prev != next && next == true) {
-              initPageState();
-            }
-          },
-          fireImmediately: true,
-        );
-        final profilesSelectorState = ref.watch(profilesSelectorStateProvider);
-        if (profilesSelectorState.profiles.isEmpty) {
-          return NullStatus(
-            label: appLocalizations.nullProfileDesc,
+        builder: (_, ref, __) {
+          ref.listenManual(
+            isCurrentPageProvider(PageLabel.profiles),
+            (prev, next) {
+              if (prev != next && next == true) {
+                initPageState();
+              }
+            },
+            fireImmediately: true,
           );
-        }
-        return Align(
-          alignment: Alignment.topCenter,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: 88,
-            ),
-            child: Grid(
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              crossAxisCount: profilesSelectorState.columns,
-              children: [
-                for (int i = 0; i < profilesSelectorState.profiles.length; i++)
-                  GridItem(
-                    child: ProfileItem(
-                      key: Key(profilesSelectorState.profiles[i].id),
-                      profile: profilesSelectorState.profiles[i],
-                      groupValue: profilesSelectorState.currentProfileId,
-                      onChanged: (profileId) {
-                        ref.read(currentProfileIdProvider.notifier).value =
-                            profileId;
-                      },
+          final profilesSelectorState =
+              ref.watch(profilesSelectorStateProvider);
+          if (profilesSelectorState.profiles.isEmpty) {
+            return NullStatus(
+              label: appLocalizations.nullProfileDesc,
+            );
+          }
+          return Align(
+            alignment: Alignment.topCenter,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 88,
+              ),
+              child: Grid(
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                crossAxisCount: profilesSelectorState.columns,
+                children: [
+                  for (int i = 0;
+                      i < profilesSelectorState.profiles.length;
+                      i++)
+                    GridItem(
+                      child: ProfileItem(
+                        key: Key(profilesSelectorState.profiles[i].id),
+                        profile: profilesSelectorState.profiles[i],
+                        groupValue: profilesSelectorState.currentProfileId,
+                        onChanged: (profileId) {
+                          ref.read(currentProfileIdProvider.notifier).value =
+                              profileId;
+                        },
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
 }
 
 class ProfileItem extends StatefulWidget {
-
   const ProfileItem({
     super.key,
     required this.profile,
@@ -264,14 +269,14 @@ class _ProfileItemState extends State<ProfileItem> {
     showExtend(
       context,
       builder: (_, type) => AdaptiveSheetScaffold(
-          type: type,
-          disableBackground: false,
-          body: EditProfileView(
-            profile: widget.profile,
-            context: context,
-          ),
-          title: "${appLocalizations.edit}${appLocalizations.profile}",
+        type: type,
+        disableBackground: false,
+        body: EditProfileView(
+          profile: widget.profile,
+          context: context,
         ),
+        title: "${appLocalizations.edit}${appLocalizations.profile}",
+      ),
     );
   }
 
@@ -338,10 +343,10 @@ class _ProfileItemState extends State<ProfileItem> {
         }),
       const SizedBox(height: 6),
       Text(
-      expireDate != "N/A"
-          ? '${appLocalizations.expiresOn} $expireDate'
-          : appLocalizations.subscriptionUnlimited,
-      style: context.textTheme.bodySmall,
+        expireDate != "N/A"
+            ? '${appLocalizations.expiresOn} $expireDate'
+            : appLocalizations.subscriptionUnlimited,
+        style: context.textTheme.bodySmall,
       ),
       const SizedBox(height: 4),
       Text(
@@ -350,8 +355,6 @@ class _ProfileItemState extends State<ProfileItem> {
       ),
     ];
   }
-
-
 
   Future<void> _handleExportFile(BuildContext context) async {
     final commonScaffoldState = context.commonScaffoldState;
@@ -384,112 +387,111 @@ class _ProfileItemState extends State<ProfileItem> {
 
   @override
   Widget build(BuildContext context) => CommonCard(
-      isSelected: widget.profile.id == widget.groupValue,
-      onPressed: _isTV
-          ? null
-          : () {
-              widget.onChanged(widget.profile.id);
-            },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: _isTV ? () => widget.onChanged(widget.profile.id) : null,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      widget.profile.label ?? widget.profile.id,
-                      style: context.textTheme.titleMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    ..._buildUrlProfileInfo(context)
-                  ],
+        isSelected: widget.profile.id == widget.groupValue,
+        onPressed: _isTV
+            ? null
+            : () {
+                widget.onChanged(widget.profile.id);
+              },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap:
+                      _isTV ? () => widget.onChanged(widget.profile.id) : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.profile.label ?? widget.profile.id,
+                        style: context.textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      ..._buildUrlProfileInfo(context)
+                    ],
+                  ),
                 ),
               ),
-            ),
-            SizedBox(
-              height: 40,
-              width: 40,
-              child: FadeThroughBox(
-                child: widget.profile.isUpdating
-                    ? const Padding(
-                        padding: EdgeInsets.all(8),
-                        child: CircularProgressIndicator(),
-                      )
-                    : CommonPopupBox(
-                        popup: CommonPopupMenu(
-                          items: [
-                            if (_isTV)
+              SizedBox(
+                height: 40,
+                width: 40,
+                child: FadeThroughBox(
+                  child: widget.profile.isUpdating
+                      ? const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: CircularProgressIndicator(),
+                        )
+                      : CommonPopupBox(
+                          popup: CommonPopupMenu(
+                            items: [
+                              if (_isTV)
+                                PopupMenuItemData(
+                                  label: appLocalizations.selectProfile,
+                                  onPressed: () {
+                                    widget.onChanged(widget.profile.id);
+                                  },
+                                ),
                               PopupMenuItemData(
-                                icon: Icons.check_circle_outline,
-                                label: appLocalizations.selectProfile,
+                                label: appLocalizations.edit,
                                 onPressed: () {
-                                  widget.onChanged(widget.profile.id);
+                                  _handleShowEditExtendPage(context);
                                 },
                               ),
-                            PopupMenuItemData(
-                              icon: Icons.edit_outlined,
-                              label: appLocalizations.edit,
-                              onPressed: () {
-                                _handleShowEditExtendPage(context);
-                              },
-                            ),
-                            if (widget.profile.type == ProfileType.url) ...[
+                              if (widget.profile.type == ProfileType.url) ...[
+                                PopupMenuItemData(
+                                  label: appLocalizations.sync,
+                                  onPressed: updateProfile,
+                                ),
+                              ],
+                              if (system.isMobile && !_isTV)
+                                PopupMenuItemData(
+                                  label: appLocalizations.sendToTv,
+                                  onPressed: () {
+                                    BaseNavigator.push(
+                                        context,
+                                        SendToTvPage(
+                                            profileUrl: widget.profile.url));
+                                  },
+                                ),
+                              if (widget.profile
+                                          .providerHeaders['support-url'] !=
+                                      null &&
+                                  widget.profile.providerHeaders['support-url']!
+                                      .isNotEmpty &&
+                                  !_isTV)
+                                PopupMenuItemData(
+                                  label: appLocalizations.support,
+                                  onPressed: () {
+                                    globalState.openUrl(widget.profile
+                                        .providerHeaders['support-url']!);
+                                  },
+                                ),
                               PopupMenuItemData(
-                                icon: Icons.sync_alt_sharp,
-                                label: appLocalizations.sync,
-                                onPressed: updateProfile,
+                                label: appLocalizations.override,
+                                onPressed: () {
+                                  _handlePushGenProfilePage(
+                                      context, widget.profile.id);
+                                },
+                              ),
+                              PopupMenuItemData(
+                                label: appLocalizations.exportFile,
+                                onPressed: () {
+                                  _handleExportFile(context);
+                                },
+                              ),
+                              PopupMenuItemData(
+                                label: appLocalizations.delete,
+                                onPressed: () {
+                                  _handleDeleteProfile(context);
+                                },
                               ),
                             ],
-                            if (system.isMobile && !_isTV)
-                              PopupMenuItemData(
-                                icon: Icons.tv_outlined,
-                                label: appLocalizations.sendToTv,
-                                onPressed: () {
-                                  BaseNavigator.push(context,
-                                      SendToTvPage(profileUrl: widget.profile.url));
-                                },
-                              ),
-                              if (widget.profile.providerHeaders['support-url'] != null && widget.profile.providerHeaders['support-url']!.isNotEmpty && !_isTV )
-                            PopupMenuItemData(
-                              icon: widget.profile.providerHeaders['support-url']!.toLowerCase().contains('t.me')
-                              ? Icons.telegram
-                              : Icons.insert_link,
-                              label: appLocalizations.support,
-                              onPressed: () {
-                                globalState.openUrl(widget.profile.providerHeaders['support-url']!);
-                              },
-                            ),
-                            PopupMenuItemData(
-                              icon: Icons.extension_outlined,
-                              label: appLocalizations.override,
-                              onPressed: () {
-                                _handlePushGenProfilePage(
-                                    context, widget.profile.id);
-                              },
-                            ),
-                            PopupMenuItemData(
-                              icon: Icons.file_copy_outlined,
-                              label: appLocalizations.exportFile,
-                              onPressed: () {
-                                _handleExportFile(context);
-                              },
-                            ),
-                            PopupMenuItemData(
-                              icon: Icons.delete_outlined,
-                              label: appLocalizations.delete,
-                              onPressed: () {
-                                _handleDeleteProfile(context);
-                              },
-                            ),
-                          ],
-                        ),
-                        targetBuilder: (open) => Focus(
+                          ),
+                          targetBuilder: (open) => Focus(
                             focusNode: _menuFocusNode,
                             canRequestFocus: true,
                             child: Material(
@@ -499,21 +501,22 @@ class _ProfileItemState extends State<ProfileItem> {
                               borderRadius: BorderRadius.circular(20),
                               child: IconButton(
                                 onPressed: open,
-                                icon: const Icon(Icons.more_vert),
+                                icon: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedMoreVertical,
+                                    size: 24),
                               ),
                             ),
                           ),
-                      ),
+                        ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
 }
 
 class ReorderableProfilesSheet extends StatefulWidget {
-
   const ReorderableProfilesSheet({
     super.key,
     required this.profiles,
@@ -571,62 +574,64 @@ class _ReorderableProfilesSheetState extends State<ReorderableProfilesSheet> {
 
   @override
   Widget build(BuildContext context) => AdaptiveSheetScaffold(
-      type: widget.type,
-      actions: [
-        IconButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            globalState.appController.setProfiles(profiles);
-          },
-          icon: const Icon(
-            Icons.save,
+        type: widget.type,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              globalState.appController.setProfiles(profiles);
+            },
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedFloppyDisk,
+              size: 24,
+            ),
+          )
+        ],
+        body: Padding(
+          padding: const EdgeInsets.only(
+            bottom: 32,
+            top: 16,
           ),
-        )
-      ],
-      body: Padding(
-        padding: const EdgeInsets.only(
-          bottom: 32,
-          top: 16,
-        ),
-        child: ReorderableListView.builder(
-          buildDefaultDragHandles: false,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-          ),
-          proxyDecorator: proxyDecorator,
-          onReorder: (oldIndex, newIndex) {
-            setState(() {
-              if (oldIndex < newIndex) {
-                newIndex -= 1;
-              }
-              final profile = profiles.removeAt(oldIndex);
-              profiles.insert(newIndex, profile);
-            });
-          },
-          itemBuilder: (_, index) {
-            final profile = profiles[index];
-            return Container(
-              key: Key(profile.id),
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: CommonCard(
-                type: CommonCardType.filled,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.only(
-                    right: 16,
-                    left: 16,
-                  ),
-                  title: Text(profile.label ?? profile.id),
-                  trailing: ReorderableDragStartListener(
-                    index: index,
-                    child: const Icon(Icons.drag_handle),
+          child: ReorderableListView.builder(
+            buildDefaultDragHandles: false,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+            proxyDecorator: proxyDecorator,
+            onReorder: (oldIndex, newIndex) {
+              setState(() {
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+                final profile = profiles.removeAt(oldIndex);
+                profiles.insert(newIndex, profile);
+              });
+            },
+            itemBuilder: (_, index) {
+              final profile = profiles[index];
+              return Container(
+                key: Key(profile.id),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: CommonCard(
+                  type: CommonCardType.filled,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.only(
+                      right: 16,
+                      left: 16,
+                    ),
+                    title: Text(profile.label ?? profile.id),
+                    trailing: ReorderableDragStartListener(
+                      index: index,
+                      child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedDrag01, size: 24),
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-          itemCount: profiles.length,
+              );
+            },
+            itemCount: profiles.length,
+          ),
         ),
-      ),
-      title: appLocalizations.profilesSort,
-    );
+        title: appLocalizations.profilesSort,
+      );
 }

@@ -6,6 +6,7 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../models/common.dart';
 import 'card.dart';
@@ -53,20 +54,22 @@ class ProxiesTabViewState extends ConsumerState<ProxiesTabView>
   }
 
   Consumer _buildMoreButton() => Consumer(
-      builder: (_, ref, ___) {
-        final isMobileView = ref.watch(isMobileViewProvider);
-        return IconButton(
-          onPressed: _showMoreMenu,
-          icon: isMobileView
-              ? const Icon(
-                  Icons.expand_more,
-                )
-              : const Icon(
-                  Icons.chevron_right,
-                ),
-        );
-      },
-    );
+        builder: (_, ref, ___) {
+          final isMobileView = ref.watch(isMobileViewProvider);
+          return IconButton(
+            onPressed: _showMoreMenu,
+            icon: isMobileView
+                ? HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowDown01,
+                    size: 24,
+                  )
+                : HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowRight01,
+                    size: 24,
+                  ),
+          );
+        },
+      );
 
   void _showMoreMenu() {
     showSheet(
@@ -75,42 +78,42 @@ class ProxiesTabViewState extends ConsumerState<ProxiesTabView>
         isScrollControlled: false,
       ),
       builder: (_, type) => AdaptiveSheetScaffold(
-          type: type,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Consumer(
-              builder: (_, ref, __) {
-                final state = ref.watch(proxiesSelectorStateProvider);
-                return SizedBox(
-                  width: double.infinity,
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    runSpacing: 8,
-                    spacing: 8,
-                    children: [
-                      for (final groupName in state.groupNames)
-                        SettingTextCard(
-                          groupName,
-                          onPressed: () {
-                            final index = state.groupNames.indexWhere(
-                              (item) => item == groupName,
-                            );
-                            if (index == -1) return;
-                            _tabController?.animateTo(index);
-                            globalState.appController
-                                .updateCurrentGroupName(groupName);
-                            Navigator.of(context).pop();
-                          },
-                          isSelected: groupName == state.currentGroupName,
-                        )
-                    ],
-                  ),
-                );
-              },
-            ),
+        type: type,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Consumer(
+            builder: (_, ref, __) {
+              final state = ref.watch(proxiesSelectorStateProvider);
+              return SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  runSpacing: 8,
+                  spacing: 8,
+                  children: [
+                    for (final groupName in state.groupNames)
+                      SettingTextCard(
+                        groupName,
+                        onPressed: () {
+                          final index = state.groupNames.indexWhere(
+                            (item) => item == groupName,
+                          );
+                          if (index == -1) return;
+                          _tabController?.animateTo(index);
+                          globalState.appController
+                              .updateCurrentGroupName(groupName);
+                          Navigator.of(context).pop();
+                        },
+                        isSelected: groupName == state.currentGroupName,
+                      )
+                  ],
+                ),
+              );
+            },
           ),
-          title: appLocalizations.proxyGroup,
         ),
+        title: appLocalizations.proxyGroup,
+      ),
     );
   }
 
@@ -210,33 +213,33 @@ class ProxiesTabViewState extends ConsumerState<ProxiesTabView>
           child: ValueListenableBuilder(
             valueListenable: _hasMoreButtonNotifier,
             builder: (_, value, child) => Stack(
-                alignment: AlignmentDirectional.centerStart,
-                children: [
-                  TabBar(
-                    controller: _tabController,
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16 + (value ? 16 : 0),
-                    ),
-                    dividerColor: Colors.transparent,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    overlayColor:
-                        const WidgetStatePropertyAll(Colors.transparent),
-                    tabs: [
-                      for (final groupName in groupNames)
-                        Tab(
-                          text: groupName,
-                        ),
-                    ],
+              alignment: AlignmentDirectional.centerStart,
+              children: [
+                TabBar(
+                  controller: _tabController,
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16 + (value ? 16 : 0),
                   ),
-                  if (value)
-                    Positioned(
-                      right: 0,
-                      child: child!,
-                    ),
-                ],
-              ),
+                  dividerColor: Colors.transparent,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  overlayColor:
+                      const WidgetStatePropertyAll(Colors.transparent),
+                  tabs: [
+                    for (final groupName in groupNames)
+                      Tab(
+                        text: groupName,
+                      ),
+                  ],
+                ),
+                if (value)
+                  Positioned(
+                    right: 0,
+                    child: child!,
+                  ),
+              ],
+            ),
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -267,7 +270,6 @@ class ProxiesTabViewState extends ConsumerState<ProxiesTabView>
 }
 
 class ProxyGroupView extends ConsumerStatefulWidget {
-
   const ProxyGroupView({
     super.key,
     required this.groupName,
@@ -360,7 +362,6 @@ class ProxyGroupViewState extends ConsumerState<ProxyGroupView> {
 }
 
 class DelayTestButton extends StatefulWidget {
-
   const DelayTestButton({
     super.key,
     required this.onClick,
@@ -418,8 +419,8 @@ class _DelayTestButtonState extends State<DelayTestButton>
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-      animation: _controller.view,
-      builder: (_, child) => SizedBox(
+        animation: _controller.view,
+        builder: (_, child) => SizedBox(
           width: 56,
           height: 56,
           child: Transform.scale(
@@ -427,10 +428,11 @@ class _DelayTestButtonState extends State<DelayTestButton>
             child: child,
           ),
         ),
-      child: FloatingActionButton(
-        heroTag: null,
-        onPressed: _healthcheck,
-        child: const Icon(Icons.network_ping),
-      ),
-    );
+        child: FloatingActionButton(
+          heroTag: null,
+          onPressed: _healthcheck,
+          child:
+              HugeIcon(icon: HugeIcons.strokeRoundedWifiConnected01, size: 24),
+        ),
+      );
 }

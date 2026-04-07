@@ -10,9 +10,9 @@ import 'package:dropweb/pages/editor.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class EditProfileView extends StatefulWidget {
-
   const EditProfileView({
     super.key,
     required this.context,
@@ -289,44 +289,47 @@ class _EditProfileViewState extends State<EditProfileView> {
       ValueListenableBuilder<FileInfo?>(
         valueListenable: fileInfoNotifier,
         builder: (_, fileInfo, __) => FadeThroughBox(
-            child: fileInfo == null
-                ? Container()
-                : ListItem(
-                    title: Text(
-                      appLocalizations.profile,
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(
-                          height: 4,
-                        ),
-                        Text(
-                          fileInfo.desc,
-                        ),
-                        const SizedBox(
-                          height: 8,
-                        ),
-                        Wrap(
-                          runSpacing: 6,
-                          spacing: 12,
-                          children: [
-                            CommonChip(
-                              avatar: const Icon(Icons.edit),
-                              label: appLocalizations.edit,
-                              onPressed: _editProfileFile,
-                            ),
-                            CommonChip(
-                              avatar: const Icon(Icons.upload),
-                              label: appLocalizations.upload,
-                              onPressed: _uploadProfileFile,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+          child: fileInfo == null
+              ? Container()
+              : ListItem(
+                  title: Text(
+                    appLocalizations.profile,
                   ),
-          ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(
+                        height: 4,
+                      ),
+                      Text(
+                        fileInfo.desc,
+                      ),
+                      const SizedBox(
+                        height: 8,
+                      ),
+                      Wrap(
+                        runSpacing: 6,
+                        spacing: 12,
+                        children: [
+                          CommonChip(
+                            avatar: HugeIcon(
+                                icon: HugeIcons.strokeRoundedEdit01, size: 24),
+                            label: appLocalizations.edit,
+                            onPressed: _editProfileFile,
+                          ),
+                          CommonChip(
+                            avatar: HugeIcon(
+                                icon: HugeIcons.strokeRoundedUpload01,
+                                size: 24),
+                            label: appLocalizations.upload,
+                            onPressed: _uploadProfileFile,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+        ),
       ),
     ];
     return CommonPopScope(
@@ -343,7 +346,7 @@ class _EditProfileViewState extends State<EditProfileView> {
             heroTag: null,
             onPressed: _handleConfirm,
             label: Text(appLocalizations.save),
-            icon: const Icon(Icons.save),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedFloppyDisk, size: 24),
           ),
         ),
         child: Form(
@@ -358,8 +361,8 @@ class _EditProfileViewState extends State<EditProfileView> {
               ),
               itemBuilder: (_, index) => items[index],
               separatorBuilder: (_, __) => const SizedBox(
-                  height: 24,
-                ),
+                height: 24,
+              ),
               itemCount: items.length,
             ),
           ),

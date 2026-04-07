@@ -6,9 +6,9 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class OverrideProfileView extends StatefulWidget {
-
   const OverrideProfileView({
     super.key,
     required this.profileId,
@@ -90,225 +90,232 @@ class _OverrideProfileViewState extends State<OverrideProfileView> {
   }
 
   Consumer _buildContent() => Consumer(
-      builder: (_, ref, child) {
-        final isInit = ref.watch(
-          profileOverrideStateProvider.select(
-            (state) => state.snippet != null && state.overrideData != null,
-          ),
-        );
-        if (!isInit) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-        return FadeBox(
-          child: !isInit
-              ? const Center(
-                  child: CircularProgressIndicator(),
-                )
-              : child!,
-        );
-      },
-      child: LayoutBuilder(
-        builder: (_, constraints) {
-          _currentMaxWidth = constraints.maxWidth - 104;
-          return CommonAutoHiddenScrollBar(
-            controller: _controller,
-            child: CustomScrollView(
-              controller: _controller,
-              slivers: [
-                const SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 8,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Consumer(
-                    builder: (_, ref, child) {
-                      final scriptMode = ref.watch(scriptStateProvider
-                          .select((state) => state.realId != null));
-                      if (!scriptMode) {
-                        return const SizedBox();
-                      }
-                      return child!;
-                    },
-                    child: ListItem(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 0,
-                      ),
-                      title: Row(
-                        spacing: 8,
-                        children: [
-                          const Icon(Icons.info),
-                          Text(
-                            appLocalizations.overrideInvalidTip,
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 8,
-                  ),
-                ),
-                const SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverToBoxAdapter(
-                    child: OverrideSwitch(),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 8,
-                      right: 8,
-                    ),
-                    child: RuleTitle(
-                      profileId: widget.profileId,
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0),
-                  sliver: RuleContent(
-                    maxWidth: _currentMaxWidth,
-                  ),
-                ),
-                const SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 16,
-                  ),
-                ),
-              ],
+        builder: (_, ref, child) {
+          final isInit = ref.watch(
+            profileOverrideStateProvider.select(
+              (state) => state.snippet != null && state.overrideData != null,
             ),
           );
-        },
-      ),
-    );
-
-  @override
-  Widget build(BuildContext context) => ProviderScope(
-      overrides: [
-        profileOverrideStateProvider.overrideWith(ProfileOverrideState.new),
-      ],
-      child: Consumer(
-        builder: (_, ref, child) {
-          _initState(ref);
-          return child!;
-        },
-        child: Consumer(
-          builder: (_, ref, ___) {
-            final editCount = ref.watch(
-              profileOverrideStateProvider.select(
-                (state) => state.selectedRules.length,
-              ),
+          if (!isInit) {
+            return const Center(
+              child: CircularProgressIndicator(),
             );
-            final isEdit = editCount != 0;
-            return CommonScaffold(
-              disableBackground: true,
-              title: appLocalizations.override,
-              body: _buildContent(),
-              actions: [
-                if (!isEdit)
-                  Consumer(
-                    builder: (_, ref, child) {
-                      final overrideData = ref.watch(
-                          getProfileOverrideDataProvider(widget.profileId));
-                      final newOverrideData = ref.watch(
-                        profileOverrideStateProvider.select(
-                          (state) => state.overrideData,
-                        ),
-                      );
-                      final equals = overrideData == newOverrideData;
-                      if (equals || newOverrideData == null) {
-                        return const SizedBox();
-                      }
-                      return CommonPopScope(
-                        onPop: () async {
-                          if (equals) {
-                            return true;
-                          }
-                          final res = await globalState.showMessage(
-                            message: TextSpan(
-                              text: appLocalizations.saveChanges,
-                            ),
-                            confirmText: appLocalizations.save,
-                          );
-                          if (!context.mounted || res != true) {
-                            return true;
-                          }
-                          _handleSave(ref, newOverrideData);
-                          return true;
-                        },
-                        child: IconButton(
-                          onPressed: () async {
-                            final res = await globalState.showMessage(
-                              message: TextSpan(
-                                text: appLocalizations.saveTip,
-                              ),
-                              confirmText: appLocalizations.save,
-                            );
-                            if (res != true) {
-                              return;
-                            }
-                            _handleSave(ref, newOverrideData);
-                          },
-                          icon: const Icon(
-                            Icons.save,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                if (editCount == 1)
-                  IconButton(
-                    onPressed: () {
-                      final rule = ref.read(profileOverrideStateProvider.select(
-                        (state) => state.overrideData?.rule.rules.firstWhere(
-                            (item) => item.id == state.selectedRules.first,
-                          ),
-                      ));
-                      if (rule == null) {
-                        return;
-                      }
-                      globalState.appController.handleAddOrUpdate(
-                        ref,
-                        rule,
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.edit,
-                    ),
-                  ),
-                if (editCount > 0)
-                  IconButton(
-                    onPressed: () {
-                      _handleDelete(ref);
-                    },
-                    icon: const Icon(
-                      Icons.delete,
-                    ),
+          }
+          return FadeBox(
+            child: !isInit
+                ? const Center(
+                    child: CircularProgressIndicator(),
                   )
-              ],
-              appBarEditState: AppBarEditState(
-                isEdit: isEdit,
-                editCount: editCount,
-                onExit: () {
-                  ref.read(profileOverrideStateProvider.notifier).updateState(
-                        (state) => state.copyWith(
-                          selectedRules: {},
+                : child!,
+          );
+        },
+        child: LayoutBuilder(
+          builder: (_, constraints) {
+            _currentMaxWidth = constraints.maxWidth - 104;
+            return CommonAutoHiddenScrollBar(
+              controller: _controller,
+              child: CustomScrollView(
+                controller: _controller,
+                slivers: [
+                  const SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 8,
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Consumer(
+                      builder: (_, ref, child) {
+                        final scriptMode = ref.watch(scriptStateProvider
+                            .select((state) => state.realId != null));
+                        if (!scriptMode) {
+                          return const SizedBox();
+                        }
+                        return child!;
+                      },
+                      child: ListItem(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 0,
                         ),
-                      );
-                },
+                        title: Row(
+                          spacing: 8,
+                          children: [
+                            HugeIcon(
+                                icon: HugeIcons.strokeRoundedInformationCircle,
+                                size: 24),
+                            Text(
+                              appLocalizations.overrideInvalidTip,
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 8,
+                    ),
+                  ),
+                  const SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverToBoxAdapter(
+                      child: OverrideSwitch(),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 8,
+                        right: 8,
+                      ),
+                      child: RuleTitle(
+                        profileId: widget.profileId,
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 0),
+                    sliver: RuleContent(
+                      maxWidth: _currentMaxWidth,
+                    ),
+                  ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 16,
+                    ),
+                  ),
+                ],
               ),
             );
           },
         ),
-      ),
-    );
+      );
+
+  @override
+  Widget build(BuildContext context) => ProviderScope(
+        overrides: [
+          profileOverrideStateProvider.overrideWith(ProfileOverrideState.new),
+        ],
+        child: Consumer(
+          builder: (_, ref, child) {
+            _initState(ref);
+            return child!;
+          },
+          child: Consumer(
+            builder: (_, ref, ___) {
+              final editCount = ref.watch(
+                profileOverrideStateProvider.select(
+                  (state) => state.selectedRules.length,
+                ),
+              );
+              final isEdit = editCount != 0;
+              return CommonScaffold(
+                disableBackground: true,
+                title: appLocalizations.override,
+                body: _buildContent(),
+                actions: [
+                  if (!isEdit)
+                    Consumer(
+                      builder: (_, ref, child) {
+                        final overrideData = ref.watch(
+                            getProfileOverrideDataProvider(widget.profileId));
+                        final newOverrideData = ref.watch(
+                          profileOverrideStateProvider.select(
+                            (state) => state.overrideData,
+                          ),
+                        );
+                        final equals = overrideData == newOverrideData;
+                        if (equals || newOverrideData == null) {
+                          return const SizedBox();
+                        }
+                        return CommonPopScope(
+                          onPop: () async {
+                            if (equals) {
+                              return true;
+                            }
+                            final res = await globalState.showMessage(
+                              message: TextSpan(
+                                text: appLocalizations.saveChanges,
+                              ),
+                              confirmText: appLocalizations.save,
+                            );
+                            if (!context.mounted || res != true) {
+                              return true;
+                            }
+                            _handleSave(ref, newOverrideData);
+                            return true;
+                          },
+                          child: IconButton(
+                            onPressed: () async {
+                              final res = await globalState.showMessage(
+                                message: TextSpan(
+                                  text: appLocalizations.saveTip,
+                                ),
+                                confirmText: appLocalizations.save,
+                              );
+                              if (res != true) {
+                                return;
+                              }
+                              _handleSave(ref, newOverrideData);
+                            },
+                            icon: HugeIcon(
+                              icon: HugeIcons.strokeRoundedFloppyDisk,
+                              size: 24,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  if (editCount == 1)
+                    IconButton(
+                      onPressed: () {
+                        final rule =
+                            ref.read(profileOverrideStateProvider.select(
+                          (state) => state.overrideData?.rule.rules.firstWhere(
+                            (item) => item.id == state.selectedRules.first,
+                          ),
+                        ));
+                        if (rule == null) {
+                          return;
+                        }
+                        globalState.appController.handleAddOrUpdate(
+                          ref,
+                          rule,
+                        );
+                      },
+                      icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedEdit01,
+                        size: 24,
+                      ),
+                    ),
+                  if (editCount > 0)
+                    IconButton(
+                      onPressed: () {
+                        _handleDelete(ref);
+                      },
+                      icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedDelete01,
+                        size: 24,
+                      ),
+                    )
+                ],
+                appBarEditState: AppBarEditState(
+                  isEdit: isEdit,
+                  editCount: editCount,
+                  onExit: () {
+                    ref.read(profileOverrideStateProvider.notifier).updateState(
+                          (state) => state.copyWith(
+                            selectedRules: {},
+                          ),
+                        );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
 }
 
 class OverrideSwitch extends ConsumerWidget {
@@ -349,7 +356,6 @@ class OverrideSwitch extends ConsumerWidget {
 }
 
 class RuleTitle extends ConsumerWidget {
-
   const RuleTitle({
     super.key,
     required this.profileId,
@@ -411,8 +417,11 @@ class RuleTitle extends ConsumerWidget {
           actions: [
             if (!isEdit)
               IconButton.filledTonal(
-                icon: Icon(
-                  isOverrideRule ? Icons.edit_document : Icons.note_add,
+                icon: HugeIcon(
+                  icon: isOverrideRule
+                      ? HugeIcons.strokeRoundedDoc01
+                      : HugeIcons.strokeRoundedNoteAdd,
+                  size: 20,
                 ),
                 onPressed: () {
                   _handleChangeType(
@@ -464,7 +473,6 @@ class RuleTitle extends ConsumerWidget {
 }
 
 class RuleContent extends ConsumerWidget {
-
   const RuleContent({
     super.key,
     required this.maxWidth,
@@ -476,50 +484,51 @@ class RuleContent extends ConsumerWidget {
     required bool isSelected,
     required VoidCallback onTab,
     required BuildContext context,
-  }) => Material(
-      color: Colors.transparent,
-      child: Container(
-        margin: const EdgeInsets.symmetric(
-          vertical: 4,
-        ),
-        child: CommonCard(
-          padding: EdgeInsets.zero,
-          radius: 18,
-          type: CommonCardType.filled,
-          isSelected: isSelected,
-          // decoration: BoxDecoration(
-          //   color: isSelected
-          //       ? context.colorScheme.secondaryContainer.opacity80
-          //       : context.colorScheme.surfaceContainer,
-          //   borderRadius: BorderRadius.circular(18),
-          // ),
-          onPressed: () {
-            onTab();
-          },
-          child: ListTile(
-            minTileHeight: 0,
-            minVerticalPadding: 0,
-            titleTextStyle: context.textTheme.bodyMedium?.toJetBrainsMono,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-            trailing: SizedBox(
-              width: 24,
-              height: 24,
-              child: CommonCheckBox(
-                value: isSelected,
-                isCircle: true,
-                onChanged: (_) {
-                  onTab();
-                },
+  }) =>
+      Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.symmetric(
+            vertical: 4,
+          ),
+          child: CommonCard(
+            padding: EdgeInsets.zero,
+            radius: 18,
+            type: CommonCardType.filled,
+            isSelected: isSelected,
+            // decoration: BoxDecoration(
+            //   color: isSelected
+            //       ? context.colorScheme.secondaryContainer.opacity80
+            //       : context.colorScheme.surfaceContainer,
+            //   borderRadius: BorderRadius.circular(18),
+            // ),
+            onPressed: () {
+              onTab();
+            },
+            child: ListTile(
+              minTileHeight: 0,
+              minVerticalPadding: 0,
+              titleTextStyle: context.textTheme.bodyMedium?.toJetBrainsMono,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
               ),
+              trailing: SizedBox(
+                width: 24,
+                height: 24,
+                child: CommonCheckBox(
+                  value: isSelected,
+                  isCircle: true,
+                  onChanged: (_) {
+                    onTab();
+                  },
+                ),
+              ),
+              title: Text(rule.value),
             ),
-            title: Text(rule.value),
           ),
         ),
-      ),
-    );
+      );
 
   void _handleSelect(WidgetRef ref, String ruleId) {
     ref.read(profileOverrideStateProvider.notifier).updateState(
@@ -573,10 +582,10 @@ class RuleContent extends ConsumerWidget {
                       ref
                           .read(profileOverrideStateProvider.notifier)
                           .updateState(
-                        (state) => state.copyWith.overrideData!.rule(
-                            overrideRules: rules,
-                          ),
-                      );
+                            (state) => state.copyWith.overrideData!.rule(
+                              overrideRules: rules,
+                            ),
+                          );
                     },
                     child: Text(appLocalizations.getOriginRules),
                   ),
@@ -635,7 +644,6 @@ class RuleContent extends ConsumerWidget {
 }
 
 class AddRuleDialog extends StatefulWidget {
-
   const AddRuleDialog({
     super.key,
     required this.snippet,
@@ -753,27 +761,27 @@ class _AddRuleDialogState extends State<AddRuleDialog> {
 
   @override
   Widget build(BuildContext context) => CommonDialog(
-      title: appLocalizations.addRule,
-      actions: [
-        TextButton(
-          onPressed: _handleSubmit,
-          child: Text(
-            appLocalizations.confirm,
+        title: appLocalizations.addRule,
+        actions: [
+          TextButton(
+            onPressed: _handleSubmit,
+            child: Text(
+              appLocalizations.confirm,
+            ),
           ),
-        ),
-      ],
-      child: DropdownMenuTheme(
-        data: DropdownMenuThemeData(
-          inputDecorationTheme: InputDecorationTheme(
-            border: const OutlineInputBorder(),
-            labelStyle: context.textTheme.bodyLarge
-                ?.copyWith(overflow: TextOverflow.ellipsis),
+        ],
+        child: DropdownMenuTheme(
+          data: DropdownMenuThemeData(
+            inputDecorationTheme: InputDecorationTheme(
+              border: const OutlineInputBorder(),
+              labelStyle: context.textTheme.bodyLarge
+                  ?.copyWith(overflow: TextOverflow.ellipsis),
+            ),
           ),
-        ),
-        child: Form(
-          key: _formKey,
-          child: LayoutBuilder(
-            builder: (_, constraints) => Column(
+          child: Form(
+            key: _formKey,
+            child: LayoutBuilder(
+              builder: (_, constraints) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   FilledButton.tonal(
@@ -805,13 +813,13 @@ class _AddRuleDialogState extends State<AddRuleDialog> {
                             return null;
                           },
                           builder: (field) => DropdownMenu(
-                              expandedInsets: EdgeInsets.zero,
-                              controller: _ruleProviderController,
-                              label: Text(appLocalizations.ruleProviders),
-                              menuHeight: 250,
-                              errorText: field.errorText,
-                              dropdownMenuEntries: _ruleProviderItems,
-                            ),
+                            expandedInsets: EdgeInsets.zero,
+                            controller: _ruleProviderController,
+                            label: Text(appLocalizations.ruleProviders),
+                            menuHeight: 250,
+                            errorText: field.errorText,
+                            dropdownMenuEntries: _ruleProviderItems,
+                          ),
                         )
                       : TextFormField(
                           controller: _contentController,
@@ -840,14 +848,14 @@ class _AddRuleDialogState extends State<AddRuleDialog> {
                             return null;
                           },
                           builder: (filed) => DropdownMenu(
-                              width: 200,
-                              enableFilter: false,
-                              enableSearch: false,
-                              controller: _subRuleController,
-                              label: Text(appLocalizations.subRule),
-                              menuHeight: 250,
-                              dropdownMenuEntries: _subRuleItems,
-                            ),
+                            width: 200,
+                            enableFilter: false,
+                            enableSearch: false,
+                            controller: _subRuleController,
+                            label: Text(appLocalizations.subRule),
+                            menuHeight: 250,
+                            dropdownMenuEntries: _subRuleItems,
+                          ),
                         )
                       : FormField<String>(
                           validator: (_) {
@@ -859,15 +867,15 @@ class _AddRuleDialogState extends State<AddRuleDialog> {
                             return null;
                           },
                           builder: (filed) => DropdownMenu(
-                              controller: _ruleTargetController,
-                              label: Text(appLocalizations.ruleTarget),
-                              width: 200,
-                              menuHeight: 250,
-                              enableFilter: false,
-                              enableSearch: false,
-                              dropdownMenuEntries: _targetItems,
-                              errorText: filed.errorText,
-                            ),
+                            controller: _ruleTargetController,
+                            label: Text(appLocalizations.ruleTarget),
+                            width: 200,
+                            menuHeight: 250,
+                            enableFilter: false,
+                            enableSearch: false,
+                            dropdownMenuEntries: _targetItems,
+                            errorText: filed.errorText,
+                          ),
                         ),
                   if (_ruleAction.hasParams) ...[
                     const SizedBox(
@@ -918,8 +926,8 @@ class _AddRuleDialogState extends State<AddRuleDialog> {
                   ),
                 ],
               ),
+            ),
           ),
         ),
-      ),
-    );
+      );
 }

@@ -6,6 +6,7 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 
@@ -17,12 +18,12 @@ class OpenLogsFolderItem extends ConsumerWidget {
       final homePath = await appPath.homeDirPath;
       final logsPath = join(homePath, 'logs');
       final logsDir = Directory(logsPath);
-      
+
       // Create logs directory if it doesn't exist
       if (!await logsDir.exists()) {
         await logsDir.create(recursive: true);
       }
-      
+
       // Open the folder based on platform
       if (Platform.isWindows) {
         await Process.run('explorer', [logsPath]);
@@ -39,8 +40,8 @@ class OpenLogsFolderItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => ListItem(
         title: Text(appLocalizations.openLogsFolder),
-        leading: const Icon(Icons.folder_open),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        leading: HugeIcon(icon: HugeIcons.strokeRoundedFolderOpen, size: 24),
+        trailing: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, size: 16),
         onTap: _openLogsFolder,
       );
 }
@@ -55,28 +56,29 @@ class ResetAppItem extends ConsumerWidget {
           style: TextStyle(
             color: context.colorScheme.error,
             fontWeight: FontWeight.bold,
-        ),
-      ),
-      leading: Icon(
-        Icons.delete_forever,
-        color: context.colorScheme.error,
-      ),
-      onTap: () async {
-        final res = await globalState.showMessage(
-          title: appLocalizations.clearData,
-          message: TextSpan(
-            text: appLocalizations.clearDataTip,
-            style: TextStyle(
-              color: context.colorScheme.onSurface,
-            ),
           ),
-        );
-        if (res == true) {
-          await globalState.appController.handleClear();
-          system.exit();
-        }
-      },
-    );
+        ),
+        leading: HugeIcon(
+          icon: HugeIcons.strokeRoundedDelete01,
+          size: 24,
+          color: context.colorScheme.error,
+        ),
+        onTap: () async {
+          final res = await globalState.showMessage(
+            title: appLocalizations.clearData,
+            message: TextSpan(
+              text: appLocalizations.clearDataTip,
+              style: TextStyle(
+                color: context.colorScheme.onSurface,
+              ),
+            ),
+          );
+          if (res == true) {
+            await globalState.appController.handleClear();
+            system.exit();
+          }
+        },
+      );
 }
 
 class OverrideProviderSettingsItem extends ConsumerWidget {
@@ -107,11 +109,14 @@ class OverrideProviderSettingsItem extends ConsumerWidget {
         if (!overrideProviderSettings)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.5),
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedInformationCircle,
                   size: 16,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -203,13 +208,15 @@ class MinimizeItem extends ConsumerWidget {
         subtitle: Text(appLocalizations.minimizeOnExitDesc),
         delegate: SwitchDelegate(
           value: minimizeOnExit,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    minimizeOnExit: value,
-                  ),
-                );
-          } : null,
+          onChanged: isEnabled
+              ? (bool value) {
+                  ref.read(appSettingProvider.notifier).updateState(
+                        (state) => state.copyWith(
+                          minimizeOnExit: value,
+                        ),
+                      );
+                }
+              : null,
         ),
       ),
     );
@@ -235,13 +242,15 @@ class AutoLaunchItem extends ConsumerWidget {
         subtitle: Text(appLocalizations.autoLaunchDesc),
         delegate: SwitchDelegate(
           value: autoLaunch,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    autoLaunch: value,
-                  ),
-                );
-          } : null,
+          onChanged: isEnabled
+              ? (bool value) {
+                  ref.read(appSettingProvider.notifier).updateState(
+                        (state) => state.copyWith(
+                          autoLaunch: value,
+                        ),
+                      );
+                }
+              : null,
         ),
       ),
     );
@@ -267,13 +276,15 @@ class SilentLaunchItem extends ConsumerWidget {
         subtitle: Text(appLocalizations.silentLaunchDesc),
         delegate: SwitchDelegate(
           value: silentLaunch,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    silentLaunch: value,
-                  ),
-                );
-          } : null,
+          onChanged: isEnabled
+              ? (bool value) {
+                  ref.read(appSettingProvider.notifier).updateState(
+                        (state) => state.copyWith(
+                          silentLaunch: value,
+                        ),
+                      );
+                }
+              : null,
         ),
       ),
     );
@@ -299,13 +310,15 @@ class AutoRunItem extends ConsumerWidget {
         subtitle: Text(appLocalizations.autoRunDesc),
         delegate: SwitchDelegate(
           value: autoRun,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    autoRun: value,
-                  ),
-                );
-          } : null,
+          onChanged: isEnabled
+              ? (bool value) {
+                  ref.read(appSettingProvider.notifier).updateState(
+                        (state) => state.copyWith(
+                          autoRun: value,
+                        ),
+                      );
+                }
+              : null,
         ),
       ),
     );
@@ -406,13 +419,15 @@ class AutoCheckUpdateItem extends ConsumerWidget {
         subtitle: Text(appLocalizations.autoCheckUpdateDesc),
         delegate: SwitchDelegate(
           value: autoCheckUpdate,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    autoCheckUpdate: value,
-                  ),
-                );
-          } : null,
+          onChanged: isEnabled
+              ? (bool value) {
+                  ref.read(appSettingProvider.notifier).updateState(
+                        (state) => state.copyWith(
+                          autoCheckUpdate: value,
+                        ),
+                      );
+                }
+              : null,
         ),
       ),
     );

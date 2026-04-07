@@ -4,6 +4,7 @@ import 'package:dropweb/common/common.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 @immutable
 class Contributor {
@@ -125,7 +126,7 @@ class AboutView extends StatelessWidget {
             onTap: () {
               _checkUpdate(context);
             },
-            trailing: const Icon(Icons.update),
+            trailing: HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 24),
           ),
           ListItem(
             title: Text(appLocalizations.project),
@@ -134,7 +135,7 @@ class AboutView extends StatelessWidget {
                 "https://github.com/$repository",
               );
             },
-            trailing: const Icon(Icons.insert_link),
+            trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
           ),
           ListItem(
             title: Text(appLocalizations.originalRepository),
@@ -143,7 +144,7 @@ class AboutView extends StatelessWidget {
                 "https://github.com/chen08209/FlClash",
               );
             },
-            trailing: const Icon(Icons.insert_link),
+            trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
           ),
           ListItem(
             title: Text(appLocalizations.core),
@@ -152,7 +153,7 @@ class AboutView extends StatelessWidget {
                 "https://github.com/pluralplay/xHomo",
               );
             },
-            trailing: const Icon(Icons.insert_link),
+            trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
           ),
         ],
       );

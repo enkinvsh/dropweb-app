@@ -7,6 +7,7 @@ import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/languages/javascript.dart';
 import 'package:re_highlight/languages/yaml.dart';
@@ -16,7 +17,6 @@ typedef EditingValueChangeBuilder = Widget Function(CodeLineEditingValue value);
 typedef TextEditingValueChangeBuilder = Widget Function(TextEditingValue value);
 
 class EditorPage extends ConsumerStatefulWidget {
-
   const EditorPage({
     super.key,
     required this.title,
@@ -89,15 +89,17 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     super.dispose();
   }
 
-  Widget _wrapController(EditingValueChangeBuilder builder) => ValueListenableBuilder(
-      valueListenable: _controller,
-      builder: (_, value, ___) => builder(value),
-    );
+  Widget _wrapController(EditingValueChangeBuilder builder) =>
+      ValueListenableBuilder(
+        valueListenable: _controller,
+        builder: (_, value, ___) => builder(value),
+      );
 
-  Widget _wrapTitleController(TextEditingValueChangeBuilder builder) => ValueListenableBuilder(
-      valueListenable: _titleController,
-      builder: (_, value, ___) => builder(value),
-    );
+  Widget _wrapTitleController(TextEditingValueChangeBuilder builder) =>
+      ValueListenableBuilder(
+        valueListenable: _titleController,
+        builder: (_, value, ___) => builder(value),
+      );
 
   void _handleSearch() {
     _findController.findMode();
@@ -188,41 +190,45 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                             );
                           }
                         : null,
-                    icon: const Icon(Icons.save_sharp),
+                    icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedFloppyDisk, size: 24),
                   ),
                 ),
               ),
             if (widget.supportRemoteDownload)
               IconButton(
                 onPressed: _handleImport,
-                icon: const Icon(
-                  Icons.arrow_downward,
-                ),
+                icon:
+                    HugeIcon(icon: HugeIcons.strokeRoundedDownload01, size: 24),
               ),
             _wrapController(
               (value) => CommonPopupBox(
                 targetBuilder: (open) => IconButton(
-                    onPressed: () {
-                      open(
-                        offset: const Offset(-20, 20),
-                      );
-                    },
-                    icon: const Icon(Icons.more_vert),
-                  ),
+                  onPressed: () {
+                    open(
+                      offset: const Offset(-20, 20),
+                    );
+                  },
+                  icon: HugeIcon(
+                      icon: HugeIcons.strokeRoundedMoreVertical, size: 24),
+                ),
                 popup: CommonPopupMenu(
                   items: [
                     PopupMenuItemData(
-                      icon: Icons.search,
+                      icon: HugeIcon(
+                          icon: HugeIcons.strokeRoundedSearch01, size: 24),
                       label: appLocalizations.search,
                       onPressed: _handleSearch,
                     ),
                     PopupMenuItemData(
-                      icon: Icons.undo,
+                      icon:
+                          HugeIcon(icon: HugeIcons.strokeRoundedUndo, size: 24),
                       label: appLocalizations.undo,
                       onPressed: _controller.canUndo ? _controller.undo : null,
                     ),
                     PopupMenuItemData(
-                      icon: Icons.redo,
+                      icon:
+                          HugeIcon(icon: HugeIcons.strokeRoundedRedo, size: 24),
                       label: appLocalizations.redo,
                       onPressed: _controller.canRedo ? _controller.redo : null,
                     ),
@@ -245,29 +251,31 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           autocompleteSymbols: true,
           focusNode: _focusNode,
           scrollbarBuilder: (context, child, details) => CommonScrollBar(
-              controller: details.controller,
-              child: child,
-            ),
+            controller: details.controller,
+            child: child,
+          ),
           toolbarController: ContextMenuControllerImpl(),
           indicatorBuilder: (
             context,
             editingController,
             chunkController,
             notifier,
-          ) => Row(
-              children: [
-                DefaultCodeLineNumber(
-                  controller: editingController,
-                  notifier: notifier,
-                ),
-                DefaultCodeChunkIndicator(
-                  width: 20,
-                  controller: chunkController,
-                  notifier: notifier,
-                )
-              ],
-            ),
-          shortcutsActivatorsBuilder: const DefaultCodeShortcutsActivatorsBuilder(),
+          ) =>
+              Row(
+            children: [
+              DefaultCodeLineNumber(
+                controller: editingController,
+                notifier: notifier,
+              ),
+              DefaultCodeChunkIndicator(
+                width: 20,
+                controller: chunkController,
+                notifier: notifier,
+              )
+            ],
+          ),
+          shortcutsActivatorsBuilder:
+              const DefaultCodeShortcutsActivatorsBuilder(),
           controller: _controller,
           style: CodeEditorStyle(
             fontSize: context.textTheme.bodyLarge?.fontSize?.ap,
@@ -295,7 +303,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 const double _kDefaultFindPanelHeight = 52;
 
 class FindPanel extends StatelessWidget implements PreferredSizeWidget {
-
   const FindPanel({
     super.key,
     required this.controller,
@@ -369,16 +376,15 @@ class FindPanel extends StatelessWidget implements PreferredSizeWidget {
             spacing: 8,
             children: [
               _buildIconButton(
-                onPressed: value.result == null
-                    ? null
-                    : controller.previousMatch,
-                icon: Icons.arrow_upward,
+                onPressed:
+                    value.result == null ? null : controller.previousMatch,
+                icon:
+                    HugeIcon(icon: HugeIcons.strokeRoundedArrowUp01, size: 16),
               ),
               _buildIconButton(
-                onPressed: value.result == null
-                    ? null
-                    : controller.nextMatch,
-                icon: Icons.arrow_downward,
+                onPressed: value.result == null ? null : controller.nextMatch,
+                icon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowDown01, size: 16),
               ),
               const SizedBox(
                 width: 2,
@@ -391,10 +397,7 @@ class FindPanel extends StatelessWidget implements PreferredSizeWidget {
                     EdgeInsets.all(0),
                   ),
                 ),
-                icon: const Icon(
-                  Icons.close,
-                  size: 16,
-                ),
+                icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 16),
               ),
             ],
           ),
@@ -417,104 +420,105 @@ class FindPanel extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Stack _buildFindInput(BuildContext context, CodeFindValue value) => Stack(
-      alignment: Alignment.center,
-      children: [
-        _buildTextField(
-          context: context,
-          onSubmitted: () {
-            if (value.result == null) {
-              return;
-            }
-            controller.nextMatch();
-            controller.findInputFocusNode.requestFocus();
-          },
-          controller: controller.findInputController,
-          focusNode: controller.findInputFocusNode,
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          spacing: 8,
-          children: [
-            _buildCheckText(
-              context: context,
-              text: 'Aa',
-              isSelected: value.option.caseSensitive,
-              onPressed: controller.toggleCaseSensitive,
-            ),
-            _buildCheckText(
-              context: context,
-              text: '.*',
-              isSelected: value.option.regex,
-              onPressed: controller.toggleRegex,
-            ),
-            const SizedBox(
-              width: 4,
-            ),
-          ],
-        )
-      ],
-    );
+        alignment: Alignment.center,
+        children: [
+          _buildTextField(
+            context: context,
+            onSubmitted: () {
+              if (value.result == null) {
+                return;
+              }
+              controller.nextMatch();
+              controller.findInputFocusNode.requestFocus();
+            },
+            controller: controller.findInputController,
+            focusNode: controller.findInputFocusNode,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            spacing: 8,
+            children: [
+              _buildCheckText(
+                context: context,
+                text: 'Aa',
+                isSelected: value.option.caseSensitive,
+                onPressed: controller.toggleCaseSensitive,
+              ),
+              _buildCheckText(
+                context: context,
+                text: '.*',
+                isSelected: value.option.regex,
+                onPressed: controller.toggleRegex,
+              ),
+              const SizedBox(
+                width: 4,
+              ),
+            ],
+          )
+        ],
+      );
 
   Widget _buildTextField({
     required BuildContext context,
     required TextEditingController controller,
     required FocusNode focusNode,
     required VoidCallback onSubmitted,
-  }) => TextField(
-      maxLines: 1,
-      focusNode: focusNode,
-      style: context.textTheme.bodyMedium,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 12,
+  }) =>
+      TextField(
+        maxLines: 1,
+        focusNode: focusNode,
+        style: context.textTheme.bodyMedium,
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 12,
+          ),
         ),
-      ),
-      onSubmitted: (_) {
-        onSubmitted();
-      },
-      controller: controller,
-    );
+        onSubmitted: (_) {
+          onSubmitted();
+        },
+        controller: controller,
+      );
 
   Widget _buildCheckText({
     required BuildContext context,
     required String text,
     required bool isSelected,
     required VoidCallback onPressed,
-  }) => SizedBox(
-      width: 28,
-      height: 28,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: isSelected
-            ? IconButton.filledTonal(
-                onPressed: onPressed,
-                padding: const EdgeInsets.all(2),
-                icon: Text(text, style: context.textTheme.bodySmall),
-              )
-            : IconButton(
-                onPressed: onPressed,
-                padding: const EdgeInsets.all(2),
-                icon: Text(
-                  text,
-                  style: context.textTheme.bodySmall,
+  }) =>
+      SizedBox(
+        width: 28,
+        height: 28,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: isSelected
+              ? IconButton.filledTonal(
+                  onPressed: onPressed,
+                  padding: const EdgeInsets.all(2),
+                  icon: Text(text, style: context.textTheme.bodySmall),
+                )
+              : IconButton(
+                  onPressed: onPressed,
+                  padding: const EdgeInsets.all(2),
+                  icon: Text(
+                    text,
+                    style: context.textTheme.bodySmall,
+                  ),
                 ),
-              ),
-      ),
-    );
+        ),
+      );
 
   Widget _buildIconButton({
-    required IconData icon,
+    required Widget icon,
     VoidCallback? onPressed,
-  }) => IconButton(
-      visualDensity: VisualDensity.compact,
-      onPressed: onPressed,
-      style: const ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsets.all(0))),
-      icon: Icon(
-        icon,
-        size: 16,
-      ),
-    );
+  }) =>
+      IconButton(
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+        style: const ButtonStyle(
+            padding: WidgetStatePropertyAll(EdgeInsets.all(0))),
+        icon: icon,
+      );
 }
 
 class ContextMenuControllerImpl implements SelectionToolbarController {
@@ -579,23 +583,27 @@ class ContextMenuControllerImpl implements SelectionToolbarController {
             return TextSelectionToolbar(
               anchorAbove: anchors.primaryAnchor,
               anchorBelow: anchors.secondaryAnchor ?? Offset.zero,
-              children: menus.asMap().entries.map(
-                (entry) => TextSelectionToolbarTextButton(
-                    padding: TextSelectionToolbarTextButton.getPadding(
-                      entry.key,
-                      menus.length,
+              children: menus
+                  .asMap()
+                  .entries
+                  .map(
+                    (entry) => TextSelectionToolbarTextButton(
+                      padding: TextSelectionToolbarTextButton.getPadding(
+                        entry.key,
+                        menus.length,
+                      ),
+                      alignment: AlignmentDirectional.centerStart,
+                      onPressed: () {
+                        if (entry.value.onPressed == null) {
+                          return;
+                        }
+                        entry.value.onPressed!();
+                        _removeOverLayEntry();
+                      },
+                      child: Text(entry.value.label),
                     ),
-                    alignment: AlignmentDirectional.centerStart,
-                    onPressed: () {
-                      if (entry.value.onPressed == null) {
-                        return;
-                      }
-                      entry.value.onPressed!();
-                      _removeOverLayEntry();
-                    },
-                    child: Text(entry.value.label),
-                  ),
-              ).toList(),
+                  )
+                  .toList(),
             );
           },
         ),
@@ -621,10 +629,12 @@ class _NoInputBorder extends InputBorder {
   _NoInputBorder scale(double t) => const _NoInputBorder();
 
   @override
-  Path getInnerPath(Rect rect, {TextDirection? textDirection}) => Path()..addRect(rect);
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      Path()..addRect(rect);
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection? textDirection}) => Path()..addRect(rect);
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      Path()..addRect(rect);
 
   @override
   void paintInterior(Canvas canvas, Rect rect, Paint paint,
@@ -660,26 +670,26 @@ class _ImportOptionsDialogState extends State<_ImportOptionsDialog> {
 
   @override
   Widget build(BuildContext context) => CommonDialog(
-      title: appLocalizations.import,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 16,
-      ),
-      child: Wrap(
-        children: [
-          ListItem(
-            onTap: () {
-              _handleOnTab(ImportOption.url);
-            },
-            title: Text(appLocalizations.importUrl),
-          ),
-          ListItem(
-            onTap: () {
-              _handleOnTab(ImportOption.file);
-            },
-            title: Text(appLocalizations.importFile),
-          )
-        ],
-      ),
-    );
+        title: appLocalizations.import,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 16,
+        ),
+        child: Wrap(
+          children: [
+            ListItem(
+              onTap: () {
+                _handleOnTab(ImportOption.url);
+              },
+              title: Text(appLocalizations.importUrl),
+            ),
+            ListItem(
+              onTap: () {
+                _handleOnTab(ImportOption.file);
+              },
+              title: Text(appLocalizations.importFile),
+            )
+          ],
+        ),
+      );
 }

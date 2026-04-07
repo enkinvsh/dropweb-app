@@ -7,6 +7,7 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class ChangeServerButton extends ConsumerWidget {
   const ChangeServerButton({super.key});
@@ -142,8 +143,8 @@ class ChangeServerButton extends ConsumerWidget {
                           ),
                           textAlign: TextAlign.center,
                         )
-                      : Icon(
-                          Icons.dns_rounded,
+                      : HugeIcon(
+                          icon: HugeIcons.strokeRoundedServerStack01,
                           size: 24,
                           color: context.colorScheme.primary,
                         ),
@@ -206,8 +207,8 @@ class ChangeServerButton extends ConsumerWidget {
                   color: context.colorScheme.primary,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.swap_horizontal_circle,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowDataTransferHorizontal,
                   size: 22,
                   color: context.colorScheme.onPrimary,
                 ),
@@ -252,8 +253,8 @@ class ChangeServerButton extends ConsumerWidget {
                       width: 1,
                     ),
                   ),
-                  child: Icon(
-                    Icons.language_rounded,
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedGlobe02,
                     size: 22,
                     color: context.colorScheme.primary,
                   ),
@@ -277,8 +278,8 @@ class ChangeServerButton extends ConsumerWidget {
                     color: context.colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.swap_horizontal_circle,
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowDataTransferHorizontal,
                     size: 22,
                     color: context.colorScheme.onPrimary,
                   ),

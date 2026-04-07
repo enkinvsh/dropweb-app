@@ -5,11 +5,13 @@ import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/fade_box.dart';
+import 'package:dropweb/views/dashboard/widgets/magic_rings.dart';
 import 'package:dropweb/widgets/mesh_background.dart';
 import 'package:dropweb/widgets/pop_scope.dart';
 import 'package:dropweb/widgets/search_order_marker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'chip.dart';
@@ -246,13 +248,13 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     if (_isEdit) {
       return IconButton(
         onPressed: _appBarState.value.editState?.onExit,
-        icon: const Icon(Icons.close),
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 24),
       );
     }
     return _isSearch
         ? IconButton(
             onPressed: _handleExitSearching,
-            icon: const Icon(Icons.arrow_back),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: 24),
           )
         : widget.leading;
   }
@@ -287,7 +289,7 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
       return genActions([
         IconButton(
           onPressed: _handleClear,
-          icon: const Icon(Icons.close),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 24),
         ),
       ]);
     }
@@ -301,7 +303,7 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
           ),
         );
       },
-      icon: const Icon(Icons.search),
+      icon: HugeIcon(icon: HugeIcons.strokeRoundedSearch01, size: 24),
     );
 
     if (!hasSearch) {
@@ -503,22 +505,46 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     // when scaffoldBackgroundColor is transparent), we wrap the body so
     // that the mesh renders INSIDE the scaffold's body area — on top of
     // the opaque void fill, below the actual content.
+    // ── Compose body layers ──
+    // Bottom nav bar is placed INSIDE the body Stack (not Scaffold.bottomNavigationBar)
+    // so that dashboard rings can render through the tab bar area without being
+    // clipped by Scaffold's compositing boundary.
     final Widget bodyWithMesh;
+    final hasBottomNav = widget.bottomNavigationBar != null;
     if (isDark && !widget.disableBackground) {
       bodyWithMesh = Stack(
         children: [
           const Positioned.fill(child: MeshBackground()),
           Positioned.fill(child: body),
+          const Positioned.fill(child: MagicRingsOverlay()),
+          if (hasBottomNav)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: widget.bottomNavigationBar!,
+            ),
         ],
       );
     } else {
-      bodyWithMesh = body;
+      bodyWithMesh = hasBottomNav
+          ? Stack(
+              children: [
+                Positioned.fill(child: body),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: widget.bottomNavigationBar!,
+                ),
+              ],
+            )
+          : body;
     }
 
     final scaffoldFinal = Scaffold(
       appBar: _buildAppBar(),
       body: bodyWithMesh,
-      extendBody: widget.bottomNavigationBar != null,
       extendBodyBehindAppBar: isDark,
       resizeToAvoidBottomInset: true,
       backgroundColor: isDark
@@ -537,7 +563,6 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
               ),
             ),
           ),
-      bottomNavigationBar: widget.bottomNavigationBar,
     );
 
     final scaffoldWithBackground = backgroundUrl != null

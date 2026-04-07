@@ -8,6 +8,7 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 class OverrideNetworkSettingsItemNetwork extends ConsumerWidget {
@@ -38,11 +39,14 @@ class OverrideNetworkSettingsItemNetwork extends ConsumerWidget {
         if (!overrideNetworkSettings)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.5),
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedInformationCircle,
                   size: 16,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -244,7 +248,8 @@ class TunStackItem extends ConsumerWidget {
       appSettingProvider.select((state) => state.overrideNetworkSettings),
     );
     final isEnabled = overrideNetworkSettings;
-    commonPrint.log("TunStackItem.build: stack=${stack.name}, isEnabled=$isEnabled");
+    commonPrint
+        .log("TunStackItem.build: stack=${stack.name}, isEnabled=$isEnabled");
 
     return AbsorbPointer(
       absorbing: !isEnabled,
@@ -300,9 +305,8 @@ class BypassDomainItem extends StatelessWidget {
                 );
           },
           tooltip: appLocalizations.reset,
-          icon: const Icon(
-            Icons.replay,
-          ),
+          icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowReloadHorizontal, size: 24),
         )
       ];
     });
@@ -310,32 +314,32 @@ class BypassDomainItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListItem.open(
-      title: Text(appLocalizations.bypassDomain),
-      subtitle: Text(appLocalizations.bypassDomainDesc),
-      delegate: OpenDelegate(
-        blur: false,
-        title: appLocalizations.bypassDomain,
-        widget: Consumer(
-          builder: (_, ref, __) {
-            _initActions(context, ref);
-            final bypassDomain = ref.watch(
-                networkSettingProvider.select((state) => state.bypassDomain));
-            return ListInputPage(
-              title: appLocalizations.bypassDomain,
-              items: bypassDomain,
-              titleBuilder: Text.new,
-              onChange: (items) {
-                ref.read(networkSettingProvider.notifier).updateState(
-                      (state) => state.copyWith(
-                        bypassDomain: List.from(items),
-                      ),
-                    );
-              },
-            );
-          },
+        title: Text(appLocalizations.bypassDomain),
+        subtitle: Text(appLocalizations.bypassDomainDesc),
+        delegate: OpenDelegate(
+          blur: false,
+          title: appLocalizations.bypassDomain,
+          widget: Consumer(
+            builder: (_, ref, __) {
+              _initActions(context, ref);
+              final bypassDomain = ref.watch(
+                  networkSettingProvider.select((state) => state.bypassDomain));
+              return ListInputPage(
+                title: appLocalizations.bypassDomain,
+                items: bypassDomain,
+                titleBuilder: Text.new,
+                onChange: (items) {
+                  ref.read(networkSettingProvider.notifier).updateState(
+                        (state) => state.copyWith(
+                          bypassDomain: List.from(items),
+                        ),
+                      );
+                },
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
 }
 
 class RouteModeItem extends ConsumerWidget {
@@ -477,9 +481,8 @@ class NetworkListView extends ConsumerWidget {
                 );
           },
           tooltip: appLocalizations.reset,
-          icon: const Icon(
-            Icons.replay,
-          ),
+          icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowReloadHorizontal, size: 24),
         )
       ];
     });

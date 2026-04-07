@@ -7,45 +7,47 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class TrafficUsage extends StatelessWidget {
   const TrafficUsage({super.key});
 
   Widget _buildTrafficDataItem(
     BuildContext context,
-    Icon icon,
+    Widget icon,
     TrafficValue trafficValue,
-  ) => Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        Flexible(
-          flex: 1,
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              icon,
-              const SizedBox(
-                width: 8,
-              ),
-              Flexible(
-                flex: 1,
-                child: Text(
-                  trafficValue.showValue,
-                  style: context.textTheme.bodySmall,
-                  maxLines: 1,
+  ) =>
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Flexible(
+            flex: 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                icon,
+                const SizedBox(
+                  width: 8,
                 ),
-              ),
-            ],
+                Flexible(
+                  flex: 1,
+                  child: Text(
+                    trafficValue.showValue,
+                    style: context.textTheme.bodySmall,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        Text(
-          trafficValue.showUnit,
-          style: context.textTheme.bodySmall?.toLighter,
-        ),
-      ],
-    );
+          Text(
+            trafficValue.showUnit,
+            style: context.textTheme.bodySmall?.toLighter,
+          ),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +58,6 @@ class TrafficUsage extends StatelessWidget {
       child: CommonCard(
         info: Info(
           label: appLocalizations.trafficUsage,
-          iconData: Icons.data_saver_off,
         ),
         onPressed: () {},
         child: Consumer(
@@ -191,8 +192,8 @@ class TrafficUsage extends StatelessWidget {
                   ),
                   _buildTrafficDataItem(
                     context,
-                    Icon(
-                      Icons.arrow_upward,
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowUp01,
                       color: primaryColor,
                       size: 14,
                     ),
@@ -203,8 +204,8 @@ class TrafficUsage extends StatelessWidget {
                   ),
                   _buildTrafficDataItem(
                     context,
-                    Icon(
-                      Icons.arrow_downward,
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowDown01,
                       color: secondaryColor,
                       size: 14,
                     ),

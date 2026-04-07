@@ -11,22 +11,21 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 class ThemeModeItem {
-
   const ThemeModeItem({
     required this.themeMode,
-    required this.iconData,
+    required this.icon,
     required this.label,
   });
   final ThemeMode themeMode;
-  final IconData iconData;
+  final Widget icon;
   final String label;
 }
 
 class FontFamilyItem {
-
   const FontFamilyItem({
     required this.fontFamily,
     required this.label,
@@ -40,23 +39,22 @@ class ThemeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const SingleChildScrollView(
-      child: Column(
-        spacing: 24,
-        children: [
-          _ThemeModeItem(),
-          _PrimaryColorItem(),
-          _PrueBlackItem(),
-          _TextScaleFactorItem(),
-          SizedBox(
-            height: 64,
-          ),
-        ],
-      ),
-    );
+        child: Column(
+          spacing: 24,
+          children: [
+            _ThemeModeItem(),
+            _PrimaryColorItem(),
+            _PrueBlackItem(),
+            _TextScaleFactorItem(),
+            SizedBox(
+              height: 64,
+            ),
+          ],
+        ),
+      );
 }
 
 class ItemCard extends StatelessWidget {
-
   const ItemCard({
     super.key,
     required this.info,
@@ -69,15 +67,15 @@ class ItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Wrap(
-      runSpacing: 16,
-      children: [
-        InfoHeader(
-          info: info,
-          actions: actions,
-        ),
-        child,
-      ],
-    );
+        runSpacing: 16,
+        children: [
+          InfoHeader(
+            info: info,
+            actions: actions,
+          ),
+          child,
+        ],
+      );
 }
 
 class _ThemeModeItem extends ConsumerWidget {
@@ -89,17 +87,17 @@ class _ThemeModeItem extends ConsumerWidget {
         ref.watch(themeSettingProvider.select((state) => state.themeMode));
     final themeModeItems = <ThemeModeItem>[
       ThemeModeItem(
-        iconData: Icons.auto_mode,
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedRotate01, size: 18),
         label: appLocalizations.auto,
         themeMode: ThemeMode.system,
       ),
       ThemeModeItem(
-        iconData: Icons.light_mode,
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedSun01, size: 18),
         label: appLocalizations.light,
         themeMode: ThemeMode.light,
       ),
       ThemeModeItem(
-        iconData: Icons.dark_mode,
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedMoon02, size: 18),
         label: appLocalizations.dark,
         themeMode: ThemeMode.dark,
       ),
@@ -107,7 +105,7 @@ class _ThemeModeItem extends ConsumerWidget {
     return ItemCard(
       info: Info(
         label: appLocalizations.themeMode,
-        iconData: Icons.brightness_high,
+        iconWidget: HugeIcon(icon: HugeIcons.strokeRoundedSun03, size: 24),
       ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -127,16 +125,14 @@ class _ThemeModeItem extends ConsumerWidget {
                     );
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Flexible(
-                      child: Icon(
-                        themeModeItem.iconData,
-                        size: 18,
-                      ),
+                      child: themeModeItem.icon,
                     ),
                     const SizedBox(
                       width: 6,
@@ -153,8 +149,8 @@ class _ThemeModeItem extends ConsumerWidget {
             );
           },
           separatorBuilder: (_, __) => const SizedBox(
-              width: 12,
-            ),
+            width: 12,
+          ),
         ),
       ),
     );
@@ -183,12 +179,12 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
       return;
     }
     ref.read(themeSettingProvider.notifier).updateState(
-      (state) => state.copyWith(
-          primaryColors: defaultPrimaryColors,
-          primaryColor: defaultPrimaryColor,
-          schemeVariant: DynamicSchemeVariant.tonalSpot,
-        ),
-    );
+          (state) => state.copyWith(
+            primaryColors: defaultPrimaryColors,
+            primaryColor: defaultPrimaryColor,
+            schemeVariant: DynamicSchemeVariant.tonalSpot,
+          ),
+        );
   }
 
   Future<void> _handleDel() async {
@@ -247,12 +243,12 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
       return;
     }
     ref.read(themeSettingProvider.notifier).updateState(
-      (state) => state.copyWith(
-          primaryColors: List.from(
-            state.primaryColors,
-          )..add(res),
-        ),
-    );
+          (state) => state.copyWith(
+            primaryColors: List.from(
+              state.primaryColors,
+            )..add(res),
+          ),
+        );
   }
 
   Future<void> _handleChangeSchemeVariant() async {
@@ -273,10 +269,10 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
       return;
     }
     ref.read(themeSettingProvider.notifier).updateState(
-      (state) => state.copyWith(
-          schemeVariant: value,
-        ),
-    );
+          (state) => state.copyWith(
+            schemeVariant: value,
+          ),
+        );
   }
 
   @override
@@ -310,7 +306,7 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
       child: ItemCard(
         info: Info(
           label: appLocalizations.themeColor,
-          iconData: Icons.palette,
+          iconWidget: HugeIcon(icon: HugeIcons.strokeRoundedColors, size: 24),
         ),
         actions: genActions(
           [
@@ -340,7 +336,9 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
                 padding: const EdgeInsets.all(4),
                 visualDensity: VisualDensity.compact,
                 onPressed: _handleReset,
-                icon: const Icon(Icons.replay),
+                icon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
+                    size: 20),
               )
           ],
           space: 8,
@@ -399,9 +397,10 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
                                 onPressed: _handleDel,
                                 padding: const EdgeInsets.all(12),
                                 iconSize: 30,
-                                icon: Icon(
+                                icon: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedDelete01,
+                                  size: 30,
                                   color: context.colorScheme.primary,
-                                  Icons.delete,
                                 ),
                               ),
                             ),
@@ -418,9 +417,10 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
                       child: IconButton.filledTonal(
                         onPressed: _handleAdd,
                         iconSize: 32,
-                        icon: Icon(
+                        icon: HugeIcon(
+                          icon: HugeIcons.strokeRoundedAdd01,
+                          size: 32,
                           color: context.colorScheme.primary,
-                          Icons.add,
                         ),
                       ),
                     )
@@ -445,9 +445,7 @@ class _PrueBlackItem extends ConsumerWidget {
       ),
     );
     return ListItem.switchItem(
-      leading: const Icon(
-        Icons.contrast,
-      ),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedSun02, size: 24),
       horizontalTitleGap: 12,
       title: Text(
         appLocalizations.pureBlackMode,
@@ -486,9 +484,7 @@ class _TextScaleFactorItem extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: ListItem.switchItem(
-            leading: const Icon(
-              Icons.text_fields,
-            ),
+            leading: HugeIcon(icon: HugeIcons.strokeRoundedTextFont, size: 24),
             horizontalTitleGap: 12,
             title: Text(
               appLocalizations.textScale,
@@ -566,39 +562,39 @@ class _PaletteDialogState extends State<_PaletteDialog> {
 
   @override
   Widget build(BuildContext context) => CommonDialog(
-      title: appLocalizations.palette,
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text(appLocalizations.cancel),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop(_controller.value.toARGB32());
-          },
-          child: Text(appLocalizations.confirm),
-        ),
-      ],
-      child: Column(
-        children: [
-          const SizedBox(
-            height: 8,
+        title: appLocalizations.palette,
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text(appLocalizations.cancel),
           ),
-          SizedBox(
-            width: 250,
-            height: 250,
-            child: Palette(
-              controller: _controller,
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(_controller.value.toARGB32());
+            },
+            child: Text(appLocalizations.confirm),
+          ),
+        ],
+        child: Column(
+          children: [
+            const SizedBox(
+              height: 8,
             ),
-          ),
-          const SizedBox(
-            height: 24,
-          ),
-          ValueListenableBuilder(
-            valueListenable: _controller,
-            builder: (_, color, __) => PrimaryColorBox(
+            SizedBox(
+              width: 250,
+              height: 250,
+              child: Palette(
+                controller: _controller,
+              ),
+            ),
+            const SizedBox(
+              height: 24,
+            ),
+            ValueListenableBuilder(
+              valueListenable: _controller,
+              builder: (_, color, __) => PrimaryColorBox(
                 primaryColor: color,
                 child: FilledButton(
                   onPressed: () {},
@@ -607,10 +603,10 @@ class _PaletteDialogState extends State<_PaletteDialog> {
                   ),
                 ),
               ),
-          ),
-        ],
-      ),
-    );
+            ),
+          ],
+        ),
+      );
 }
 
 class _SliderDefaultsM3 extends SliderThemeData {
@@ -658,8 +654,7 @@ class _SliderDefaultsM3 extends SliderThemeData {
   Color? get disabledThumbColor => _colors.onSurface.withOpacity(0.38);
 
   @override
-  Color? get overlayColor =>
-      WidgetStateColor.resolveWith((states) {
+  Color? get overlayColor => WidgetStateColor.resolveWith((states) {
         if (states.contains(WidgetState.dragged)) {
           return _colors.primary.withOpacity(0.1);
         }
@@ -700,21 +695,22 @@ class _SliderDefaultsM3 extends SliderThemeData {
       const RoundSliderTickMarkShape(tickMarkRadius: 4.0 / 2);
 
   @override
-  WidgetStateProperty<Size?>? get thumbSize => WidgetStateProperty.resolveWith((states) {
-      if (states.contains(WidgetState.disabled)) {
+  WidgetStateProperty<Size?>? get thumbSize =>
+      WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return const Size(4.0, 44.0);
+        }
+        if (states.contains(WidgetState.hovered)) {
+          return const Size(4.0, 44.0);
+        }
+        if (states.contains(WidgetState.focused)) {
+          return const Size(2.0, 44.0);
+        }
+        if (states.contains(WidgetState.pressed)) {
+          return const Size(2.0, 44.0);
+        }
         return const Size(4.0, 44.0);
-      }
-      if (states.contains(WidgetState.hovered)) {
-        return const Size(4.0, 44.0);
-      }
-      if (states.contains(WidgetState.focused)) {
-        return const Size(2.0, 44.0);
-      }
-      if (states.contains(WidgetState.pressed)) {
-        return const Size(2.0, 44.0);
-      }
-      return const Size(4.0, 44.0);
-    });
+      });
 
   @override
   double? get trackGap => 6.0;

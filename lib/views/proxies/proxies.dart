@@ -8,6 +8,7 @@ import 'package:dropweb/views/proxies/providers.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import 'common.dart';
 import 'setting.dart';
@@ -29,7 +30,7 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
     final groups = ref.read(currentGroupsStateProvider).value;
     final allProxies = <Proxy>[];
     final seenNames = <String>{};
-    
+
     for (final group in groups) {
       for (final proxy in group.all) {
         if (!seenNames.contains(proxy.name)) {
@@ -38,7 +39,7 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
         }
       }
     }
-    
+
     if (allProxies.isNotEmpty) {
       await delayTest(allProxies, null);
     }
@@ -60,16 +61,17 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
             onPressed: () {
               _proxiesTabKey.currentState?.scrollToGroupSelected();
             },
-            icon: const Icon(
-              Icons.adjust,
-              weight: 1,
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedTarget01,
+              size: 24,
             ),
           ),
         if (!_isTab) ...[
           IconButton(
             onPressed: _pingAllGroups,
-            icon: const Icon(
-              Icons.network_ping,
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedWifiConnected01,
+              size: 24,
             ),
           ),
           Consumer(
@@ -80,8 +82,8 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
                   (state) => state.value.map((e) => e.name).toList(),
                 ),
               );
-              final allExpanded = groupNames.isNotEmpty &&
-                  groupNames.every(unfoldSet.contains);
+              final allExpanded =
+                  groupNames.isNotEmpty && groupNames.every(unfoldSet.contains);
               return IconButton(
                 onPressed: () {
                   if (allExpanded) {
@@ -91,8 +93,11 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
                         .updateCurrentUnfoldSet(groupNames.toSet());
                   }
                 },
-                icon: Icon(
-                  allExpanded ? Icons.unfold_less : Icons.unfold_more,
+                icon: HugeIcon(
+                  icon: allExpanded
+                      ? HugeIcons.strokeRoundedArrowShrink
+                      : HugeIcons.strokeRoundedArrowExpand01,
+                  size: 24,
                 ),
               );
             },
@@ -100,19 +105,19 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
         ],
         CommonPopupBox(
           targetBuilder: (open) => IconButton(
-              onPressed: () {
-                open(
-                  offset: const Offset(0, 20),
-                );
-              },
-              icon: const Icon(
-                Icons.more_vert,
-              ),
+            onPressed: () {
+              open(
+                offset: const Offset(0, 20),
+              );
+            },
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedMoreVertical,
+              size: 24,
             ),
+          ),
           popup: CommonPopupMenu(
             items: [
               PopupMenuItemData(
-                icon: Icons.tune,
                 label: appLocalizations.settings,
                 onPressed: () {
                   showSheet(
@@ -121,16 +126,15 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
                       isScrollControlled: true,
                     ),
                     builder: (_, type) => AdaptiveSheetScaffold(
-                        type: type,
-                        body: const ProxiesSetting(),
-                        title: appLocalizations.settings,
-                      ),
+                      type: type,
+                      body: const ProxiesSetting(),
+                      title: appLocalizations.settings,
+                    ),
                   );
                 },
               ),
               if (_hasProviders)
                 PopupMenuItemData(
-                  icon: Icons.poll_outlined,
                   label: appLocalizations.providers,
                   onPressed: () {
                     showExtend(
@@ -141,7 +145,6 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
                 ),
               if (!_isTab)
                 PopupMenuItemData(
-                  icon: Icons.style_outlined,
                   label: appLocalizations.iconConfiguration,
                   onPressed: () {
                     showExtend(
@@ -245,10 +248,10 @@ class _ModeSelectorAction extends ConsumerWidget {
         Mode.direct => appLocalizations.direct,
       };
 
-  IconData _modeIcon(Mode mode) => switch (mode) {
-        Mode.rule => Icons.rule,
-        Mode.global => Icons.public,
-        Mode.direct => Icons.flash_on,
+  List<List<dynamic>> _modeIcon(Mode mode) => switch (mode) {
+        Mode.rule => HugeIcons.strokeRoundedTask01,
+        Mode.global => HugeIcons.strokeRoundedGlobe02,
+        Mode.direct => HugeIcons.strokeRoundedFlash,
       };
 
   @override
@@ -261,13 +264,12 @@ class _ModeSelectorAction extends ConsumerWidget {
       targetBuilder: (open) => IconButton(
         tooltip: _modeLabel(context, mode),
         onPressed: () => open(offset: const Offset(0, 20)),
-        icon: Icon(_modeIcon(mode)),
+        icon: HugeIcon(icon: _modeIcon(mode), size: 24),
       ),
       popup: CommonPopupMenu(
         items: [
           for (final item in Mode.values.where((m) => m != Mode.direct))
             PopupMenuItemData(
-              icon: _modeIcon(item),
               label: _modeLabel(context, item),
               onPressed: () {
                 globalState.appController.changeMode(item);

@@ -69,6 +69,7 @@ dependencies:
   cached_network_image: ^3.4.1
   crypto: ^3.0.7
   audioplayers: ^6.6.0
+  hugeicons: ^1.1.6
 
 dev_dependencies:
   flutter_test:

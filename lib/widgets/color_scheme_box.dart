@@ -1,12 +1,12 @@
 import 'package:dropweb/providers/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'card.dart';
 import 'grid.dart';
 
 class ColorSchemeBox extends StatelessWidget {
-
   const ColorSchemeBox({
     super.key,
     required this.primaryColor,
@@ -19,74 +19,73 @@ class ColorSchemeBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AspectRatio(
-      aspectRatio: 1,
-      child: PrimaryColorBox(
-        primaryColor: primaryColor,
-        child: Builder(
-          builder: (context) {
-            final colorScheme = Theme.of(context).colorScheme;
-            return Stack(
-              children: [
-                CommonCard(
-                  isSelected: isSelected,
-                  onPressed: onPressed,
-                  selectWidget: Container(
-                    alignment: Alignment.center,
-                    child: const SelectIcon(),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: SizedBox(
-                        width: 72,
-                        height: 72,
-                        child: Grid(
-                          crossAxisCount: 2,
-                          children: [
-                            GridItem(
-                              mainAxisCellCount: 2,
-                              child: Container(
-                                color: colorScheme.primary,
+        aspectRatio: 1,
+        child: PrimaryColorBox(
+          primaryColor: primaryColor,
+          child: Builder(
+            builder: (context) {
+              final colorScheme = Theme.of(context).colorScheme;
+              return Stack(
+                children: [
+                  CommonCard(
+                    isSelected: isSelected,
+                    onPressed: onPressed,
+                    selectWidget: Container(
+                      alignment: Alignment.center,
+                      child: const SelectIcon(),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(36),
+                        child: SizedBox(
+                          width: 72,
+                          height: 72,
+                          child: Grid(
+                            crossAxisCount: 2,
+                            children: [
+                              GridItem(
+                                mainAxisCellCount: 2,
+                                child: Container(
+                                  color: colorScheme.primary,
+                                ),
                               ),
-                            ),
-                            GridItem(
-                              mainAxisCellCount: 1,
-                              child: Container(
-                                color: colorScheme.secondary,
+                              GridItem(
+                                mainAxisCellCount: 1,
+                                child: Container(
+                                  color: colorScheme.secondary,
+                                ),
                               ),
-                            ),
-                            GridItem(
-                              mainAxisCellCount: 1,
-                              child: Container(
-                                color: colorScheme.tertiary,
-                              ),
-                            )
-                          ],
+                              GridItem(
+                                mainAxisCellCount: 1,
+                                child: Container(
+                                  color: colorScheme.tertiary,
+                                ),
+                              )
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                if (primaryColor == null)
-                  const Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: Icon(
-                      Icons.colorize,
-                      size: 20,
-                    ),
-                  )
-              ],
-            );
-          },
+                  if (primaryColor == null)
+                    Positioned(
+                      bottom: 4,
+                      right: 4,
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedDropper,
+                        size: 20,
+                      ),
+                    )
+                ],
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
 }
 
 class PrimaryColorBox extends ConsumerWidget {
-
   const PrimaryColorBox({
     super.key,
     required this.primaryColor,

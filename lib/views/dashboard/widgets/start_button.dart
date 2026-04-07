@@ -6,6 +6,7 @@ import 'package:dropweb/views/profiles/add_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class StartButton extends ConsumerStatefulWidget {
   const StartButton({super.key});
@@ -133,12 +134,12 @@ class _StartButtonState extends ConsumerState<StartButton>
                         ]
                       : [],
                 ),
-                child: Icon(
-                  !hasProfile
-                      ? Icons.add_rounded
+                child: HugeIcon(
+                  icon: !hasProfile
+                      ? HugeIcons.strokeRoundedAdd01
                       : isStart
-                          ? Icons.stop_rounded
-                          : Icons.power_settings_new_rounded,
+                          ? HugeIcons.strokeRoundedStop
+                          : HugeIcons.strokeRoundedPlugSocket,
                   size: 26,
                   color: !hasProfile
                       ? colorScheme.primary

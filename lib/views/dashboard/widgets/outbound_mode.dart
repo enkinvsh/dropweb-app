@@ -5,6 +5,7 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 class OutboundMode extends StatelessWidget {
@@ -31,7 +32,6 @@ class OutboundMode extends StatelessWidget {
                 onPressed: () {},
                 info: Info(
                   label: appLocalizations.outboundMode,
-                  iconData: Icons.call_split_sharp,
                 ),
                 child: Padding(
                   padding: const EdgeInsets.only(
@@ -86,10 +86,10 @@ class OutboundModeV2 extends StatelessWidget {
   const OutboundModeV2({super.key});
 
   Color _getTextColor(BuildContext context, Mode mode) => switch (mode) {
-      Mode.rule => context.colorScheme.onSecondaryContainer,
-      Mode.global => context.colorScheme.onPrimaryContainer,
-      Mode.direct => context.colorScheme.onTertiaryContainer,
-    };
+        Mode.rule => context.colorScheme.onSecondaryContainer,
+        Mode.global => context.colorScheme.onPrimaryContainer,
+        Mode.direct => context.colorScheme.onTertiaryContainer,
+      };
 
   @override
   Widget build(BuildContext context) {

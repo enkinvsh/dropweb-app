@@ -7,8 +7,8 @@ import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
-import 'widgets/magic_rings.dart';
 import 'widgets/start_button.dart';
 
 class DashboardView extends ConsumerStatefulWidget {
@@ -170,7 +170,6 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
           warpStrength: 0.7,
           noise: 0.03,
         )),
-        const Positioned.fill(child: MagicRingsOverlay()),
         SingleChildScrollView(
           padding: const EdgeInsets.all(16).copyWith(
             bottom: 16,
@@ -301,8 +300,9 @@ class _AddedContainerState extends State<_AddedContainer> {
                   iconSize: 20,
                   padding: const EdgeInsets.all(2),
                   onPressed: _handleAdd,
-                  icon: const Icon(
-                    Icons.add,
+                  icon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedAdd01,
+                    size: 20,
                   ),
                 ),
               ),

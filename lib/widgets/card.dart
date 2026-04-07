@@ -2,6 +2,7 @@ import 'package:dropweb/common/common.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/widgets/fade_box.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import 'text.dart';
 
@@ -9,9 +10,11 @@ class Info {
   const Info({
     required this.label,
     this.iconData,
+    this.iconWidget,
   });
   final String label;
   final IconData? iconData;
+  final Widget? iconWidget;
 }
 
 class InfoHeader extends StatelessWidget {
@@ -37,11 +40,12 @@ class InfoHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.max,
                 children: [
-                  if (info.iconData != null) ...[
-                    Icon(
-                      info.iconData,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  if (info.iconWidget != null || info.iconData != null) ...[
+                    info.iconWidget ??
+                        Icon(
+                          info.iconData,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                     const SizedBox(
                       width: 8,
                     ),
@@ -246,8 +250,8 @@ class SelectIcon extends StatelessWidget {
         shape: const CircleBorder(),
         child: Container(
           padding: const EdgeInsets.all(4),
-          child: const Icon(
-            Icons.check,
+          child: HugeIcon(
+            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
             size: 16,
           ),
         ),

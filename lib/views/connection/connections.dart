@@ -8,6 +8,7 @@ import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import 'item.dart';
 
@@ -39,7 +40,7 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView>
               connections: await clashCore.getConnections(),
             );
           },
-          icon: const Icon(Icons.delete_sweep_outlined),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedDelete01, size: 24),
         ),
       ];
 
@@ -107,41 +108,43 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView>
   }
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<ConnectionsState>(
-      valueListenable: _connectionsStateNotifier,
-      builder: (_, state, __) {
-        final connections = state.list;
-        if (connections.isEmpty) {
-          return NullStatus(
-            label: appLocalizations.nullTip(appLocalizations.connections),
-          );
-        }
-        return CommonScrollBar(
-          controller: _scrollController,
-          child: ListView.separated(
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder<ConnectionsState>(
+        valueListenable: _connectionsStateNotifier,
+        builder: (_, state, __) {
+          final connections = state.list;
+          if (connections.isEmpty) {
+            return NullStatus(
+              label: appLocalizations.nullTip(appLocalizations.connections),
+            );
+          }
+          return CommonScrollBar(
             controller: _scrollController,
-            itemBuilder: (_, index) {
-              final connection = connections[index];
-              return ConnectionItem(
-                key: Key(connection.id),
-                connection: connection,
-                onClickKeyword: (value) {
-                  context.commonScaffoldState?.addKeyword(value);
-                },
-                trailing: IconButton(
-                  icon: const Icon(Icons.block),
-                  onPressed: () {
-                    _handleBlockConnection(connection.id);
+            child: ListView.separated(
+              controller: _scrollController,
+              itemBuilder: (_, index) {
+                final connection = connections[index];
+                return ConnectionItem(
+                  key: Key(connection.id),
+                  connection: connection,
+                  onClickKeyword: (value) {
+                    context.commonScaffoldState?.addKeyword(value);
                   },
-                ),
-              );
-            },
-            separatorBuilder: (context, index) => const Divider(
+                  trailing: IconButton(
+                    icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedBlocked, size: 24),
+                    onPressed: () {
+                      _handleBlockConnection(connection.id);
+                    },
+                  ),
+                );
+              },
+              separatorBuilder: (context, index) => const Divider(
                 height: 0,
               ),
-            itemCount: connections.length,
-          ),
-        );
-      },
-    );
+              itemCount: connections.length,
+            ),
+          );
+        },
+      );
 }

@@ -6,6 +6,7 @@ import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../models/models.dart';
 import '../widgets/widgets.dart';
@@ -71,9 +72,7 @@ class _LogsViewState extends ConsumerState<LogsView> with PageMixin {
   List<Widget> get actions => [
         IconButton(
           onPressed: _handleExport,
-          icon: const Icon(
-            Icons.file_download_outlined,
-          ),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedDownload01, size: 24),
         ),
       ];
 
@@ -183,82 +182,81 @@ class _LogsViewState extends ConsumerState<LogsView> with PageMixin {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-      builder: (_, constraints) {
-        _currentMaxWidth = constraints.maxWidth - 40;
-        return ValueListenableBuilder<LogsState>(
-          valueListenable: _logsStateNotifier,
-          builder: (_, state, __) {
-            _preLoad();
-            final logs = state.list;
-            final items = logs
-                .map<Widget>(
-                  (log) => LogItem(
-                    key: Key(log.dateTime),
-                    log: log,
-                    onClick: (value) {
-                      context.commonScaffoldState?.addKeyword(value);
-                    },
-                  ),
-                )
-                .separated(
-                  const Divider(
-                    height: 0,
-                  ),
-                )
-                .toList();
-            final content = logs.isEmpty
-                ? NullStatus(
-                    label: appLocalizations.nullTip(
-                      appLocalizations.logs,
+        builder: (_, constraints) {
+          _currentMaxWidth = constraints.maxWidth - 40;
+          return ValueListenableBuilder<LogsState>(
+            valueListenable: _logsStateNotifier,
+            builder: (_, state, __) {
+              _preLoad();
+              final logs = state.list;
+              final items = logs
+                  .map<Widget>(
+                    (log) => LogItem(
+                      key: Key(log.dateTime),
+                      log: log,
+                      onClick: (value) {
+                        context.commonScaffoldState?.addKeyword(value);
+                      },
                     ),
                   )
-                : Align(
-                    alignment: Alignment.topCenter,
-                    child: CommonScrollBar(
-                      controller: _scrollController,
-                      child: ScrollToEndBox(
+                  .separated(
+                    const Divider(
+                      height: 0,
+                    ),
+                  )
+                  .toList();
+              final content = logs.isEmpty
+                  ? NullStatus(
+                      label: appLocalizations.nullTip(
+                        appLocalizations.logs,
+                      ),
+                    )
+                  : Align(
+                      alignment: Alignment.topCenter,
+                      child: CommonScrollBar(
                         controller: _scrollController,
-                        tag: _tag,
-                        dataSource: logs,
-                        child: CacheItemExtentListView(
-                          tag: _tag,
-                          reverse: true,
-                          shrinkWrap: true,
-                          physics: const NextClampingScrollPhysics(),
+                        child: ScrollToEndBox(
                           controller: _scrollController,
-                          itemBuilder: (_, index) => items[index],
-                          itemExtentBuilder: (index) {
-                            if (index.isOdd) {
-                              return 0;
-                            }
-                            return _getItemHeight(logs[index ~/ 2]);
-                          },
-                          itemCount: items.length,
-                          keyBuilder: (index) {
-                            if (index.isOdd) {
-                              return "divider";
-                            }
-                            return logs[index ~/ 2].payload;
-                          },
+                          tag: _tag,
+                          dataSource: logs,
+                          child: CacheItemExtentListView(
+                            tag: _tag,
+                            reverse: true,
+                            shrinkWrap: true,
+                            physics: const NextClampingScrollPhysics(),
+                            controller: _scrollController,
+                            itemBuilder: (_, index) => items[index],
+                            itemExtentBuilder: (index) {
+                              if (index.isOdd) {
+                                return 0;
+                              }
+                              return _getItemHeight(logs[index ~/ 2]);
+                            },
+                            itemCount: items.length,
+                            keyBuilder: (index) {
+                              if (index.isOdd) {
+                                return "divider";
+                              }
+                              return logs[index ~/ 2].payload;
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                  );
-            return FadeBox(
-              child: state.loading
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : content,
-            );
-          },
-        );
-      },
-    );
+                    );
+              return FadeBox(
+                child: state.loading
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : content,
+              );
+            },
+          );
+        },
+      );
 }
 
 class LogItem extends StatelessWidget {
-
   const LogItem({
     super.key,
     required this.log,
@@ -269,37 +267,37 @@ class LogItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListItem(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 4,
-      ),
-      title: SelectableText(
-        log.payload,
-        style: context.textTheme.bodyLarge,
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SelectableText(
-            log.dateTime,
-            style: context.textTheme.bodySmall?.copyWith(
-              color: context.colorScheme.primary,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 4,
+        ),
+        title: SelectableText(
+          log.payload,
+          style: context.textTheme.bodyLarge,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              log.dateTime,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.primary,
+              ),
             ),
-          ),
-          const SizedBox(
-            height: 8,
-          ),
-          Container(
-            alignment: Alignment.centerLeft,
-            child: CommonChip(
-              onPressed: () {
-                if (onClick == null) return;
-                onClick!(log.logLevel.name);
-              },
-              label: log.logLevel.name,
+            const SizedBox(
+              height: 8,
             ),
-          ),
-        ],
-      ),
-    );
+            Container(
+              alignment: Alignment.centerLeft,
+              child: CommonChip(
+                onPressed: () {
+                  if (onClick == null) return;
+                  onClick!(log.logLevel.name);
+                },
+                label: log.logLevel.name,
+              ),
+            ),
+          ],
+        ),
+      );
 }

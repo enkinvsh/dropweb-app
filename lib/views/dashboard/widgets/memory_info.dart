@@ -7,6 +7,7 @@ import 'package:dropweb/models/common.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 final _memoryInfoStateNotifier = ValueNotifier<TrafficValue>(
   const TrafficValue(value: 0),
@@ -48,27 +49,26 @@ class _MemoryInfoState extends State<MemoryInfo> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-      height: getWidgetHeight(1),
-      child: CommonCard(
-        info: Info(
-          iconData: Icons.memory,
-          label: appLocalizations.memoryInfo,
-        ),
-        onPressed: clashCore.requestGc,
-        child: Container(
-          padding: baseInfoEdgeInsets.copyWith(
-            top: 0,
+        height: getWidgetHeight(1),
+        child: CommonCard(
+          info: Info(
+            label: appLocalizations.memoryInfo,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: globalState.measure.bodyMediumHeight + 2,
-                child: ValueListenableBuilder(
-                  valueListenable: _memoryInfoStateNotifier,
-                  builder: (_, trafficValue, __) => Row(
+          onPressed: clashCore.requestGc,
+          child: Container(
+            padding: baseInfoEdgeInsets.copyWith(
+              top: 0,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: globalState.measure.bodyMediumHeight + 2,
+                  child: ValueListenableBuilder(
+                    valueListenable: _memoryInfoStateNotifier,
+                    builder: (_, trafficValue, __) => Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Text(
@@ -86,13 +86,13 @@ class _MemoryInfoState extends State<MemoryInfo> {
                         )
                       ],
                     ),
-                ),
-              )
-            ],
+                  ),
+                )
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
 }
 
 // class AnimatedCounter extends StatefulWidget {

@@ -8,11 +8,11 @@ import 'package:dropweb/providers/app.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:window_ext/window_ext.dart';
 import 'package:window_manager/window_manager.dart';
 
 class WindowManager extends ConsumerStatefulWidget {
-
   const WindowManager({
     super.key,
     required this.child,
@@ -120,7 +120,6 @@ class _WindowContainerState extends ConsumerState<WindowManager>
 }
 
 class WindowHeaderContainer extends StatelessWidget {
-
   const WindowHeaderContainer({
     super.key,
     required this.child,
@@ -135,21 +134,21 @@ class WindowHeaderContainer extends StatelessWidget {
 
     return Consumer(
       builder: (_, ref, child) => Stack(
-          children: [
-            Column(
-              children: [
-                SizedBox(
-                  height: kHeaderHeight,
-                ),
-                Expanded(
-                  flex: 1,
-                  child: child!,
-                ),
-              ],
-            ),
-            const WindowHeader(),
-          ],
-        ),
+        children: [
+          Column(
+            children: [
+              SizedBox(
+                height: kHeaderHeight,
+              ),
+              Expanded(
+                flex: 1,
+                child: child!,
+              ),
+            ],
+          ),
+          const WindowHeader(),
+        ],
+      ),
       child: child,
     );
   }
@@ -229,8 +228,8 @@ class _WindowHeaderState extends State<WindowHeader> {
         _buildWindowButton(
           icon: ValueListenableBuilder(
             valueListenable: isPinNotifier,
-            builder: (_, value, ___) => Icon(
-              value ? Icons.push_pin : Icons.push_pin_outlined,
+            builder: (_, value, ___) => HugeIcon(
+              icon: HugeIcons.strokeRoundedPin02,
               size: 16,
               color: colorScheme.onSurface.withValues(alpha: 0.8),
             ),
@@ -239,8 +238,8 @@ class _WindowHeaderState extends State<WindowHeader> {
         ),
         // Minimize button
         _buildWindowButton(
-          icon: Icon(
-            Icons.remove,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedRemove01,
             size: 18,
             color: colorScheme.onSurface.withValues(alpha: 0.8),
           ),
@@ -250,8 +249,10 @@ class _WindowHeaderState extends State<WindowHeader> {
         _buildWindowButton(
           icon: ValueListenableBuilder(
             valueListenable: isMaximizedNotifier,
-            builder: (_, value, ___) => Icon(
-              value ? Icons.filter_none : Icons.crop_square,
+            builder: (_, value, ___) => HugeIcon(
+              icon: value
+                  ? HugeIcons.strokeRoundedMaximize04
+                  : HugeIcons.strokeRoundedMaximize01,
               size: value ? 14 : 16,
               color: colorScheme.onSurface.withValues(alpha: 0.8),
             ),
@@ -260,8 +261,8 @@ class _WindowHeaderState extends State<WindowHeader> {
         ),
         // Close button - red hover
         _buildWindowButton(
-          icon: Icon(
-            Icons.close,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedCancel01,
             size: 18,
             color: colorScheme.onSurface.withValues(alpha: 0.8),
           ),
@@ -276,7 +277,7 @@ class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    
+
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -346,7 +347,7 @@ class _WindowControlButtonState extends State<_WindowControlButton> {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final defaultHoverColor = colorScheme.onSurface.withValues(alpha: 0.08);
-    
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -357,7 +358,7 @@ class _WindowControlButtonState extends State<_WindowControlButton> {
           width: 46,
           height: kHeaderHeight,
           decoration: BoxDecoration(
-            color: _isHovered 
+            color: _isHovered
                 ? (widget.hoverColor ?? defaultHoverColor)
                 : Colors.transparent,
           ),
@@ -382,18 +383,18 @@ class _ConnectionStatusIndicator extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
-    
+
     // Watch VPN/TUN status via runTimeProvider
     final isStart = ref.watch(runTimeProvider.select((state) => state != null));
-    
-    final statusColor = isStart 
+
+    final statusColor = isStart
         ? const Color(0xFF4CAF50) // Green when connected
-        : colorScheme.onSurface.withValues(alpha: 0.3); // Gray when disconnected
-    
-    final statusText = isStart 
-        ? appLocalizations.running 
-        : appLocalizations.stopped;
-    
+        : colorScheme.onSurface
+            .withValues(alpha: 0.3); // Gray when disconnected
+
+    final statusText =
+        isStart ? appLocalizations.running : appLocalizations.stopped;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -432,24 +433,24 @@ class AppIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-      margin: const EdgeInsets.only(left: 8),
-      child: const Row(
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: CircleAvatar(
-              foregroundImage: AssetImage("assets/images/icon.png"),
-              backgroundColor: Colors.transparent,
+        margin: const EdgeInsets.only(left: 8),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircleAvatar(
+                foregroundImage: AssetImage("assets/images/icon.png"),
+                backgroundColor: Colors.transparent,
+              ),
             ),
-          ),
-          SizedBox(
-            width: 8,
-          ),
-          Text(
-            appName,
-          ),
-        ],
-      ),
-    );
+            SizedBox(
+              width: 8,
+            ),
+            Text(
+              appName,
+            ),
+          ],
+        ),
+      );
 }

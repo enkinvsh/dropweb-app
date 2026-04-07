@@ -4,6 +4,7 @@ import 'package:dropweb/providers/app.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class NetworkSpeed extends StatefulWidget {
   const NetworkSpeed({super.key});
@@ -48,7 +49,6 @@ class _NetworkSpeedState extends State<NetworkSpeed> {
         onPressed: () {},
         info: Info(
           label: appLocalizations.networkSpeed,
-          iconData: Icons.speed_sharp,
         ),
         child: Consumer(
           builder: (_, ref, __) {

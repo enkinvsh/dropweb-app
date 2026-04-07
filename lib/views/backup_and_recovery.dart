@@ -13,6 +13,7 @@ import 'package:dropweb/widgets/list.dart';
 import 'package:dropweb/widgets/text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 class BackupAndRecovery extends ConsumerWidget {
@@ -63,7 +64,8 @@ class BackupAndRecovery extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleRecoveryOnWebDAV(BuildContext context, DAVClient client) async {
+  Future<void> _handleRecoveryOnWebDAV(
+      BuildContext context, DAVClient client) async {
     final recoveryOption = await globalState.showCommonDialog<RecoveryOption>(
       child: const RecoveryOptionsDialog(),
     );
@@ -169,7 +171,8 @@ class BackupAndRecovery extends ConsumerWidget {
         ListHeader(title: appLocalizations.remote),
         if (dav == null)
           ListItem(
-            leading: const Icon(Icons.account_box),
+            leading:
+                HugeIcon(icon: HugeIcons.strokeRoundedUserSquare, size: 24),
             title: Text(appLocalizations.noInfo),
             subtitle: Text(appLocalizations.pleaseBindWebDAV),
             trailing: FilledButton.tonal(
@@ -183,7 +186,8 @@ class BackupAndRecovery extends ConsumerWidget {
           )
         else ...[
           ListItem(
-            leading: const Icon(Icons.account_box),
+            leading:
+                HugeIcon(icon: HugeIcons.strokeRoundedUserSquare, size: 24),
             title: TooltipText(
               text: Text(
                 dav.user,
@@ -200,28 +204,27 @@ class BackupAndRecovery extends ConsumerWidget {
                   FutureBuilder<bool>(
                     future: client!.pingCompleter.future,
                     builder: (_, snapshot) => Center(
-                        child: FadeThroughBox(
-                          child:
-                              snapshot.connectionState != ConnectionState.done
-                                  ? const SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 1,
-                                      ),
-                                    )
-                                  : Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: snapshot.data == true
-                                            ? Colors.green
-                                            : Colors.red,
-                                      ),
-                                      width: 12,
-                                      height: 12,
-                                    ),
-                        ),
+                      child: FadeThroughBox(
+                        child: snapshot.connectionState != ConnectionState.done
+                            ? const SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1,
+                                ),
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: snapshot.data == true
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                                width: 12,
+                                height: 12,
+                              ),
                       ),
+                    ),
                   ),
                 ],
               ),
@@ -320,32 +323,31 @@ class _RecoveryOptionsDialogState extends State<RecoveryOptionsDialog> {
 
   @override
   Widget build(BuildContext context) => CommonDialog(
-      title: appLocalizations.recovery,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 16,
-      ),
-      child: Wrap(
-        children: [
-          ListItem(
-            onTap: () {
-              _handleOnTab(RecoveryOption.onlyProfiles);
-            },
-            title: Text(appLocalizations.recoveryProfiles),
-          ),
-          ListItem(
-            onTap: () {
-              _handleOnTab(RecoveryOption.all);
-            },
-            title: Text(appLocalizations.recoveryAll),
-          )
-        ],
-      ),
-    );
+        title: appLocalizations.recovery,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 16,
+        ),
+        child: Wrap(
+          children: [
+            ListItem(
+              onTap: () {
+                _handleOnTab(RecoveryOption.onlyProfiles);
+              },
+              title: Text(appLocalizations.recoveryProfiles),
+            ),
+            ListItem(
+              onTap: () {
+                _handleOnTab(RecoveryOption.all);
+              },
+              title: Text(appLocalizations.recoveryAll),
+            )
+          ],
+        ),
+      );
 }
 
 class WebDAVFormDialog extends ConsumerStatefulWidget {
-
   const WebDAVFormDialog({super.key, this.dav});
   final DAV? dav;
 
@@ -391,65 +393,71 @@ class _WebDAVFormDialogState extends ConsumerState<WebDAVFormDialog> {
 
   @override
   Widget build(BuildContext context) => CommonDialog(
-      title: appLocalizations.webDAVConfiguration,
-      actions: [
-        if (widget.dav != null)
+        title: appLocalizations.webDAVConfiguration,
+        actions: [
+          if (widget.dav != null)
+            TextButton(
+              onPressed: _delete,
+              child: Text(appLocalizations.delete),
+            ),
           TextButton(
-            onPressed: _delete,
-            child: Text(appLocalizations.delete),
-          ),
-        TextButton(
-          onPressed: _submit,
-          child: Text(appLocalizations.save),
-        )
-      ],
-      child: Form(
-        key: _formKey,
-        child: Wrap(
-          runSpacing: 16,
-          children: [
-            TextFormField(
-              controller: uriController,
-              maxLines: 5,
-              minLines: 1,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.link),
-                border: const OutlineInputBorder(),
-                labelText: appLocalizations.address,
-                helperText: appLocalizations.addressHelp,
+            onPressed: _submit,
+            child: Text(appLocalizations.save),
+          )
+        ],
+        child: Form(
+          key: _formKey,
+          child: Wrap(
+            runSpacing: 16,
+            children: [
+              TextFormField(
+                controller: uriController,
+                maxLines: 5,
+                minLines: 1,
+                decoration: InputDecoration(
+                  prefixIcon:
+                      HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
+                  border: const OutlineInputBorder(),
+                  labelText: appLocalizations.address,
+                  helperText: appLocalizations.addressHelp,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty || !value.isUrl) {
+                    return appLocalizations.addressTip;
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty || !value.isUrl) {
-                  return appLocalizations.addressTip;
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: userController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.account_circle),
-                border: const OutlineInputBorder(),
-                labelText: appLocalizations.account,
+              TextFormField(
+                controller: userController,
+                decoration: InputDecoration(
+                  prefixIcon: HugeIcon(
+                      icon: HugeIcons.strokeRoundedUserCircle, size: 24),
+                  border: const OutlineInputBorder(),
+                  labelText: appLocalizations.account,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return appLocalizations.emptyTip(appLocalizations.account);
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return appLocalizations.emptyTip(appLocalizations.account);
-                }
-                return null;
-              },
-            ),
-            ValueListenableBuilder(
-              valueListenable: _obscureController,
-              builder: (_, obscure, __) => TextFormField(
+              ValueListenableBuilder(
+                valueListenable: _obscureController,
+                builder: (_, obscure, __) => TextFormField(
                   controller: passwordController,
                   obscureText: obscure,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.password),
+                    prefixIcon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedLockPassword, size: 24),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        obscure ? Icons.visibility : Icons.visibility_off,
+                      icon: HugeIcon(
+                        icon: obscure
+                            ? HugeIcons.strokeRoundedView
+                            : HugeIcons.strokeRoundedViewOff,
+                        size: 24,
                       ),
                       onPressed: () {
                         _obscureController.value = !obscure;
@@ -465,9 +473,9 @@ class _WebDAVFormDialogState extends ConsumerState<WebDAVFormDialog> {
                     return null;
                   },
                 ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
 }
