@@ -2,6 +2,8 @@
   "rule": "按规则",
   "global": "全局",
   "direct": "直连",
+  "smart": "智能",
+  "rules": "规则",
   "dashboard": "仪表盘",
   "proxies": "代理",
   "profile": "配置",

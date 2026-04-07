@@ -9,6 +9,7 @@ import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:intl/intl.dart';
 
 import 'common.dart';
 import 'setting.dart';
@@ -242,16 +243,18 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
 class _ModeSelectorAction extends ConsumerWidget {
   const _ModeSelectorAction();
 
+  static const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
+
   String _modeLabel(BuildContext context, Mode mode) => switch (mode) {
-        Mode.rule => appLocalizations.rule,
-        Mode.global => appLocalizations.global,
-        Mode.direct => appLocalizations.direct,
+        Mode.rule => Intl.message("smart"),
+        Mode.direct => Intl.message("rules"),
+        Mode.global => Intl.message("global"),
       };
 
   List<List<dynamic>> _modeIcon(Mode mode) => switch (mode) {
-        Mode.rule => HugeIcons.strokeRoundedTask01,
+        Mode.rule => HugeIcons.strokeRoundedAiBrain02,
+        Mode.direct => HugeIcons.strokeRoundedFilter,
         Mode.global => HugeIcons.strokeRoundedGlobe02,
-        Mode.direct => HugeIcons.strokeRoundedFlash,
       };
 
   @override
@@ -268,7 +271,7 @@ class _ModeSelectorAction extends ConsumerWidget {
       ),
       popup: CommonPopupMenu(
         items: [
-          for (final item in Mode.values.where((m) => m != Mode.direct))
+          for (final item in _modeOrder)
             PopupMenuItemData(
               label: _modeLabel(context, item),
               onPressed: () {

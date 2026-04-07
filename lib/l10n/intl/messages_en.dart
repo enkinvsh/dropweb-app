@@ -674,6 +674,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "ru": MessageLookupByLibrary.simpleMessage("Russian"),
         "rule": MessageLookupByLibrary.simpleMessage("By rule"),
         "ruleName": MessageLookupByLibrary.simpleMessage("Rule name"),
+        "rules": MessageLookupByLibrary.simpleMessage("Rules"),
         "ruleProviders": MessageLookupByLibrary.simpleMessage("Rule providers"),
         "ruleTarget": MessageLookupByLibrary.simpleMessage("Rule target"),
         "save": MessageLookupByLibrary.simpleMessage("Save"),
@@ -705,6 +706,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "show": MessageLookupByLibrary.simpleMessage("Show"),
         "shrink": MessageLookupByLibrary.simpleMessage("Shrink"),
         "silentLaunch": MessageLookupByLibrary.simpleMessage("SilentLaunch"),
+        "smart": MessageLookupByLibrary.simpleMessage("Smart"),
         "silentLaunchDesc": MessageLookupByLibrary.simpleMessage(
           "Start in the background",
         ),

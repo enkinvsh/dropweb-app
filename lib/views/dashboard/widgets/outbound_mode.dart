@@ -8,6 +8,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
+/// Mode.rule  = Smart  (auto-select via url-test)
+/// Mode.direct = Rules  (manual select, repurposed)
+/// Mode.global = Global
+const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
+
+String _modeLabel(Mode mode) => switch (mode) {
+      Mode.rule => Intl.message("smart"),
+      Mode.direct => Intl.message("rules"),
+      Mode.global => Intl.message("global"),
+    };
+
+Widget _modeIcon(Mode mode, {double size = 18}) => switch (mode) {
+      Mode.rule => HugeIcon(
+          icon: HugeIcons.strokeRoundedAiBrain02,
+          size: size,
+        ),
+      Mode.direct => HugeIcon(
+          icon: HugeIcons.strokeRoundedFilter,
+          size: size,
+        ),
+      Mode.global => HugeIcon(
+          icon: HugeIcons.strokeRoundedGlobe02,
+          size: size,
+        ),
+    };
+
 class OutboundMode extends StatelessWidget {
   const OutboundMode({super.key});
 
@@ -43,7 +69,7 @@ class OutboundMode extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      for (final item in Mode.values)
+                      for (final item in _modeOrder)
                         Flexible(
                           fit: FlexFit.tight,
                           child: ListItem.radio(
@@ -64,7 +90,7 @@ class OutboundMode extends StatelessWidget {
                               },
                             ),
                             title: Text(
-                              Intl.message(item.name),
+                              _modeLabel(item),
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
@@ -114,7 +140,7 @@ class OutboundModeV2 extends StatelessWidget {
               constraints: const BoxConstraints.expand(),
               child: CommonTabBar<Mode>(
                 children: Map.fromEntries(
-                  Mode.values.map(
+                  _modeOrder.map(
                     (item) => MapEntry(
                       item,
                       Container(
@@ -122,20 +148,27 @@ class OutboundModeV2 extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: const BoxDecoration(),
                         height: height - 16,
-                        child: Text(
-                          Intl.message(item.name),
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.adjustSize(1)
-                              .copyWith(
-                                color: item == mode
-                                    ? _getTextColor(
-                                        context,
-                                        item,
-                                      )
-                                    : null,
-                              ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _modeIcon(item, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              _modeLabel(item),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.adjustSize(1)
+                                  .copyWith(
+                                    color: item == mode
+                                        ? _getTextColor(
+                                            context,
+                                            item,
+                                          )
+                                        : null,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

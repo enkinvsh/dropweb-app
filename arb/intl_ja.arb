@@ -2,6 +2,8 @@
   "rule": "ルールに従って",
   "global": "グローバル",
   "direct": "ダイレクト",
+  "smart": "スマート",
+  "rules": "ルール",
   "dashboard": "ダッシュボード",
   "proxies": "プロキシ",
   "profile": "プロファイル",

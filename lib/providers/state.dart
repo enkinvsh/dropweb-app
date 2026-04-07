@@ -51,12 +51,12 @@ GroupsState currentGroupsState(Ref ref) {
   final groups = ref.watch(groupsProvider);
   return GroupsState(
     value: switch (mode) {
-      Mode.direct => [],
-      Mode.global => groups.toList(),
-      Mode.rule => groups
+      // Smart (Mode.rule) and Rules (Mode.direct) both show rule-filtered groups
+      Mode.rule || Mode.direct => groups
           .where((item) => item.hidden == false)
           .where((element) => element.name != GroupName.GLOBAL.name)
           .toList(),
+      Mode.global => groups.toList(),
     },
   );
 }
@@ -116,7 +116,9 @@ UpdateParams updateParams(Ref ref) {
         tun: state.tun.getRealTun(routeMode),
         allowLan: state.allowLan,
         findProcessMode: state.findProcessMode,
-        mode: state.mode,
+        // Mode.direct is repurposed as "Rules" mode — both Smart and Rules
+        // use mihomo "rule" mode. Only Global maps to mihomo "global".
+        mode: state.mode == Mode.direct ? Mode.rule : state.mode,
         logLevel: state.logLevel,
         ipv6: state.ipv6,
         tcpConcurrent: state.tcpConcurrent,
@@ -271,7 +273,8 @@ ProfilesSelectorState profilesSelectorState(Ref ref) {
 
 @riverpod
 ProxiesListSelectorState proxiesListSelectorState(Ref ref) {
-  final groupNames = ref.watch(currentGroupsStateProvider.select((state) => state.value.map((e) => e.name).toList()));
+  final groupNames = ref.watch(currentGroupsStateProvider
+      .select((state) => state.value.map((e) => e.name).toList()));
   final currentUnfoldSet = ref.watch(unfoldSetProvider);
   final proxiesStyle = ref.watch(proxiesStyleSettingProvider);
   final sortNum = ref.watch(sortNumProvider);
@@ -310,12 +313,12 @@ ProxiesSelectorState proxiesSelectorState(Ref ref) {
 
 @riverpod
 GroupNamesState groupNamesState(Ref ref) => GroupNamesState(
-    groupNames: ref.watch(
-      currentGroupsStateProvider.select(
-        (state) => state.value.map((e) => e.name).toList(),
+      groupNames: ref.watch(
+        currentGroupsStateProvider.select(
+          (state) => state.value.map((e) => e.name).toList(),
+        ),
       ),
-    ),
-  );
+    );
 
 @riverpod
 ProxyGroupSelectorState proxyGroupSelectorState(Ref ref, String groupName) {
@@ -331,7 +334,9 @@ ProxyGroupSelectorState proxyGroupSelectorState(Ref ref, String groupName) {
   final columns = ref.watch(getProxiesColumnsProvider);
   final query =
       ref.watch(proxiesQueryProvider.select((state) => state.toLowerCase()));
-  final proxies = group?.all.where((item) => item.name.toLowerCase().contains(query)).toList() ??
+  final proxies = group?.all
+          .where((item) => item.name.toLowerCase().contains(query))
+          .toList() ??
       [];
   return ProxyGroupSelectorState(
     testUrl: group?.testUrl,
@@ -358,15 +363,17 @@ PackageListSelectorState packageListSelectorState(Ref ref) {
 @riverpod
 MoreToolsSelectorState moreToolsSelectorState(Ref ref) {
   final viewMode = ref.watch(viewModeProvider);
-  final navigationItems = ref.watch(navigationsStateProvider.select((state) => state.value.where((element) {
-      final isMore = element.modes.contains(NavigationItemMode.more);
-      final isDesktop = element.modes.contains(NavigationItemMode.desktop);
-      if (isMore && !isDesktop) return true;
-      if (viewMode != ViewMode.mobile || !isMore) {
-        return false;
-      }
-      return true;
-    }).toList()));
+  final navigationItems = ref.watch(
+      navigationsStateProvider.select((state) => state.value.where((element) {
+            final isMore = element.modes.contains(NavigationItemMode.more);
+            final isDesktop =
+                element.modes.contains(NavigationItemMode.desktop);
+            if (isMore && !isDesktop) return true;
+            if (viewMode != ViewMode.mobile || !isMore) {
+              return false;
+            }
+            return true;
+          }).toList()));
 
   return MoreToolsSelectorState(navigationItems: navigationItems);
 }
@@ -436,17 +443,17 @@ Set<String> unfoldSet(Ref ref) {
 
 @riverpod
 HotKeyAction getHotKeyAction(Ref ref, HotAction hotAction) => ref.watch(
-    hotKeyActionsProvider.select(
-      (state) {
-        final index = state.indexWhere((item) => item.action == hotAction);
-        return index != -1
-            ? state[index]
-            : HotKeyAction(
-                action: hotAction,
-              );
-      },
-    ),
-  );
+      hotKeyActionsProvider.select(
+        (state) {
+          final index = state.indexWhere((item) => item.action == hotAction);
+          return index != -1
+              ? state[index]
+              : HotKeyAction(
+                  action: hotAction,
+                );
+        },
+      ),
+    );
 
 @riverpod
 Profile? currentProfile(Ref ref) {
@@ -566,8 +573,8 @@ String getProxyDesc(Ref ref, Proxy proxy) {
 class ProfileOverrideState extends _$ProfileOverrideState {
   @override
   ProfileOverrideStateModel build() => const ProfileOverrideStateModel(
-      selectedRules: {},
-    );
+        selectedRules: {},
+      );
 
   void updateState(
     ProfileOverrideStateModel? Function(ProfileOverrideStateModel state)
@@ -583,10 +590,10 @@ class ProfileOverrideState extends _$ProfileOverrideState {
 
 @riverpod
 OverrideData? getProfileOverrideData(Ref ref, String profileId) => ref.watch(
-    profilesProvider.select(
-      (state) => state.getProfile(profileId)?.overrideData,
-    ),
-  );
+      profilesProvider.select(
+        (state) => state.getProfile(profileId)?.overrideData,
+      ),
+    );
 
 @riverpod
 VM2? layoutChange(Ref ref) {

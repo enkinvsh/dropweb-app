@@ -69,6 +69,16 @@ class AppLocalizations {
     return Intl.message('Direct', name: 'direct', desc: '', args: []);
   }
 
+  /// `Smart`
+  String get smart {
+    return Intl.message('Smart', name: 'smart', desc: '', args: []);
+  }
+
+  /// `Rules`
+  String get rules {
+    return Intl.message('Rules', name: 'rules', desc: '', args: []);
+  }
+
   /// `Dashboard`
   String get dashboard {
     return Intl.message('Dashboard', name: 'dashboard', desc: '', args: []);

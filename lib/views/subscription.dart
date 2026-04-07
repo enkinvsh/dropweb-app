@@ -17,6 +17,7 @@ import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:intl/intl.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
@@ -358,12 +359,492 @@ class _ProxiesContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final type =
-        ref.watch(proxiesStyleSettingProvider.select((state) => state.type));
-    return switch (type) {
-      ProxiesType.tab => ProxiesTabView(key: proxiesTabKey),
-      ProxiesType.list => const ProxiesListView(),
+    final mode =
+        ref.watch(patchClashConfigProvider.select((state) => state.mode));
+    return switch (mode) {
+      Mode.rule => const _SmartProxiesView(),
+      Mode.direct => const _RulesProxiesView(),
+      Mode.global => const _RulesProxiesView(),
     };
+  }
+}
+
+// ── Smart mode view ───────────────────────────────────────────────────────
+
+class _SmartProxiesView extends ConsumerWidget {
+  const _SmartProxiesView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groups = ref.watch(currentGroupsStateProvider).value;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (groups.isEmpty) {
+      return NullStatus(label: appLocalizations.nullProfileDesc);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12, left: 4),
+          child: Row(
+            children: [
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedAiBrain02,
+                size: 18,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                Intl.message("smart"),
+                style: context.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '·  ${groups.length} ${Intl.message("proxies").toLowerCase()}',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Group summary cards
+        for (final group in groups)
+          _SmartGroupCard(group: group, isDark: isDark),
+      ],
+    );
+  }
+}
+
+class _SmartGroupCard extends ConsumerWidget {
+  final Group group;
+  final bool isDark;
+  const _SmartGroupCard({required this.group, required this.isDark});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedName = group.realNow;
+    final selectedProxy =
+        group.all.where((p) => p.name == selectedName).firstOrNull;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : colorScheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Group icon — skip URL-based icons, show emoji or fallback
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: group.icon.isNotEmpty && !group.icon.startsWith('http')
+                  ? Text(group.icon, style: const TextStyle(fontSize: 20))
+                  : HugeIcon(
+                      icon: HugeIcons.strokeRoundedWifiConnected01,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
+            ),
+            // Group name + selected proxy
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.name,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    selectedProxy != null
+                        ? '${selectedProxy.type} · $selectedName'
+                        : selectedName.isNotEmpty
+                            ? selectedName
+                            : '...',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            // Delay badge
+            if (selectedName.isNotEmpty)
+              Consumer(
+                builder: (context, ref, _) {
+                  final delay = ref.watch(getDelayProvider(
+                    proxyName: selectedName,
+                    testUrl: group.testUrl,
+                  ));
+                  if (delay == null || delay <= 0) {
+                    return const SizedBox(width: 48);
+                  }
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color:
+                          utils.getDelayColor(delay)?.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$delay ms',
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: utils.getDelayColor(delay),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Rules mode view ───────────────────────────────────────────────────────
+
+class _RulesProxiesView extends ConsumerWidget {
+  const _RulesProxiesView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groups = ref.watch(currentGroupsStateProvider).value;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (groups.isEmpty) {
+      return NullStatus(label: appLocalizations.nullProfileDesc);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12, left: 4),
+          child: Row(
+            children: [
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedFilter,
+                size: 18,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                Intl.message("rules"),
+                style: context.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '·  ${groups.length} ${Intl.message("proxies").toLowerCase()}',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        for (final group in groups)
+          _RulesGroupCard(group: group, isDark: isDark),
+      ],
+    );
+  }
+}
+
+class _RulesGroupCard extends ConsumerWidget {
+  final Group group;
+  final bool isDark;
+  const _RulesGroupCard({required this.group, required this.isDark});
+
+  void _openSelector(BuildContext context) {
+    showSheet(
+      context: context,
+      props: const SheetProps(isScrollControlled: true),
+      builder: (_, type) => _ProxySelectorSheet(group: group),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedName = group.realNow;
+    final selectedProxy =
+        group.all.where((p) => p.name == selectedName).firstOrNull;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: () => _openSelector(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: group.icon.isNotEmpty && !group.icon.startsWith('http')
+                    ? Text(group.icon, style: const TextStyle(fontSize: 20))
+                    : HugeIcon(
+                        icon: HugeIcons.strokeRoundedWifiConnected01,
+                        size: 20,
+                        color: colorScheme.primary,
+                      ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.name,
+                      style: context.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      selectedProxy != null
+                          ? '${selectedProxy.type} · $selectedName'
+                          : selectedName.isNotEmpty
+                              ? selectedName
+                              : '...',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              // Delay badge
+              if (selectedName.isNotEmpty)
+                Consumer(
+                  builder: (context, ref, _) {
+                    final delay = ref.watch(getDelayProvider(
+                      proxyName: selectedName,
+                      testUrl: group.testUrl,
+                    ));
+                    if (delay == null || delay <= 0) {
+                      return const SizedBox(width: 48);
+                    }
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color:
+                            utils.getDelayColor(delay)?.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$delay ms',
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: utils.getDelayColor(delay),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              const SizedBox(width: 4),
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight01,
+                size: 16,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Proxy selector sheet ──────────────────────────────────────────────────
+
+class _ProxySelectorSheet extends ConsumerWidget {
+  final Group group;
+  const _ProxySelectorSheet({required this.group});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedName = ref.watch(groupsProvider
+        .select((groups) => groups.getGroup(group.name)?.realNow ?? ''));
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Text(
+              group.name,
+              style: context.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: group.all.length,
+              itemBuilder: (context, index) {
+                final proxy = group.all[index];
+                final isSelected = proxy.name == selectedName;
+                return _ProxySelectorRow(
+                  proxy: proxy,
+                  testUrl: group.testUrl,
+                  isSelected: isSelected,
+                  isDark: isDark,
+                  onTap: () {
+                    globalState.appController.changeProxy(
+                      groupName: group.name,
+                      proxyName: proxy.name,
+                    );
+                    Navigator.of(context).pop();
+                  },
+                );
+              },
+            ),
+          ),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProxySelectorRow extends ConsumerWidget {
+  final Proxy proxy;
+  final String? testUrl;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _ProxySelectorRow({
+    required this.proxy,
+    required this.testUrl,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final delay = ref.watch(getDelayProvider(
+      proxyName: proxy.name,
+      testUrl: testUrl,
+    ));
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        color: isSelected
+            ? colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.06)
+            : null,
+        child: Row(
+          children: [
+            if (isSelected)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                  size: 18,
+                  color: colorScheme.primary,
+                ),
+              )
+            else
+              const SizedBox(width: 30),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    proxy.name,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? colorScheme.primary : null,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    proxy.type,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (delay != null && delay > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: utils.getDelayColor(delay)?.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$delay ms',
+                  style: context.textTheme.labelSmall?.copyWith(
+                    color: utils.getDelayColor(delay),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -372,16 +853,18 @@ class _ProxiesContent extends ConsumerWidget {
 class _ModeSelectorAction extends ConsumerWidget {
   const _ModeSelectorAction();
 
+  static const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
+
   String _label(BuildContext context, Mode mode) => switch (mode) {
-        Mode.rule => appLocalizations.rule,
-        Mode.global => appLocalizations.global,
-        Mode.direct => appLocalizations.direct,
+        Mode.rule => Intl.message("smart"),
+        Mode.direct => Intl.message("rules"),
+        Mode.global => Intl.message("global"),
       };
 
   List<List<dynamic>> _icon(Mode mode) => switch (mode) {
-        Mode.rule => HugeIcons.strokeRoundedTask01,
+        Mode.rule => HugeIcons.strokeRoundedAiBrain02,
+        Mode.direct => HugeIcons.strokeRoundedFilter,
         Mode.global => HugeIcons.strokeRoundedGlobe02,
-        Mode.direct => HugeIcons.strokeRoundedFlash,
       };
 
   @override
@@ -396,7 +879,7 @@ class _ModeSelectorAction extends ConsumerWidget {
       ),
       popup: CommonPopupMenu(
         items: [
-          for (final item in Mode.values.where((m) => m != Mode.direct))
+          for (final item in _modeOrder)
             PopupMenuItemData(
               label: _label(context, item),
               onPressed: () => globalState.appController.changeMode(item),

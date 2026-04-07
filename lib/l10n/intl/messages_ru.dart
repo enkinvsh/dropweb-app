@@ -723,6 +723,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "ru": MessageLookupByLibrary.simpleMessage("Русский"),
         "rule": MessageLookupByLibrary.simpleMessage("По правилам"),
         "ruleName": MessageLookupByLibrary.simpleMessage("Название правила"),
+        "rules": MessageLookupByLibrary.simpleMessage("Правила"),
         "ruleProviders":
             MessageLookupByLibrary.simpleMessage("Провайдеры правил"),
         "ruleTarget": MessageLookupByLibrary.simpleMessage("Цель правила"),
@@ -754,6 +755,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "show": MessageLookupByLibrary.simpleMessage("Показать"),
         "shrink": MessageLookupByLibrary.simpleMessage("Сжать"),
         "silentLaunch": MessageLookupByLibrary.simpleMessage("Скрытый запуск"),
+        "smart": MessageLookupByLibrary.simpleMessage("Умный"),
         "silentLaunchDesc": MessageLookupByLibrary.simpleMessage(
           "Запускать в свернутом виде",
         ),

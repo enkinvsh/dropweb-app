@@ -2,6 +2,8 @@
   "rule": "By rule",
   "global": "Global",
   "direct": "Direct",
+  "smart": "Smart",
+  "rules": "Rules",
   "dashboard": "Dashboard",
   "proxies": "Proxies",
   "profile": "Profile",
