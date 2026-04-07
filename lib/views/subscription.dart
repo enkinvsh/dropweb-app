@@ -55,167 +55,6 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
     );
   }
 
-  Future<void> _updateProfiles() async {
-    final profiles = globalState.config.profiles;
-    final messages = [];
-    final updateProfiles = profiles.map<Future>(
-      (profile) async {
-        if (profile.type == ProfileType.file) return;
-        globalState.appController
-            .setProfile(profile.copyWith(isUpdating: true));
-        try {
-          await globalState.appController.updateProfile(profile);
-        } catch (e) {
-          messages.add("${profile.label ?? profile.id}: $e \n");
-          globalState.appController
-              .setProfile(profile.copyWith(isUpdating: false));
-        }
-      },
-    );
-    final titleMedium = context.textTheme.titleMedium;
-    await Future.wait(updateProfiles);
-    if (messages.isNotEmpty) {
-      globalState.showMessage(
-        title: appLocalizations.tip,
-        message: TextSpan(
-          children: [
-            for (final message in messages)
-              TextSpan(text: message, style: titleMedium)
-          ],
-        ),
-      );
-    }
-  }
-
-  List<Widget> get _profilesActions => [
-        IconButton(
-            onPressed: _updateProfiles,
-            icon: HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 24)),
-        IconButton(
-          onPressed: () =>
-              showExtend(context, builder: (_, type) => const ScriptsView()),
-          icon: Consumer(
-            builder: (context, ref, __) {
-              final isScriptMode = ref.watch(
-                  scriptStateProvider.select((state) => state.realId != null));
-              return HugeIcon(
-                icon: HugeIcons.strokeRoundedFunctionCircle,
-                size: 24,
-                color: isScriptMode ? context.colorScheme.primary : null,
-              );
-            },
-          ),
-        ),
-        IconButton(
-          onPressed: () {
-            final profiles = globalState.config.profiles;
-            showSheet(
-              context: context,
-              builder: (_, type) =>
-                  ReorderableProfilesSheet(type: type, profiles: profiles),
-            );
-          },
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedSorting01, size: 26),
-        ),
-      ];
-
-  // ── Proxies actions ───────────────────────────────────────────────────
-
-  bool get _isTab =>
-      ref.read(proxiesStyleSettingProvider.select((s) => s.type)) ==
-      ProxiesType.tab;
-
-  bool get _hasProviders =>
-      ref.read(providersProvider.select((s) => s.isNotEmpty));
-
-  Future<void> _pingAllGroups() async {
-    final groups = ref.read(currentGroupsStateProvider).value;
-    final allProxies = <Proxy>[];
-    final seenNames = <String>{};
-    for (final group in groups) {
-      for (final proxy in group.all) {
-        if (!seenNames.contains(proxy.name)) {
-          seenNames.add(proxy.name);
-          allProxies.add(proxy);
-        }
-      }
-    }
-    if (allProxies.isNotEmpty) await delayTest(allProxies, null);
-  }
-
-  List<Widget> get _proxiesActions {
-    final isTab = _isTab;
-    return [
-      Consumer(
-        builder: (_, ref, child) {
-          final enabled = ref.watch(globalModeEnabledProvider);
-          return enabled ? child! : const SizedBox.shrink();
-        },
-        child: const _ModeSelectorAction(),
-      ),
-      if (isTab)
-        IconButton(
-          onPressed: () => _proxiesTabKey.currentState?.scrollToGroupSelected(),
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedTarget01, size: 24),
-        ),
-      if (!isTab) ...[
-        IconButton(
-            onPressed: _pingAllGroups,
-            icon: HugeIcon(
-                icon: HugeIcons.strokeRoundedWifiConnected01, size: 24)),
-        Consumer(builder: (_, ref, __) {
-          final unfoldSet = ref.watch(unfoldSetProvider);
-          final groupNames = ref.watch(currentGroupsStateProvider
-              .select((s) => s.value.map((e) => e.name).toList()));
-          final allExpanded =
-              groupNames.isNotEmpty && groupNames.every(unfoldSet.contains);
-          return IconButton(
-            onPressed: () {
-              if (allExpanded) {
-                globalState.appController.updateCurrentUnfoldSet({});
-              } else {
-                globalState.appController
-                    .updateCurrentUnfoldSet(groupNames.toSet());
-              }
-            },
-            icon: HugeIcon(
-                icon: allExpanded
-                    ? HugeIcons.strokeRoundedArrowShrink
-                    : HugeIcons.strokeRoundedArrowExpand01,
-                size: 24),
-          );
-        }),
-      ],
-      CommonPopupBox(
-        targetBuilder: (open) => IconButton(
-          onPressed: () => open(offset: const Offset(0, 20)),
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedMoreVertical, size: 24),
-        ),
-        popup: CommonPopupMenu(items: [
-          PopupMenuItemData(
-            label: appLocalizations.settings,
-            onPressed: () {
-              showSheet(
-                context: context,
-                props: const SheetProps(isScrollControlled: true),
-                builder: (_, type) => AdaptiveSheetScaffold(
-                    type: type,
-                    body: const ProxiesSetting(),
-                    title: appLocalizations.settings),
-              );
-            },
-          ),
-          if (_hasProviders)
-            PopupMenuItemData(
-              label: appLocalizations.providers,
-              onPressed: () => showExtend(context,
-                  builder: (_, type) => const ProvidersView()),
-            ),
-        ]),
-      ),
-    ];
-  }
-
   // ── Build ─────────────────────────────────────────────────────────────
 
   @override
@@ -232,24 +71,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
         title: Text(appLocalizations.subscription),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          ...(isProfilesTab ? _profilesActions : _proxiesActions),
-          const SizedBox(width: 8),
-        ],
+        actions: const [SizedBox(width: 8)],
       ),
-      floatingActionButton: isProfilesTab
-          ? FloatingActionButton(
-              heroTag: null,
-              onPressed: _handleShowAddProfilePage,
-              child: HugeIcon(icon: HugeIcons.strokeRoundedAdd01, size: 24),
-            )
-          : (_isTab
-              ? DelayTestButton(
-                  onClick: () async {
-                    await _proxiesTabKey.currentState?.delayTestCurrentGroup();
-                  },
-                )
-              : null),
       body: Stack(
         children: [
           if (isDark) const Positioned.fill(child: MeshBackground()),
@@ -259,35 +82,14 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
                   height: MediaQuery.of(context).padding.top + kToolbarHeight),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicatorPadding: const EdgeInsets.all(2),
-                    dividerHeight: 0,
-                    labelColor: colorScheme.primary,
-                    unselectedLabelColor: colorScheme.onSurfaceVariant,
-                    labelStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600),
-                    unselectedLabelStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w400),
-                    tabs: [
-                      Tab(text: appLocalizations.profiles),
-                      Tab(text: appLocalizations.proxies),
-                    ],
-                  ),
+                child: _GlassTabBar(
+                  controller: _tabController,
+                  isDark: isDark,
+                  colorScheme: colorScheme,
+                  tabs: [
+                    appLocalizations.profiles,
+                    appLocalizations.proxies,
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -296,7 +98,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
                   controller: _tabController,
                   children: [
                     _ProfilesContent(onAdd: _handleShowAddProfilePage),
-                    _ProxiesContent(proxiesTabKey: _proxiesTabKey),
+                    const _ProxiesContent(),
                   ],
                 ),
               ),
@@ -310,6 +112,32 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
 
 // ── Profiles content ──────────────────────────────────────────────────────
 
+Future<void> _refreshProfiles(BuildContext context) async {
+  final profiles = globalState.config.profiles;
+  final messages = <String>[];
+  await Future.wait(profiles.map((profile) async {
+    if (profile.type == ProfileType.file) return;
+    globalState.appController.setProfile(profile.copyWith(isUpdating: true));
+    try {
+      await globalState.appController.updateProfile(profile);
+    } catch (e) {
+      messages.add("${profile.label ?? profile.id}: $e \n");
+      globalState.appController.setProfile(profile.copyWith(isUpdating: false));
+    }
+  }));
+  if (messages.isNotEmpty && context.mounted) {
+    globalState.showMessage(
+      title: appLocalizations.tip,
+      message: TextSpan(
+        children: [
+          for (final msg in messages)
+            TextSpan(text: msg, style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProfilesContent extends ConsumerWidget {
   final VoidCallback onAdd;
   const _ProfilesContent({required this.onAdd});
@@ -317,30 +145,83 @@ class _ProfilesContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(profilesSelectorStateProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (state.profiles.isEmpty) {
-      return NullStatus(label: appLocalizations.nullProfileDesc);
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: _AddProfileCard(onTap: onAdd, isDark: isDark),
+        ),
+      );
     }
-    return Align(
-      alignment: Alignment.topCenter,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 88),
-        child: Grid(
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          crossAxisCount: state.columns,
-          children: [
-            for (int i = 0; i < state.profiles.length; i++)
-              GridItem(
-                child: ProfileItem(
-                  key: Key(state.profiles[i].id),
-                  profile: state.profiles[i],
-                  groupValue: state.currentProfileId,
-                  onChanged: (id) {
-                    ref.read(currentProfileIdProvider.notifier).value = id;
-                  },
+    return RefreshIndicator(
+      onRefresh: () => _refreshProfiles(context),
+      color: colorScheme.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 32),
+        children: [
+          Grid(
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            crossAxisCount: state.columns,
+            children: [
+              for (int i = 0; i < state.profiles.length; i++)
+                GridItem(
+                  child: ProfileItem(
+                    key: Key(state.profiles[i].id),
+                    profile: state.profiles[i],
+                    groupValue: state.currentProfileId,
+                    onChanged: (id) {
+                      ref.read(currentProfileIdProvider.notifier).value = id;
+                    },
+                  ),
                 ),
+              GridItem(
+                child: _AddProfileCard(onTap: onAdd, isDark: isDark),
               ),
-          ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddProfileCard extends StatelessWidget {
+  final VoidCallback onTap;
+  final bool isDark;
+  const _AddProfileCard({required this.onTap, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: colorScheme.primary.withValues(alpha: 0.08),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Center(
+            child: HugeIcon(
+              icon: HugeIcons.strokeRoundedAdd01,
+              size: 22,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
         ),
       ),
     );
@@ -350,19 +231,40 @@ class _ProfilesContent extends ConsumerWidget {
 // ── Proxies content ───────────────────────────────────────────────────────
 
 class _ProxiesContent extends ConsumerWidget {
-  final GlobalKey<ProxiesTabViewState> proxiesTabKey;
-  const _ProxiesContent({required this.proxiesTabKey});
+  const _ProxiesContent();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode =
         ref.watch(patchClashConfigProvider.select((state) => state.mode));
-    return switch (mode) {
-      Mode.rule => const _SmartProxiesView(),
-      Mode.direct => const _RulesProxiesView(),
-      Mode.global => const _RulesProxiesView(),
-    };
+    return Column(
+      children: [
+        Expanded(
+          child: switch (mode) {
+            Mode.rule => const _SmartProxiesView(),
+            Mode.direct => const _RulesProxiesView(),
+            Mode.global => const _RulesProxiesView(),
+          },
+        ),
+        const _ModeBottomBar(),
+      ],
+    );
   }
+}
+
+Future<void> _pingAllProxies(WidgetRef ref) async {
+  final groups = ref.read(currentGroupsStateProvider).value;
+  final allProxies = <Proxy>[];
+  final seenNames = <String>{};
+  for (final group in groups) {
+    for (final proxy in group.all) {
+      if (!seenNames.contains(proxy.name)) {
+        seenNames.add(proxy.name);
+        allProxies.add(proxy);
+      }
+    }
+  }
+  if (allProxies.isNotEmpty) await delayTest(allProxies, null);
 }
 
 // ── Smart mode view ───────────────────────────────────────────────────────
@@ -380,41 +282,17 @@ class _SmartProxiesView extends ConsumerWidget {
       return NullStatus(label: appLocalizations.nullProfileDesc);
     }
 
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12, left: 4),
-          child: Row(
-            children: [
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedAiBrain02,
-                size: 18,
-                color: colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                Intl.message("smart"),
-                style: context.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '·  ${groups.length} ${Intl.message("proxies").toLowerCase()}',
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Group summary cards
-        for (final group in groups)
-          _SmartGroupCard(group: group, isDark: isDark),
-      ],
+    return RefreshIndicator(
+      onRefresh: () => _pingAllProxies(ref),
+      color: colorScheme.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
+          for (final group in groups)
+            _SmartGroupCard(group: group, isDark: isDark),
+        ],
+      ),
     );
   }
 }
@@ -539,39 +417,17 @@ class _RulesProxiesView extends ConsumerWidget {
       return NullStatus(label: appLocalizations.nullProfileDesc);
     }
 
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12, left: 4),
-          child: Row(
-            children: [
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedFilter,
-                size: 18,
-                color: colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                Intl.message("rules"),
-                style: context.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '·  ${groups.length} ${Intl.message("proxies").toLowerCase()}',
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        for (final group in groups)
-          _RulesGroupCard(group: group, isDark: isDark),
-      ],
+    return RefreshIndicator(
+      onRefresh: () => _pingAllProxies(ref),
+      color: colorScheme.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
+          for (final group in groups)
+            _RulesGroupCard(group: group, isDark: isDark),
+        ],
+      ),
     );
   }
 }
@@ -598,96 +454,114 @@ class _RulesGroupCard extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: GestureDetector(
-        onTap: () => _openSelector(context),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : colorScheme.outlineVariant.withValues(alpha: 0.3),
+      child: Material(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () => _openSelector(context),
+          borderRadius: BorderRadius.circular(16),
+          splashColor: colorScheme.primary.withValues(alpha: 0.08),
+          highlightColor: colorScheme.primary.withValues(alpha: 0.04),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: group.icon.isNotEmpty && !group.icon.startsWith('http')
-                    ? Text(group.icon, style: const TextStyle(fontSize: 20))
-                    : HugeIcon(
-                        icon: HugeIcons.strokeRoundedWifiConnected01,
-                        size: 20,
-                        color: colorScheme.primary,
-                      ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      group.name,
-                      style: context.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      selectedProxy != null
-                          ? '${selectedProxy.type} · $selectedName'
-                          : selectedName.isNotEmpty
-                              ? selectedName
-                              : '...',
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              // Delay badge
-              if (selectedName.isNotEmpty)
-                Consumer(
-                  builder: (context, ref, _) {
-                    final delay = ref.watch(getDelayProvider(
-                      proxyName: selectedName,
-                      testUrl: group.testUrl,
-                    ));
-                    if (delay == null || delay <= 0) {
-                      return const SizedBox(width: 48);
-                    }
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color:
-                            utils.getDelayColor(delay)?.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$delay ms',
-                        style: context.textTheme.labelSmall?.copyWith(
-                          color: utils.getDelayColor(delay),
-                          fontWeight: FontWeight.w600,
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: group.icon.isNotEmpty && !group.icon.startsWith('http')
+                      ? Text(group.icon, style: const TextStyle(fontSize: 20))
+                      : HugeIcon(
+                          icon: HugeIcons.strokeRoundedWifiConnected01,
+                          size: 20,
+                          color: colorScheme.primary,
                         ),
-                      ),
-                    );
-                  },
                 ),
-              const SizedBox(width: 4),
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowRight01,
-                size: 16,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              ),
-            ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        style: context.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        selectedProxy != null
+                            ? '${selectedProxy.type} · $selectedName'
+                            : selectedName.isNotEmpty
+                                ? selectedName
+                                : '...',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (selectedName.isNotEmpty)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final delay = ref.watch(getDelayProvider(
+                        proxyName: selectedName,
+                        testUrl: group.testUrl,
+                      ));
+                      if (delay == null || delay <= 0) {
+                        return const SizedBox(width: 48);
+                      }
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: utils
+                              .getDelayColor(delay)
+                              ?.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$delay ms',
+                          style: context.textTheme.labelSmall?.copyWith(
+                            color: utils.getDelayColor(delay),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowRight01,
+                    size: 14,
+                    color: isDark
+                        ? colorScheme.onSurfaceVariant
+                        : colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -844,43 +718,160 @@ class _ProxySelectorRow extends ConsumerWidget {
   }
 }
 
-// ── Mode selector ─────────────────────────────────────────────────────────
+// ── Glass tab bar ─────────────────────────────────────────────────────────
 
-class _ModeSelectorAction extends ConsumerWidget {
-  const _ModeSelectorAction();
+class _GlassTabBar extends StatelessWidget {
+  final TabController controller;
+  final bool isDark;
+  final ColorScheme colorScheme;
+  final List<String> tabs;
 
-  static const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
+  const _GlassTabBar({
+    required this.controller,
+    required this.isDark,
+    required this.colorScheme,
+    required this.tabs,
+  });
 
-  String _label(BuildContext context, Mode mode) => switch (mode) {
-        Mode.rule => Intl.message("smart"),
-        Mode.direct => Intl.message("rules"),
-        Mode.global => Intl.message("global"),
-      };
+  Widget _buildContent() {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: Lumina.glassOpacity)
+            : colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(Lumina.radiusLg),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: Lumina.glassBorderOpacity)
+              : colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
+      ),
+      child: TabBar(
+        controller: controller,
+        indicator: BoxDecoration(
+          color: isDark
+              ? colorScheme.primary.withValues(alpha: 0.15)
+              : colorScheme.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(Lumina.radiusLg - 6),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicatorPadding: const EdgeInsets.all(4),
+        dividerHeight: 0,
+        labelColor: colorScheme.primary,
+        unselectedLabelColor: colorScheme.onSurfaceVariant,
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+        tabs: [for (final label in tabs) Tab(text: label)],
+      ),
+    );
+  }
 
-  List<List<dynamic>> _icon(Mode mode) => switch (mode) {
-        Mode.rule => HugeIcons.strokeRoundedAiBrain02,
-        Mode.direct => HugeIcons.strokeRoundedFilter,
-        Mode.global => HugeIcons.strokeRoundedGlobe02,
-      };
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Lumina.radiusLg),
+        boxShadow: isDark ? Lumina.glassShadow : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Lumina.radiusLg),
+        child: isDark
+            ? BackdropFilter(
+                filter: Lumina.glassBlur,
+                child: _buildContent(),
+              )
+            : _buildContent(),
+      ),
+    );
+  }
+}
+
+// ── Mode bottom bar ───────────────────────────────────────────────────────
+
+const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
+
+String _modeLabel(Mode mode) => switch (mode) {
+      Mode.rule => Intl.message("smart"),
+      Mode.direct => Intl.message("rules"),
+      Mode.global => Intl.message("global"),
+    };
+
+class _ModeBottomBar extends ConsumerWidget {
+  const _ModeBottomBar();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode =
         ref.watch(patchClashConfigProvider.select((state) => state.mode));
-    return CommonPopupBox(
-      targetBuilder: (open) => IconButton(
-        tooltip: _label(context, mode),
-        onPressed: () => open(offset: const Offset(0, 20)),
-        icon: HugeIcon(icon: _icon(mode), size: 24),
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final content = Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: Lumina.glassOpacity)
+            : colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(Lumina.radiusLg),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: Lumina.glassBorderOpacity)
+              : colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
       ),
-      popup: CommonPopupMenu(
-        items: [
-          for (final item in _modeOrder)
-            PopupMenuItemData(
-              label: _label(context, item),
-              onPressed: () => globalState.appController.changeMode(item),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          for (final m in _modeOrder)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => globalState.appController.changeMode(m),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: m == mode
+                        ? (isDark
+                            ? colorScheme.primary.withValues(alpha: 0.15)
+                            : colorScheme.primary.withValues(alpha: 0.12))
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(Lumina.radiusLg - 6),
+                  ),
+                  child: Text(
+                    _modeLabel(m),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: m == mode ? FontWeight.w600 : FontWeight.w400,
+                      color: m == mode
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
             ),
         ],
+      ),
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          16, 8, 16, MediaQuery.of(context).padding.bottom + 8),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(Lumina.radiusLg),
+          boxShadow: isDark ? Lumina.glassShadow : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(Lumina.radiusLg),
+          child: isDark
+              ? BackdropFilter(filter: Lumina.glassBlur, child: content)
+              : content,
+        ),
       ),
     );
   }
