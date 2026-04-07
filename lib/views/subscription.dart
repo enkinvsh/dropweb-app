@@ -9,10 +9,7 @@ import 'package:dropweb/views/profiles/profiles.dart'
     show ProfileItem, ReorderableProfilesSheet;
 import 'package:dropweb/views/profiles/scripts.dart';
 import 'package:dropweb/views/proxies/common.dart';
-import 'package:dropweb/views/proxies/list.dart';
 import 'package:dropweb/views/proxies/providers.dart';
-import 'package:dropweb/views/proxies/setting.dart';
-import 'package:dropweb/views/proxies/tab.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +26,6 @@ class SubscriptionPage extends ConsumerStatefulWidget {
 class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final GlobalKey<ProxiesTabViewState> _proxiesTabKey = GlobalKey();
 
   @override
   void initState() {

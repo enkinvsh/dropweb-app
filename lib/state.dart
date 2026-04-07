@@ -32,10 +32,6 @@ final String _apiSecret = List.generate(
   (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
 ).join();
 
-/// Per-session random mixed-port to make localhost scanning impractical.
-/// Used instead of well-known 7890 when user hasn't set a custom port.
-final int _randomMixedPort = 10000 + Random.secure().nextInt(50000);
-
 class GlobalState {
   factory GlobalState() {
     _instance ??= GlobalState._internal();
@@ -417,10 +413,7 @@ class GlobalState {
       rawConfig["find-process-mode"] = realPatchConfig.findProcessMode.name;
       rawConfig["allow-lan"] = realPatchConfig.allowLan;
       rawConfig["ipv6"] = realPatchConfig.ipv6;
-      // Security: randomize well-known port to hinder localhost scanning
-      rawConfig["mixed-port"] = realPatchConfig.mixedPort == defaultMixedPort
-          ? _randomMixedPort
-          : realPatchConfig.mixedPort;
+      rawConfig["mixed-port"] = realPatchConfig.mixedPort;
     } else {
       // Use provider values - only set if not already in rawConfig, use patchConfig values (which are synced from provider)
       if (rawConfig["find-process-mode"] == null) {
@@ -432,11 +425,9 @@ class GlobalState {
       if (rawConfig["ipv6"] == null) {
         rawConfig["ipv6"] = realPatchConfig.ipv6;
       }
-      // Security: ALWAYS override mixed-port — subscription configs use
-      // well-known 7890 which is trivially scannable by other apps.
-      final providerPort = rawConfig["mixed-port"] ?? realPatchConfig.mixedPort;
-      rawConfig["mixed-port"] =
-          providerPort == defaultMixedPort ? _randomMixedPort : providerPort;
+      if (rawConfig["mixed-port"] == null) {
+        rawConfig["mixed-port"] = realPatchConfig.mixedPort;
+      }
     }
 
     if (rawConfig["tun"] == null) {
