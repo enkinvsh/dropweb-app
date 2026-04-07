@@ -37,45 +37,45 @@ class _MagicRingsOverlayState extends ConsumerState<MagicRingsOverlay>
   @override
   Widget build(BuildContext context) {
     final isConnected = ref.watch(runTimeProvider) != null;
-
-    if (isConnected) {
-      if (!_controller.isAnimating) _controller.repeat();
-    } else {
-      if (_controller.isAnimating) {
-        _controller.stop();
-        _controller.reset();
-      }
-    }
-
-    if (!isConnected) return const SizedBox.shrink();
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (!isDark) return const SizedBox.shrink();
+    final visible = isConnected && isDark;
 
-    return IgnorePointer(
-      child: RepaintBoundary(
-        child: ValueListenableBuilder<Offset?>(
-          valueListenable: connectButtonCenter,
-          builder: (_, btnCenter, __) {
-            if (btnCenter == null) return const SizedBox.shrink();
-            return AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) {
-                // Convert screen-space button center to local paint coords
-                final box = context.findRenderObject() as RenderBox?;
-                final localCenter =
-                    box != null ? box.globalToLocal(btnCenter) : btnCenter;
-                return CustomPaint(
-                  size: Size.infinite,
-                  painter: _FullscreenRingsPainter(
-                    progress: _controller.value,
-                    color: Theme.of(context).colorScheme.primary,
-                    center: localCenter,
-                  ),
-                );
-              },
-            );
-          },
+    if (visible && !_controller.isAnimating) _controller.repeat();
+
+    return AnimatedOpacity(
+      opacity: visible ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+      onEnd: () {
+        if (!visible && _controller.isAnimating) {
+          _controller.stop();
+          _controller.reset();
+        }
+      },
+      child: IgnorePointer(
+        child: RepaintBoundary(
+          child: ValueListenableBuilder<Offset?>(
+            valueListenable: connectButtonCenter,
+            builder: (_, btnCenter, __) {
+              if (btnCenter == null) return const SizedBox.shrink();
+              return AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  final box = context.findRenderObject() as RenderBox?;
+                  final localCenter =
+                      box != null ? box.globalToLocal(btnCenter) : btnCenter;
+                  return CustomPaint(
+                    size: Size.infinite,
+                    painter: _FullscreenRingsPainter(
+                      progress: _controller.value,
+                      color: Theme.of(context).colorScheme.primary,
+                      center: localCenter,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -103,10 +103,11 @@ class _FullscreenRingsPainter extends CustomPainter {
     for (int i = 0; i < _ringCount; i++) {
       final phase = (progress + i / _ringCount) % 1.0;
       final radius = phase * maxRadius;
-      final alpha = (1.0 - phase * phase) * 0.12;
-      if (alpha < 0.005) continue;
-      final strokeWidth = 1.5 * (1.0 - phase);
-      if (strokeWidth < 0.2) continue;
+      final fade = 1.0 - phase;
+      final alpha = fade * fade * 0.15;
+      if (alpha < 0.003) continue;
+      final strokeWidth = 0.8 * (1.0 - phase * 0.5);
+      if (strokeWidth < 0.1) continue;
 
       canvas.drawCircle(
         center,
