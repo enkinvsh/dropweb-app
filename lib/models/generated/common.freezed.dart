@@ -16,7 +16,7 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$NavigationItem {
-  Icon get icon => throw _privateConstructorUsedError;
+  Widget get icon => throw _privateConstructorUsedError;
   PageLabel get label => throw _privateConstructorUsedError;
   String? get description => throw _privateConstructorUsedError;
   Widget get view => throw _privateConstructorUsedError;
@@ -38,7 +38,7 @@ abstract class $NavigationItemCopyWith<$Res> {
       _$NavigationItemCopyWithImpl<$Res, NavigationItem>;
   @useResult
   $Res call(
-      {Icon icon,
+      {Widget icon,
       PageLabel label,
       String? description,
       Widget view,
@@ -74,7 +74,7 @@ class _$NavigationItemCopyWithImpl<$Res, $Val extends NavigationItem>
       icon: null == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
-              as Icon,
+              as Widget,
       label: null == label
           ? _value.label
           : label // ignore: cast_nullable_to_non_nullable
@@ -112,7 +112,7 @@ abstract class _$$NavigationItemImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {Icon icon,
+      {Widget icon,
       PageLabel label,
       String? description,
       Widget view,
@@ -146,7 +146,7 @@ class __$$NavigationItemImplCopyWithImpl<$Res>
       icon: null == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
-              as Icon,
+              as Widget,
       label: null == label
           ? _value.label
           : label // ignore: cast_nullable_to_non_nullable
@@ -192,7 +192,7 @@ class _$NavigationItemImpl implements _NavigationItem {
       : _modes = modes;
 
   @override
-  final Icon icon;
+  final Widget icon;
   @override
   final PageLabel label;
   @override
@@ -249,7 +249,7 @@ class _$NavigationItemImpl implements _NavigationItem {
 
 abstract class _NavigationItem implements NavigationItem {
   const factory _NavigationItem(
-      {required final Icon icon,
+      {required final Widget icon,
       required final PageLabel label,
       final String? description,
       required final Widget view,
@@ -258,7 +258,7 @@ abstract class _NavigationItem implements NavigationItem {
       final List<NavigationItemMode> modes}) = _$NavigationItemImpl;
 
   @override
-  Icon get icon;
+  Widget get icon;
   @override
   PageLabel get label;
   @override

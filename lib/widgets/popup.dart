@@ -3,7 +3,6 @@ import 'package:dropweb/models/common.dart';
 import 'package:flutter/material.dart';
 
 class CommonPopupRoute<T> extends PopupRoute<T> {
-
   CommonPopupRoute({
     required this.barrierLabel,
     required this.builder,
@@ -26,9 +25,10 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
     BuildContext context,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
-  ) => builder(
-      context,
-    );
+  ) =>
+      builder(
+        context,
+      );
 
   @override
   Widget buildTransitions(BuildContext context, Animation<double> animation,
@@ -42,30 +42,30 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
       child: ValueListenableBuilder(
         valueListenable: offsetNotifier,
         builder: (_, value, child) => Align(
-            alignment: align,
-            child: CustomSingleChildLayout(
-              delegate: OverflowAwareLayoutDelegate(
-                offset: value.translate(
-                  48,
-                  -8,
-                ),
+          alignment: align,
+          child: CustomSingleChildLayout(
+            delegate: OverflowAwareLayoutDelegate(
+              offset: value.translate(
+                48,
+                -8,
               ),
-              child: child,
             ),
+            child: child,
           ),
+        ),
         child: AnimatedBuilder(
           animation: animation,
           builder: (_, child) => Opacity(
-              opacity: 0.1 + 0.9 * animationValue,
-              child: Transform.scale(
-                alignment: align,
-                scale: 0.7 + 0.3 * animationValue,
-                child: Transform.translate(
-                  offset: const Offset(0, -10) * (1 - animationValue),
-                  child: child,
-                ),
+            opacity: 0.1 + 0.9 * animationValue,
+            child: Transform.scale(
+              alignment: align,
+              scale: 0.7 + 0.3 * animationValue,
+              child: Transform.translate(
+                offset: const Offset(0, -10) * (1 - animationValue),
+                child: child,
               ),
             ),
+          ),
           child: builder(
             context,
           ),
@@ -95,7 +95,6 @@ typedef PopupOpen = Function({
 });
 
 class CommonPopupBox extends StatefulWidget {
-
   const CommonPopupBox({
     super.key,
     required this.targetBuilder,
@@ -151,24 +150,24 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (_, __) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_isOpen) {
-          _updateOffset();
-        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_isOpen) {
+            _updateOffset();
+          }
+        });
+        return widget.targetBuilder(_open);
       });
-      return widget.targetBuilder(_open);
-    });
 }
 
 class OverflowAwareLayoutDelegate extends SingleChildLayoutDelegate {
-
   OverflowAwareLayoutDelegate({
     required this.offset,
   });
   final Offset offset;
 
   @override
-  Size getSize(BoxConstraints constraints) => Size(constraints.maxWidth, constraints.maxHeight);
+  Size getSize(BoxConstraints constraints) =>
+      Size(constraints.maxWidth, constraints.maxHeight);
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
@@ -185,11 +184,11 @@ class OverflowAwareLayoutDelegate extends SingleChildLayoutDelegate {
   }
 
   @override
-  bool shouldRelayout(covariant OverflowAwareLayoutDelegate oldDelegate) => oldDelegate.offset != offset;
+  bool shouldRelayout(covariant OverflowAwareLayoutDelegate oldDelegate) =>
+      oldDelegate.offset != offset;
 }
 
 class CommonPopupMenu extends StatelessWidget {
-
   const CommonPopupMenu({
     super.key,
     required this.items,
@@ -233,10 +232,12 @@ class CommonPopupMenu extends StatelessWidget {
           mainAxisSize: MainAxisSize.max,
           children: [
             if (item.icon != null) ...[
-              Icon(
-                item.icon,
-                size: fontSize + 4,
-                color: color,
+              IconTheme(
+                data: IconThemeData(
+                  size: fontSize + 4,
+                  color: color,
+                ),
+                child: item.icon!,
               ),
               const SizedBox(
                 width: 16,
@@ -259,32 +260,32 @@ class CommonPopupMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IntrinsicHeight(
-      child: IntrinsicWidth(
-        child: Card(
-          elevation: 12,
-          color: context.colorScheme.surfaceContainer,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final item in items.asMap().entries) ...[
-                _popupMenuItem(
-                  context,
-                  item: item.value,
-                  index: item.key,
-                ),
-                if (item.value != items.last)
-                  const Divider(
-                    height: 0,
+        child: IntrinsicWidth(
+          child: Card(
+            elevation: 12,
+            color: context.colorScheme.surfaceContainer,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final item in items.asMap().entries) ...[
+                  _popupMenuItem(
+                    context,
+                    item: item.value,
+                    index: item.key,
                   ),
+                  if (item.value != items.last)
+                    const Divider(
+                      height: 0,
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
-    );
+      );
 }
