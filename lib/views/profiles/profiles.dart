@@ -8,7 +8,7 @@ import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/views/profiles/edit_profile.dart';
 import 'package:dropweb/views/profiles/override_profile.dart';
-import 'package:dropweb/views/profiles/scripts.dart';
+import 'package:dropweb/views/subscription.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,107 +25,11 @@ class ProfilesView extends StatefulWidget {
 }
 
 class _ProfilesViewState extends State<ProfilesView> with PageMixin {
-  Function? applyConfigDebounce;
-
-  void _handleShowAddExtendPage() {
-    showExtend(
-      globalState.navigatorKey.currentState!.context,
-      builder: (_, type) => AdaptiveSheetScaffold(
-        type: type,
-        body: AddProfileView(
-          context: globalState.navigatorKey.currentState!.context,
-        ),
-        title: "${appLocalizations.add}${appLocalizations.profile}",
-      ),
-    );
-  }
-
-  Future<void> _updateProfiles() async {
-    final profiles = globalState.config.profiles;
-    final messages = [];
-    final updateProfiles = profiles.map<Future>(
-      (profile) async {
-        if (profile.type == ProfileType.file) return;
-        globalState.appController.setProfile(
-          profile.copyWith(isUpdating: true),
-        );
-        try {
-          await globalState.appController.updateProfile(profile);
-        } catch (e) {
-          messages.add("${profile.label ?? profile.id}: $e \n");
-          globalState.appController.setProfile(
-            profile.copyWith(
-              isUpdating: false,
-            ),
-          );
-        }
-      },
-    );
-    final titleMedium = context.textTheme.titleMedium;
-    await Future.wait(updateProfiles);
-    if (messages.isNotEmpty) {
-      globalState.showMessage(
-        title: appLocalizations.tip,
-        message: TextSpan(
-          children: [
-            for (final message in messages)
-              TextSpan(text: message, style: titleMedium)
-          ],
-        ),
-      );
-    }
-  }
+  @override
+  List<Widget> get actions => [];
 
   @override
-  List<Widget> get actions => [
-        IconButton(
-          onPressed: _updateProfiles,
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 24),
-        ),
-        IconButton(
-          onPressed: () {
-            showExtend(
-              context,
-              builder: (_, type) => const ScriptsView(),
-            );
-          },
-          icon: Consumer(
-            builder: (context, ref, __) {
-              final isScriptMode = ref.watch(
-                  scriptStateProvider.select((state) => state.realId != null));
-              return HugeIcon(
-                icon: HugeIcons.strokeRoundedFunctionCircle,
-                size: 24,
-                color: isScriptMode ? context.colorScheme.primary : null,
-              );
-            },
-          ),
-        ),
-        IconButton(
-          onPressed: () {
-            final profiles = globalState.config.profiles;
-            showSheet(
-              context: context,
-              builder: (_, type) => ReorderableProfilesSheet(
-                type: type,
-                profiles: profiles,
-              ),
-            );
-          },
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedSorting01, size: 26),
-          iconSize: 26,
-        ),
-      ];
-
-  @override
-  Widget? get floatingActionButton => FloatingActionButton(
-        heroTag: null,
-        onPressed: _handleShowAddExtendPage,
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedAdd01,
-          size: 24,
-        ),
-      );
+  Widget? get floatingActionButton => null;
 
   @override
   Widget build(BuildContext context) => Consumer(
@@ -139,45 +43,7 @@ class _ProfilesViewState extends State<ProfilesView> with PageMixin {
             },
             fireImmediately: true,
           );
-          final profilesSelectorState =
-              ref.watch(profilesSelectorStateProvider);
-          if (profilesSelectorState.profiles.isEmpty) {
-            return NullStatus(
-              label: appLocalizations.nullProfileDesc,
-            );
-          }
-          return Align(
-            alignment: Alignment.topCenter,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: 88,
-              ),
-              child: Grid(
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                crossAxisCount: profilesSelectorState.columns,
-                children: [
-                  for (int i = 0;
-                      i < profilesSelectorState.profiles.length;
-                      i++)
-                    GridItem(
-                      child: ProfileItem(
-                        key: Key(profilesSelectorState.profiles[i].id),
-                        profile: profilesSelectorState.profiles[i],
-                        groupValue: profilesSelectorState.currentProfileId,
-                        onChanged: (profileId) {
-                          ref.read(currentProfileIdProvider.notifier).value =
-                              profileId;
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          );
+          return const SharedProfilesBody();
         },
       );
 }
