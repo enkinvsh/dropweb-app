@@ -9,7 +9,7 @@
         android:label="dropweb Debug"
         tools:replace="android:label">
         <service
-            android:name=".services.FlClashXTileService"
+            android:name=".services.DropwebTileService"
             android:label="dropweb Debug"
             tools:replace="android:label"
             tools:targetApi="24" />

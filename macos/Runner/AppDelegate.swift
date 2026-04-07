@@ -73,7 +73,7 @@ class AppDelegate: FlutterAppDelegate {
         
         let bundleURL = Bundle.main.bundleURL
         let bundleCorePath = bundleURL.appendingPathComponent("Contents/MacOS/FlClashCore")
-        let appSupportCorePath = appSupportURL.appendingPathComponent("com.follow.clash/cores/FlClashCore")
+        let appSupportCorePath = appSupportURL.appendingPathComponent("org.dropweb.vpn/cores/FlClashCore")
         let appSupportDir = appSupportCorePath.deletingLastPathComponent()
         
         do {
@@ -89,7 +89,7 @@ class AppDelegate: FlutterAppDelegate {
                 try FileManager.default.copyItem(at: bundleCorePath, to: appSupportCorePath)
                 
                 if setCorePermissions(corePath: appSupportCorePath.path) {
-                    print("FlClashCore updated to: \(appSupportCorePath.path)")
+                    print("Core binary updated to: \(appSupportCorePath.path)")
                 }
             } else {
                 let attrs = try? FileManager.default.attributesOfItem(atPath: appSupportCorePath.path)
@@ -99,7 +99,7 @@ class AppDelegate: FlutterAppDelegate {
                         print("Permissions not set, setting them now...")
                         let _ = setCorePermissions(corePath: appSupportCorePath.path)
                     } else {
-                        print("FlClashCore already up-to-date with correct permissions")
+                        print("Core binary already up-to-date with correct permissions")
                     }
                 }
             }

@@ -1,8 +1,8 @@
 display_name: dropweb
 package_name: dropweb
 maintainer:
-  name: pluralplay
-  email: mail@pluralplay.rw
+  name: dropweb
+  email: info@dropweb.org
 
 priority: optional
 section: x11

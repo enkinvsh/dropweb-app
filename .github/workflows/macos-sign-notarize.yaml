@@ -90,7 +90,7 @@ jobs:
 
           echo "🔐 Storing notarization credentials..."
 
-          if xcrun notarytool store-credentials "flclash-notarization" \
+          if xcrun notarytool store-credentials "dropweb-notarization" \
             --key "$KEY_FILE" \
             --key-id "$APPLE_API_KEY_ID" \
             --issuer "$APPLE_API_ISSUER" \
@@ -122,7 +122,7 @@ jobs:
 
           echo "📮 Submitting for notarization..."
           xcrun notarytool submit "$DMG_FILE" \
-            --keychain-profile "flclash-notarization" \
+            --keychain-profile "dropweb-notarization" \
             --wait
 
           NOTARIZATION_STATUS=$?
@@ -148,7 +148,7 @@ jobs:
           DMG_FILE=$(find ./dist -name "*.dmg" -type f | head -n 1)
           BASENAME=$(basename "$DMG_FILE")
           
-          # FlClashX-0.3.0-macos-arm64.dmg -> FlClashX-macos-arm64.dmg
+          # dropweb-0.3.0-macos-arm64.dmg -> dropweb-macos-arm64.dmg
           NEW_NAME=$(echo "$BASENAME" | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+(-[^-]+)?-/-/')
           
           if [ "$BASENAME" != "$NEW_NAME" ]; then

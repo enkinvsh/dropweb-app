@@ -11,10 +11,10 @@ import org.dropweb.vpn.RunState
 
 
 @RequiresApi(Build.VERSION_CODES.N)
-class FlClashXTileService : TileService() {
+class DropwebTileService : TileService() {
 
     companion object {
-        private const val TAG = "FlClashTileService"
+        private const val TAG = "DropwebTileService"
     }
 
     private val observer = Observer<RunState> { runState ->

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/state.dart';
 
-class FlClashHttpOverrides extends HttpOverrides {
+class DropwebHttpOverrides extends HttpOverrides {
   static String handleFindProxy(Uri url) {
     if ([localhost].contains(url.host)) {
       return "DIRECT";

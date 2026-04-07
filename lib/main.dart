@@ -37,7 +37,7 @@ Future<void> main() async {
   if (Platform.isAndroid) {
     vpn; // Accessing the getter initializes the singleton
   }
-  HttpOverrides.global = FlClashHttpOverrides();
+  HttpOverrides.global = DropwebHttpOverrides();
   runApp(const ProviderScope(
     child: Application(),
   ));

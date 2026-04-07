@@ -16,7 +16,7 @@ use windows_service::{
     service_dispatcher, Result,
 };
 
-const SERVICE_NAME: &str = "FlClashHelperService";
+const SERVICE_NAME: &str = "DropwebHelperService";
 
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
 

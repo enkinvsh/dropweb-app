@@ -8,11 +8,11 @@ body:
       value: |
         ## Прежде чем создавать проблему, убедитесь в следующем:
         1. Обязательно укажите краткий и понятный заголовок, чтобы другим было проще найти вашу проблему.
-        2. Убедитесь, что похожая проблема ещё не создана в разделе [существующих проблем](https://github.com/pluralplay/FlClashX/issues?q=is%3Aissue), иначе обсудите свой вопрос там.
+        2. Убедитесь, что похожая проблема ещё не создана в разделе [существующих проблем](https://github.com/enkinvsh/dropweb-app/issues?q=is%3Aissue), иначе обсудите свой вопрос там.
         3. Опишите проблему подробно и по шаблону, иначе заявка будет закрыта без рассмотрения.
         ## Before submitting the issue, please make sure of the following checklist:
         1. Please be sure to fill in a concise and clear title for the issue so that others can quickly search
-        2. Please make sure there is no similar issue in the [existing issues](https://github.com/pluralplay/FlClashX/issues?q=is%3Aissue), otherwise please discuss under the existing issue
+        2. Please make sure there is no similar issue in the [existing issues](https://github.com/enkinvsh/dropweb-app/issues?q=is%3Aissue), otherwise please discuss under the existing issue
         3. Please describe the problem in detail according to the template specification, otherwise issue will be closed directly.
 
   - type: textarea

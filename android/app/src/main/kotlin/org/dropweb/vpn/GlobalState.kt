@@ -50,7 +50,7 @@ object GlobalState {
     }
     
     fun hasActiveProfile(): Boolean {
-        val prefs = FlClashXApplication.getAppContext()
+        val prefs = DropwebApplication.getAppContext()
             .getSharedPreferences("FlutterSharedPreferences", android.content.Context.MODE_PRIVATE)
         val configJson = prefs.getString("flutter.config", null)
         
@@ -153,7 +153,7 @@ object GlobalState {
         destroyServiceEngine()
         runLock.withLock {
             Log.d("GlobalState", "Creating new serviceEngine")
-            serviceEngine = FlutterEngine(FlClashXApplication.getAppContext())
+            serviceEngine = FlutterEngine(DropwebApplication.getAppContext())
             Log.d("GlobalState", "Registering plugins")
             io.flutter.plugins.GeneratedPluginRegistrant.registerWith(serviceEngine!!)
             serviceEngine?.plugins?.add(VpnPlugin)

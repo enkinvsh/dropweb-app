@@ -22,7 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 
-class FlClashXVpnService : VpnService(), BaseServiceInterface {
+class DropwebVpnService : VpnService(), BaseServiceInterface {
     override fun onCreate() {
         super.onCreate()
         GlobalState.initServiceEngine()
@@ -139,7 +139,7 @@ class FlClashXVpnService : VpnService(), BaseServiceInterface {
 
     private suspend fun notificationBuilder(): NotificationCompat.Builder {
         if (cachedBuilder == null) {
-            cachedBuilder = createFlClashXNotificationBuilder().await()
+            cachedBuilder = createDropwebNotificationBuilder().await()
         }
         return cachedBuilder!!
     }
@@ -163,7 +163,7 @@ class FlClashXVpnService : VpnService(), BaseServiceInterface {
     private val binder = LocalBinder()
 
     inner class LocalBinder : Binder() {
-        fun getService(): FlClashXVpnService = this@FlClashXVpnService
+        fun getService(): DropwebVpnService = this@DropwebVpnService
 
         override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
             try {

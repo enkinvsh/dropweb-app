@@ -16,7 +16,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
-import org.dropweb.vpn.FlClashXApplication
+import org.dropweb.vpn.DropwebApplication
 import org.dropweb.vpn.GlobalState
 import org.dropweb.vpn.RunState
 import org.dropweb.vpn.core.Core
@@ -25,8 +25,8 @@ import org.dropweb.vpn.extensions.resolveDns
 import org.dropweb.vpn.models.StartForegroundParams
 import org.dropweb.vpn.models.VpnOptions
 import org.dropweb.vpn.services.BaseServiceInterface
-import org.dropweb.vpn.services.FlClashXService
-import org.dropweb.vpn.services.FlClashXVpnService
+import org.dropweb.vpn.services.DropwebService
+import org.dropweb.vpn.services.DropwebVpnService
 import com.google.gson.Gson
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -43,7 +43,7 @@ import kotlin.concurrent.withLock
 
 data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var flutterMethodChannel: MethodChannel
-    private var flClashXService: BaseServiceInterface? = null
+    private var dropwebService: BaseServiceInterface? = null
     private var options: VpnOptions? = null
     private var isBind: Boolean = false
     private lateinit var scope: CoroutineScope
@@ -52,15 +52,15 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val uidPageNameMap = mutableMapOf<Int, String>()
 
     private val connectivity by lazy {
-        FlClashXApplication.getAppContext().getSystemService<ConnectivityManager>()
+        DropwebApplication.getAppContext().getSystemService<ConnectivityManager>()
     }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             isBind = true
-            flClashXService = when (service) {
-                is FlClashXVpnService.LocalBinder -> service.getService()
-                is FlClashXService.LocalBinder -> service.getService()
+            dropwebService = when (service) {
+                is DropwebVpnService.LocalBinder -> service.getService()
+                is DropwebService.LocalBinder -> service.getService()
                 else -> throw Exception("invalid binder")
             }
             handleStartService()
@@ -68,7 +68,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
         override fun onServiceDisconnected(arg: ComponentName) {
             isBind = false
-            flClashXService = null
+            dropwebService = null
         }
     }
 
@@ -116,7 +116,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     fun handleStart(options: VpnOptions): Boolean {
         onUpdateNetwork();
         if (options.enable != this.options?.enable) {
-            this.flClashXService = null
+            this.dropwebService = null
         }
         this.options = options
         when (options.enable) {
@@ -190,7 +190,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             )
             if (lastStartForegroundParams != startForegroundParams) {
                 lastStartForegroundParams = startForegroundParams
-                flClashXService?.startForeground(
+                dropwebService?.startForeground(
                     startForegroundParams.title,
                     startForegroundParams.server,
                     startForegroundParams.content,
@@ -224,14 +224,14 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     }
 
     private fun handleStartService() {
-        if (flClashXService == null) {
+        if (dropwebService == null) {
             bindService()
             return
         }
         GlobalState.runLock.withLock {
             if (GlobalState.runState.value == RunState.START) return
             GlobalState.runState.value = RunState.START
-            val fd = flClashXService?.start(options!!)
+            val fd = dropwebService?.start(options!!)
             Core.startTun(
                 fd = fd ?: 0,
                 protect = this::protect,
@@ -242,7 +242,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     }
 
     private fun protect(fd: Int): Boolean {
-        return (flClashXService as? FlClashXVpnService)?.protect(fd) == true
+        return (dropwebService as? DropwebVpnService)?.protect(fd) == true
     }
 
     private fun resolverProcess(
@@ -261,7 +261,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
         if (!uidPageNameMap.containsKey(nextUid)) {
             uidPageNameMap[nextUid] =
-                FlClashXApplication.getAppContext().packageManager?.getPackagesForUid(nextUid)
+                DropwebApplication.getAppContext().packageManager?.getPackagesForUid(nextUid)
                     ?.first() ?: ""
         }
         return uidPageNameMap[nextUid] ?: ""
@@ -271,7 +271,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         GlobalState.runLock.withLock {
             if (GlobalState.runState.value == RunState.STOP) return
             GlobalState.runState.value = RunState.STOP
-            flClashXService?.stop()
+            dropwebService?.stop()
             stopForegroundJob()
             Core.stopTun()
             GlobalState.handleTryDestroy()
@@ -280,17 +280,17 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private fun bindService() {
         if (isBind) {
-            FlClashXApplication.getAppContext().unbindService(connection)
+            DropwebApplication.getAppContext().unbindService(connection)
         }
         val intent = when (options?.enable == true) {
-            true -> Intent(FlClashXApplication.getAppContext(), FlClashXVpnService::class.java)
-            false -> Intent(FlClashXApplication.getAppContext(), FlClashXService::class.java)
+            true -> Intent(DropwebApplication.getAppContext(), DropwebVpnService::class.java)
+            false -> Intent(DropwebApplication.getAppContext(), DropwebService::class.java)
         }
-        FlClashXApplication.getAppContext().bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        DropwebApplication.getAppContext().bindService(intent, connection, Context.BIND_AUTO_CREATE)
     }
 
     private fun showSubscriptionNotification(title: String, message: String, actionLabel: String, actionUrl: String) {
-        val context = FlClashXApplication.getAppContext()
+        val context = DropwebApplication.getAppContext()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Create notification channel for subscription alerts (Android O+)

@@ -22,9 +22,9 @@ macLocal_amd64:
 
 
 notarizeLocal:
-	DMG_FILE=$$(ls dist/FlClashX-*.dmg) && \
+	DMG_FILE=$$(ls dist/dropweb-*.dmg) && \
 	echo "Found DMG: $$DMG_FILE" && \
-	xcrun notarytool submit "$$DMG_FILE" --keychain-profile "flclash-notarization" --wait && \
+	xcrun notarytool submit "$$DMG_FILE" --keychain-profile "dropweb-notarization" --wait && \
 	xcrun stapler staple "$$DMG_FILE" && \
 	xcrun stapler validate "$$DMG_FILE"
 

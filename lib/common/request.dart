@@ -11,7 +11,6 @@ import 'package:dropweb/state.dart';
 import 'package:flutter/cupertino.dart';
 
 class Request {
-
   Request() {
     _dio = Dio(
       BaseOptions(
@@ -25,7 +24,7 @@ class Request {
       final client = HttpClient();
       client.findProxy = (uri) {
         client.userAgent = globalState.ua;
-        return FlClashHttpOverrides.handleFindProxy(uri);
+        return DropwebHttpOverrides.handleFindProxy(uri);
       };
       return client;
     });
@@ -225,13 +224,15 @@ class Request {
 
   Future<Map<String, dynamic>?> getCoreVersion() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        "http://$defaultExternalController/version",
-        options: Options(
-          responseType: ResponseType.json,
-        ),
-      ).timeout(const Duration(seconds: 2));
-      
+      final response = await _dio
+          .get<Map<String, dynamic>>(
+            "http://$defaultExternalController/version",
+            options: Options(
+              responseType: ResponseType.json,
+            ),
+          )
+          .timeout(const Duration(seconds: 2));
+
       if (response.statusCode != HttpStatus.ok) return null;
       return response.data;
     } catch (_) {

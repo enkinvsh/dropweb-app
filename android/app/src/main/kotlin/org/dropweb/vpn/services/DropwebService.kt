@@ -11,7 +11,7 @@ import org.dropweb.vpn.GlobalState
 import org.dropweb.vpn.models.VpnOptions
 
 
-class FlClashXService : Service(), BaseServiceInterface {
+class DropwebService : Service(), BaseServiceInterface {
 
     override fun start(options: VpnOptions) = 0
 
@@ -26,7 +26,7 @@ class FlClashXService : Service(), BaseServiceInterface {
 
     private suspend fun notificationBuilder(): NotificationCompat.Builder {
         if (cachedBuilder == null) {
-            cachedBuilder = createFlClashXNotificationBuilder().await()
+            cachedBuilder = createDropwebNotificationBuilder().await()
         }
         return cachedBuilder!!
     }
@@ -51,7 +51,7 @@ class FlClashXService : Service(), BaseServiceInterface {
     private val binder = LocalBinder()
 
     inner class LocalBinder : Binder() {
-        fun getService(): FlClashXService = this@FlClashXService
+        fun getService(): DropwebService = this@DropwebService
     }
 
     override fun onBind(intent: Intent): IBinder {

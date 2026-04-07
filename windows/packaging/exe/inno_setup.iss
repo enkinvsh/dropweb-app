@@ -99,8 +99,8 @@ begin
   if IsUpgrade then
     PreviousVersion := GetInstalledVersion();
   
-  // Stop service if running
-  Exec('sc.exe', 'stop "FlClashHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+   // Stop service if running
+   Exec('sc.exe', 'stop "DropwebHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(1000);
   
   // Kill all processes
@@ -157,9 +157,9 @@ begin
     // Refresh icon cache/associations
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
     Sleep(500);
-    // Ensure helper service is started after install/upgrade, independent of app
-    try
-      Exec('sc.exe', 'start "FlClashHelperService"', '', SW_HIDE, ewNoWait, ResultCode);
+     // Ensure helper service is started after install/upgrade, independent of app
+     try
+       Exec('sc.exe', 'start "DropwebHelperService"', '', SW_HIDE, ewNoWait, ResultCode);
     except
     end;
   end;
@@ -170,17 +170,17 @@ var
   ResultCode: Integer;
 begin
   case CurUninstallStep of
-    usUninstall:
-    begin
-      // Stop service first
-      Exec('sc.exe', 'stop "FlClashHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+     usUninstall:
+     begin
+       // Stop service first
+       Exec('sc.exe', 'stop "DropwebHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
       Sleep(1000);
       
       // Kill all processes
       KillProcesses;
       
-      // Delete service
-      Exec('sc.exe', 'delete "FlClashHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+       // Delete service
+       Exec('sc.exe', 'delete "DropwebHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
       Sleep(500);
     end;
     

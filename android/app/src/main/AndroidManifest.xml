@@ -23,7 +23,7 @@
         tools:ignore="QueryAllPackagesPermission" />
 
     <application
-        android:name=".FlClashXApplication"
+        android:name=".DropwebApplication"
         android:banner="@mipmap/ic_banner"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
@@ -86,9 +86,9 @@
         </activity>
 
         <service
-            android:name=".services.FlClashXTileService"
+            android:name=".services.DropwebTileService"
             android:exported="true"
-            android:icon="@drawable/ic"
+            android:icon="@mipmap/ic_launcher"
             android:label="dropweb"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:targetApi="n">
@@ -123,7 +123,7 @@
         </provider>
         
         <service
-            android:name=".services.FlClashXVpnService"
+            android:name=".services.DropwebVpnService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:permission="android.permission.BIND_VPN_SERVICE">
@@ -136,7 +136,7 @@
         </service>
 
         <service
-            android:name=".services.FlClashXService"
+            android:name=".services.DropwebService"
             android:exported="false"
             android:foregroundServiceType="dataSync">
             <property

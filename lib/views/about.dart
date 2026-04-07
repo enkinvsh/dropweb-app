@@ -150,7 +150,7 @@ class AboutView extends StatelessWidget {
             title: Text(appLocalizations.core),
             onTap: () {
               globalState.openUrl(
-                "https://github.com/pluralplay/xHomo",
+                "https://github.com/enkinvsh/xhomo",
               );
             },
             trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
@@ -284,6 +284,11 @@ class AboutView extends StatelessWidget {
             ),
             Text(
               appLocalizations.desc,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Based on FlClashX, licensed under GPL-3.0",
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
