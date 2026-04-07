@@ -2,10 +2,11 @@ import 'package:dropweb/common/common.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
-import 'package:dropweb/views/profiles/add_profile.dart';
+import 'package:dropweb/views/subscription.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 class MetainfoWidget extends ConsumerWidget {
@@ -102,7 +103,13 @@ class MetainfoWidget extends ConsumerWidget {
     }
 
     return CommonCard(
-      onPressed: null,
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const SubscriptionPage(),
+          ),
+        );
+      },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: IntrinsicHeight(
@@ -125,21 +132,23 @@ class MetainfoWidget extends ConsumerWidget {
                         ),
                         if (supportUrl != null && supportUrl.isNotEmpty)
                           IconButton(
-                            icon: Icon(
-                              supportUrl.toLowerCase().contains('t.me')
-                                  ? Icons.telegram
-                                  : Icons.launch,
+                            icon: HugeIcon(
+                              icon: supportUrl.toLowerCase().contains('t.me')
+                                  ? HugeIcons.strokeRoundedTelegram
+                                  : HugeIcons.strokeRoundedLinkSquare01,
+                              size: 34,
+                              color: theme.colorScheme.primary,
                             ),
-                            iconSize: 34,
-                            color: theme.colorScheme.primary,
                             onPressed: () {
                               globalState.openUrl(supportUrl);
                             },
                           ),
                         IconButton(
-                          icon: const Icon(Icons.sync),
-                          iconSize: 34,
-                          color: theme.colorScheme.primary,
+                          icon: HugeIcon(
+                            icon: HugeIcons.strokeRoundedRefresh,
+                            size: 34,
+                            color: theme.colorScheme.primary,
+                          ),
                           onPressed: () {
                             globalState.appController
                                 .updateProfile(currentProfile);

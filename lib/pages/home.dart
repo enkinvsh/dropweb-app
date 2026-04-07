@@ -10,6 +10,7 @@ import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -170,8 +171,13 @@ class _BottomBarWithConnect extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: navigationBar),
-          const SizedBox(width: 10),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.55,
+            ),
+            child: navigationBar,
+          ),
+          const Spacer(),
           const _ConnectCircle(),
         ],
       ),
@@ -483,7 +489,7 @@ class CommonNavigationBar extends ConsumerWidget {
                     ),
                   );
             },
-            icon: const Icon(Icons.menu),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedMenu01, size: 24),
           ),
           const SizedBox(
             height: 16,

@@ -32,7 +32,7 @@ class MeshBackground extends StatelessWidget {
                   center: Alignment.topLeft,
                   radius: 1.2,
                   colors: [
-                    Lumina.glowPrimary.withValues(alpha: 0.18),
+                    Lumina.glowPrimary.withValues(alpha: 0.28),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 1.0],
@@ -48,7 +48,7 @@ class MeshBackground extends StatelessWidget {
                   center: Alignment.topRight,
                   radius: 1.2,
                   colors: [
-                    Lumina.glowSecondary.withValues(alpha: 0.14),
+                    Lumina.glowSecondary.withValues(alpha: 0.22),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 1.0],
@@ -64,7 +64,7 @@ class MeshBackground extends StatelessWidget {
                   center: Alignment.bottomRight,
                   radius: 1.2,
                   colors: [
-                    Lumina.glowAccent.withValues(alpha: 0.18),
+                    Lumina.glowAccent.withValues(alpha: 0.26),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 1.0],
