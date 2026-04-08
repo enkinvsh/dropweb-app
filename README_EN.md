@@ -1,37 +1,59 @@
 <div align="center">
 
+<img src="assets/images/icon.png" alt="dropweb" width="160" />
+
 # dropweb
 
-VPN client for Android, macOS, Windows, Linux
+**A modern VPN client for Android, Windows, macOS and Linux**
 
-A fork of [FlClashX](https://github.com/pluralplay/FlClashX) based on [FlClash](https://github.com/chen08209/FlClash) and the mihomo core.
+A fork of [FlClashX](https://github.com/pluralplay/FlClashX) built on the mihomo core. Custom Flutter UI, no ads, no telemetry, GPL-3.0 licensed.
 
-[![License](https://img.shields.io/github/license/enkinvsh/dropweb-app?style=flat-square)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/total?style=flat-square&logo=github)](https://github.com/enkinvsh/dropweb-app/releases/)
+[![License](https://img.shields.io/github/license/enkinvsh/dropweb-app?style=flat-square&color=15803d)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/enkinvsh/dropweb-app?include_prereleases&style=flat-square&color=15803d&label=release)](https://github.com/enkinvsh/dropweb-app/releases)
+[![Downloads](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/total?style=flat-square&color=15803d&logo=github&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
+[![Flutter](https://img.shields.io/badge/Flutter-3.5+-15803d?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
 
-[**Russian**](README.md)
+[**Russian**](README.md) · [Download the latest build →](https://github.com/enkinvsh/dropweb-app/releases/latest)
 
 </div>
 
+---
+
 ## Features
 
-- 🎨 LUMINA 2027 — custom design system with glass surfaces and mesh gradients
-- 🔐 Server header support (flclashx-* protocol)
-- 📱 HWID device binding
-- 📢 Provider announcement widget
-- 🖥️ 120Hz display support
-- 🇷🇺 Full Russian localization
-- 📺 Android TV optimization
-- 🧹 No ads, open source
+- 🎨 **LUMINA 2027** — a custom design system with glass surfaces, mesh gradients and neon iconography
+- 🔐 **Server headers** — the `flclashx-*` protocol lets your provider control widgets, theme and behaviour straight from the subscription page
+- 📡 **Mihomo under the hood** — supports VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC and Remnawave-compatible subscription formats
+- 📱 **HWID device binding** — the app always knows where it's running
+- 📢 **Announcement widget** — providers can post messages directly to the dashboard
+- 🖥️ **120 Hz** — high-refresh display support on Android
+- 📺 **Android TV** — optimised for D-pad navigation and large screens
+- 🇷🇺 **Full Russian localization** — native, not machine-translated
+- 🧹 **No ads**, no telemetry, fully open source
+
+## Screenshots
+
+<div align="center">
+
+<img src="docs/screenshots/dashboard.png" width="300" alt="Dashboard" />&nbsp;<img src="docs/screenshots/proxy.png" width="300" alt="Proxies" />
+
+</div>
 
 ## Download
 
-- [APK for Android](https://dropweb.org/app)
-- Google Play — coming soon
+All builds are published on the [Releases page →](https://github.com/enkinvsh/dropweb-app/releases/latest)
 
-## Server Headers
+| Platform | File | Recommended for |
+| --- | --- | --- |
+| **Android (arm64)** | `dropweb-android-arm64-v8a.apk` | Most modern devices |
+| **Android (universal)** | `dropweb-android-universal.apk` | When you're not sure about the architecture |
+| **Windows (x64)** | `dropweb-windows-amd64-setup.exe` | Installer for Windows 10 / 11 |
 
-The app supports custom subscription headers for controlling widgets, appearance, and settings.
+> Linux, macOS and Windows ARM builds are temporarily unavailable — they will return in one of the upcoming releases.
+
+## Server headers
+
+dropweb supports custom HTTP headers on the subscription page. Providers can use them to control which widgets appear on the home screen, how the app looks and how it behaves — without having to ship a new APK. Especially convenient for subscription panels built on [Remnawave](https://remna.st) and similar.
 
 <details>
 <summary><strong>flclashx-widgets</strong> — widget order on the home screen</summary>
@@ -53,9 +75,10 @@ The app supports custom subscription headers for controlling widgets, appearance
 | `changeServerButton` | Change server |
 | `serviceInfo` | Service info |
 
-```bash
+```http
 flclashx-widgets: announce,metainfo,outboundModeV2,networkDetection
 ```
+
 </details>
 
 <details>
@@ -69,19 +92,23 @@ flclashx-widgets: announce,metainfo,outboundModeV2,networkDetection
 | `icon` | `none`, `icon` |
 | `card` | `expand`, `shrink`, `min`, `oneline` |
 
-```bash
+```http
 flclashx-view: type:list; sort:delay; layout:tight; icon:icon; card:shrink
 ```
+
 </details>
 
 <details>
 <summary><strong>flclashx-hex</strong> — theme and accent color</summary>
 
-```bash
+```http
 flclashx-hex: 15803d
 flclashx-hex: 15803d:vibrant
 flclashx-hex: 15803d:vibrant:pureblack
 ```
+
+Format: `<hex>[:<variant>][:<background>]`. Variants — `tonalSpot`, `vibrant`, `expressive`, `content`, `fidelity`. Background — `pureblack` for AMOLED screens.
+
 </details>
 
 <details>
@@ -95,50 +122,69 @@ flclashx-hex: 15803d:vibrant:pureblack
 | `autostart` | Auto-start proxy on launch |
 | `autoupdate` | Check for updates automatically |
 
-```bash
+```http
 flclashx-settings: minimize, autorun, shadowstart, autostart, autoupdate
 ```
+
 </details>
 
 <details>
 <summary><strong>Other headers</strong></summary>
 
-- `flclashx-custom: add|update` — when to apply styles (on add or every update)
-- `flclashx-denywidgets: true` — prevent Dashboard editing
-- `flclashx-servicename: Name` — service name in ServiceInfo widget
-- `flclashx-servicelogo: https://...` — service logo (svg/png)
-- `flclashx-serverinfo: ProxyGroup` — group for the change server widget
-- `flclashx-background: https://...` — background image
-- `flclashx-globalmode: false` — hide proxy mode switcher
+- `flclashx-custom: add|update` — when to apply styles (only when the subscription is added, or on every refresh)
+- `flclashx-denywidgets: true` — prevent the user from editing the Dashboard
+- `flclashx-servicename: Name` — service name shown in the ServiceInfo widget
+- `flclashx-servicelogo: https://...` — service logo (svg or png)
+- `flclashx-serverinfo: ProxyGroup` — proxy group used by the change-server widget
+- `flclashx-background: https://...` — background image for the home screen
+- `flclashx-globalmode: false` — hide the proxy mode switcher
+
 </details>
 
-## Build
+## Building from source
 
 ### Requirements
 
-- Flutter SDK >=3.5.0
+- Flutter SDK ≥ 3.5.0
 - Android NDK 28
-- Go (for the core)
+- Go 1.21+ (for the mihomo core)
 
-### Android
+dropweb follows the FlClashX convention of using `setup.dart` instead of `flutter build` — the script compiles the Go core, links the native library and packages the Flutter bundle.
+
+### Android (arm64)
 
 ```bash
 dart run setup.dart android --arch arm64
 ```
 
-Output APK: `dist/dropweb-android-arm64-v8a.apk`
+The output APK lands at `dist/dropweb-android-arm64-v8a.apk`.
 
 ### Linux
 
-Install dependencies before building:
+Install the system dependencies first:
 
 ```bash
-sudo apt-get install libayatana-appindicator3-dev
-sudo apt-get install libkeybinder-3.0-dev
+sudo apt-get install libayatana-appindicator3-dev libkeybinder-3.0-dev
 ```
+
+Then:
+
+```bash
+dart run setup.dart linux --arch amd64
+```
+
+### Windows / macOS
+
+Same pattern — see `setup.dart` for the full list of supported platforms and architectures.
 
 ## License
 
-GPL-3.0 — see [LICENSE](LICENSE)
+GPL-3.0 — see [LICENSE](LICENSE).
 
-This is a modified version of FlClashX. Original work by [chen08209/FlClash](https://github.com/chen08209/FlClash) and [pluralplay/FlClashX](https://github.com/pluralplay/FlClashX).
+dropweb is a modified version of FlClashX. Original works:
+
+- [chen08209/FlClash](https://github.com/chen08209/FlClash) — the original Flutter client
+- [pluralplay/FlClashX](https://github.com/pluralplay/FlClashX) — fork with extensions for subscription providers
+- [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo) — proxy core that powers everything
+
+All dropweb changes are open and available in this repository under the same GPL-3.0 license.

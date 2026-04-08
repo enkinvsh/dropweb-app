@@ -1,61 +1,54 @@
-<div align=center>
+<div align="center">
 
-[![Release Downloads](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/vVERSION/total?style=flat-square&logo=github)](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/vVERSION/)
+<img src="https://raw.githubusercontent.com/enkinvsh/dropweb-app/main/assets/images/icon.png" alt="dropweb" width="128" />
 
-</div>
+# dropweb vVERSION
 
-**Download based on your OS:**
-
-<div align=left>
-<table>
-    <thead align=left>
-        <tr>
-            <th>OS</th>
-            <th>Download</th>
-        </tr>
-    </thead>
-    <tbody align=left>
-        <tr>
-        <td>Android</td>
-            <td>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-universal.apk"><img src="https://img.shields.io/badge/APK-universal-96ed89.svg?logo=android"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-arm64-v8a.apk"><img src="https://img.shields.io/badge/APK-ARMv8-168039.svg?logo=android"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-armeabi-v7a.apk"><img src="https://img.shields.io/badge/APK-ARMv7-45bf55.svg?logo=android"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-x86_64.apk"><img src="https://img.shields.io/badge/APK-x64-96ed89.svg?logo=android"></a>
-            </td>
-        </tr>
-        <tr>
-            <td>Windows</td>
-            <td>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-amd64-setup.exe"><img src="https://img.shields.io/badge/Setup-x64-2d7d9a.svg?logo=windows"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-arm-setup.exe"><img src="https://img.shields.io/badge/Setup-arm-2d7d9a.svg?logo=windows"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-amd64.zip"><img src="https://img.shields.io/badge/Portable-x64-67b7d1.svg?logo=windows"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-arm.zip"><img src="https://img.shields.io/badge/Portable-arm-67b7d1.svg?logo=windows"></a>
-            </td>
-        </tr>
-        <tr>
-            <td>macOS</td>
-            <td>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-macos-arm64.dmg"><img src="https://img.shields.io/badge/DMG-Apple%20Silicon-%23000000.svg?logo=apple"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-macos-amd64.dmg"><img src="https://img.shields.io/badge/DMG-Intel%20X64-%2300A9E0.svg?logo=apple"></a><br>
-            </td>
-        </tr>
-        <tr>
-            <td>Linux</td>
-            <td>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-linux-amd64.AppImage"><img src="https://img.shields.io/badge/AppImage-x64-f84e29.svg?logo=linux"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-linux-amd64.deb"><img src="https://img.shields.io/badge/DebPackage-x64-FF9966.svg?logo=debian"></a><br>
-                <a href="https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-linux-amd64.rpm"><img src="https://img.shields.io/badge/RpmPackage-x64-F1B42F.svg?logo=redhat"></a><br>
-            </td>
-        </tr>
-    </tbody>
-</table>
-
+[![Downloads](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/vVERSION/total?style=flat-square&logo=github&color=15803d&label=downloads)](https://github.com/enkinvsh/dropweb-app/releases/tag/vVERSION)
 
 </div>
 
-<div dir="ltr">
+---
 
-**List of all changes:** [ChangeLog](https://github.com/enkinvsh/dropweb-app/blob/main/CHANGELOG.md)
+## 📥 Скачать
 
-</div>
+### Android
+
+| Файл | Архитектура | Кому |
+| --- | --- | --- |
+| [`dropweb-android-arm64-v8a.apk`](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-arm64-v8a.apk) | `arm64-v8a` | Большинство современных устройств |
+| [`dropweb-android-universal.apk`](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-universal.apk) | все | Если не уверены в архитектуре |
+| [`dropweb-android-armeabi-v7a.apk`](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-armeabi-v7a.apk) | `armv7` | Старые устройства (Android 7+) |
+| [`dropweb-android-x86_64.apk`](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-x86_64.apk) | `x86_64` | Эмуляторы, Chromebook |
+
+### Windows
+
+| Файл | Тип |
+| --- | --- |
+| [`dropweb-windows-amd64-setup.exe`](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-amd64-setup.exe) | Установщик x64 (Windows 10/11) |
+| [`dropweb-windows-amd64.zip`](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-amd64.zip) | Portable x64 (без установки) |
+
+> Сборки для **Linux**, **macOS** и **Windows ARM** временно недоступны — вернутся в одном из ближайших релизов.
+
+## ⚠️ Известные проблемы
+
+- Color-bends shader background не отрисовывается на Android из-за Impeller — вместо анимации показывается статический dark gradient
+- macOS / Linux / Windows ARM CI временно сломано
+
+## 🔨 Сборка из исходников
+
+```bash
+git clone --recurse-submodules https://github.com/enkinvsh/dropweb-app
+cd dropweb-app
+dart run setup.dart android --arch arm64
+```
+
+Подробности — в [README.md](https://github.com/enkinvsh/dropweb-app/blob/main/README.md#%D1%81%D0%B1%D0%BE%D1%80%D0%BA%D0%B0-%D0%B8%D0%B7-%D0%B8%D1%81%D1%85%D0%BE%D0%B4%D0%BD%D0%B8%D0%BA%D0%BE%D0%B2).
+
+## 📜 Лицензия
+
+[GPL-3.0](https://github.com/enkinvsh/dropweb-app/blob/main/LICENSE) — модифицированная версия [FlClashX](https://github.com/pluralplay/FlClashX) на ядре [mihomo](https://github.com/MetaCubeX/mihomo). Все изменения dropweb открыты в этом репозитории.
+
+---
+
+**Полный CHANGELOG:** [CHANGELOG.md](https://github.com/enkinvsh/dropweb-app/blob/main/CHANGELOG.md)
