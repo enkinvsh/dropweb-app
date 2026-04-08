@@ -1587,30 +1587,11 @@ class AppController {
   }
 
   void changeMode(Mode mode) {
-    final prevMode = _ref.read(patchClashConfigProvider).mode;
     _ref.read(patchClashConfigProvider.notifier).updateState(
           (state) => state.copyWith(mode: mode),
         );
     if (mode == Mode.global) {
       updateCurrentGroupName(GroupName.GLOBAL.name);
-    } else if (mode == Mode.rule || mode == Mode.direct) {
-      // Smart (rule) or Rules (direct) — select first non-GLOBAL group
-      final groups = _ref.read(groupsProvider);
-      final firstRuleGroup = groups
-          .where(
-            (g) => g.hidden == false && g.name != GroupName.GLOBAL.name,
-          )
-          .firstOrNull;
-      if (firstRuleGroup != null) {
-        updateCurrentGroupName(firstRuleGroup.name);
-      }
-    }
-    // Smart↔Rules switches proxy-group types (url-test vs select) which
-    // live in the full config, not UpdateParams. Must reload entire config.
-    final needsFullReload = (prevMode == Mode.rule && mode == Mode.direct) ||
-        (prevMode == Mode.direct && mode == Mode.rule);
-    if (needsFullReload) {
-      setupClashConfigDebounce();
     }
     addCheckIpNumDebounce();
   }

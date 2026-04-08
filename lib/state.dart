@@ -544,25 +544,6 @@ class GlobalState {
             entry.value.splitByMultipleSeparators;
       }
     }
-    // Smart mode (Mode.rule): patch all select proxy-groups to url-test
-    // for automatic best-proxy selection. Rules mode (Mode.direct) and
-    // Global mode leave groups as defined in the subscription profile.
-    if (realPatchConfig.mode == Mode.rule) {
-      final groups = rawConfig["proxy-groups"];
-      if (groups is List) {
-        for (final group in groups) {
-          if (group is Map && group["type"] == "select") {
-            group["type"] = "url-test";
-            group["url"] ??= defaultTestUrl;
-            group["interval"] = 60;
-            group["tolerance"] = 100;
-            group["lazy"] =
-                false; // test immediately on connect, don't wait for first request
-          }
-        }
-      }
-    }
-
     var rules = [];
     if (rawConfig["rules"] != null) {
       rules = rawConfig["rules"];
