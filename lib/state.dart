@@ -404,11 +404,9 @@ class GlobalState {
     rawConfig["socks-port"] = realPatchConfig.socksPort;
     rawConfig["redir-port"] = realPatchConfig.redirPort;
     rawConfig["tproxy-port"] = realPatchConfig.tproxyPort;
-    // Mode mapping: Mode.direct is repurposed as "Rules" mode (manual select)
-    // Both Smart (Mode.rule) and Rules (Mode.direct) use mihomo "rule" mode
-    rawConfig["mode"] = realPatchConfig.mode == Mode.direct
-        ? "rule"
-        : realPatchConfig.mode.name;
+    // FlClashX-original three modes — direct passthrough to mihomo:
+    // Mode.rule → "rule", Mode.direct → "direct", Mode.global → "global".
+    rawConfig["mode"] = realPatchConfig.mode.name;
 
     // Set network settings: use patchConfig if overriding, otherwise keep provider values
     if (config.appSetting.overrideNetworkSettings) {

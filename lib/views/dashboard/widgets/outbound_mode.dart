@@ -8,24 +8,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
-/// Mode.rule  = Smart  (auto-select via url-test)
-/// Mode.direct = Rules  (manual select, repurposed)
-/// Mode.global = Global
+/// FlClashX-original three modes (no client-side repurposing):
+/// Mode.rule   = Rule routing  (mihomo "rule"   — uses rule-set)
+/// Mode.direct = Direct/bypass (mihomo "direct" — all traffic bypasses proxies)
+/// Mode.global = Global        (mihomo "global" — everything via GLOBAL group)
 const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
 
 String _modeLabel(Mode mode) => switch (mode) {
-      Mode.rule => Intl.message("smart"),
-      Mode.direct => Intl.message("rules"),
+      Mode.rule => Intl.message("rules"),
+      Mode.direct => Intl.message("direct"),
       Mode.global => Intl.message("global"),
     };
 
 Widget _modeIcon(Mode mode, {double size = 18}) => switch (mode) {
       Mode.rule => HugeIcon(
-          icon: HugeIcons.strokeRoundedAiBrain02,
+          icon: HugeIcons.strokeRoundedFilter,
           size: size,
         ),
       Mode.direct => HugeIcon(
-          icon: HugeIcons.strokeRoundedFilter,
+          icon: HugeIcons.strokeRoundedArrowRight01,
           size: size,
         ),
       Mode.global => HugeIcon(

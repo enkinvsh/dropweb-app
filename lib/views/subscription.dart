@@ -230,23 +230,19 @@ class _AddProfileCard extends StatelessWidget {
 
 // ── Proxies content ───────────────────────────────────────────────────────
 
-class _ProxiesContent extends ConsumerWidget {
+class _ProxiesContent extends StatelessWidget {
   const _ProxiesContent();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode =
-        ref.watch(patchClashConfigProvider.select((state) => state.mode));
-    return Column(
+  Widget build(BuildContext context) {
+    // FlClashX-original behavior: the proxies UI is the same for all
+    // three modes (rule / direct / global). Mode only changes mihomo
+    // routing, never the on-screen proxy list. The bottom mode bar
+    // (_ModeBottomBar) watches mode internally for its tab highlight.
+    return const Column(
       children: [
-        Expanded(
-          child: switch (mode) {
-            Mode.rule => const _SmartProxiesView(),
-            Mode.direct => const _RulesProxiesView(),
-            Mode.global => const _RulesProxiesView(),
-          },
-        ),
-        const _ModeBottomBar(),
+        Expanded(child: _RulesProxiesView()),
+        _ModeBottomBar(),
       ],
     );
   }
@@ -267,142 +263,7 @@ Future<void> _pingAllProxies(WidgetRef ref) async {
   if (allProxies.isNotEmpty) await delayTest(allProxies, null);
 }
 
-// ── Smart mode view ───────────────────────────────────────────────────────
-
-class _SmartProxiesView extends ConsumerWidget {
-  const _SmartProxiesView();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groups = ref.watch(currentGroupsStateProvider).value;
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (groups.isEmpty) {
-      return NullStatus(label: appLocalizations.nullProfileDesc);
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _pingAllProxies(ref),
-      color: colorScheme.primary,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: [
-          for (final group in groups)
-            _SmartGroupCard(group: group, isDark: isDark),
-        ],
-      ),
-    );
-  }
-}
-
-class _SmartGroupCard extends ConsumerWidget {
-  final Group group;
-  final bool isDark;
-  const _SmartGroupCard({required this.group, required this.isDark});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selectedName = group.realNow;
-    final selectedProxy =
-        group.all.where((p) => p.name == selectedName).firstOrNull;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.04)
-              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : colorScheme.outlineVariant.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Row(
-          children: [
-            // Group icon — skip URL-based icons, show emoji or fallback
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: group.icon.isNotEmpty && !group.icon.startsWith('http')
-                  ? Text(group.icon, style: const TextStyle(fontSize: 20))
-                  : HugeIcon(
-                      icon: HugeIcons.strokeRoundedWifiConnected01,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-            ),
-            // Group name + selected proxy
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    group.name,
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    selectedProxy != null
-                        ? '${selectedProxy.type} · $selectedName'
-                        : selectedName.isNotEmpty
-                            ? selectedName
-                            : '...',
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            // Delay badge
-            if (selectedName.isNotEmpty)
-              Consumer(
-                builder: (context, ref, _) {
-                  final delay = ref.watch(getDelayProvider(
-                    proxyName: selectedName,
-                    testUrl: group.testUrl,
-                  ));
-                  if (delay == null || delay <= 0) {
-                    return const SizedBox(width: 48);
-                  }
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color:
-                          utils.getDelayColor(delay)?.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$delay ms',
-                      style: context.textTheme.labelSmall?.copyWith(
-                        color: utils.getDelayColor(delay),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Rules mode view ───────────────────────────────────────────────────────
+// ── Proxies view (shared across all 3 modes) ─────────────────────────────
 
 class _RulesProxiesView extends ConsumerWidget {
   const _RulesProxiesView();
@@ -793,8 +654,8 @@ class _GlassTabBar extends StatelessWidget {
 const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
 
 String _modeLabel(Mode mode) => switch (mode) {
-      Mode.rule => Intl.message("smart"),
-      Mode.direct => Intl.message("rules"),
+      Mode.rule => Intl.message("rules"),
+      Mode.direct => Intl.message("direct"),
       Mode.global => Intl.message("global"),
     };
 
@@ -879,23 +740,16 @@ class _ModeBottomBar extends ConsumerWidget {
 
 // ── Shared body widgets for desktop pages ─────────────────────────────────
 
-class SharedProxiesBody extends ConsumerWidget {
+class SharedProxiesBody extends StatelessWidget {
   const SharedProxiesBody({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode =
-        ref.watch(patchClashConfigProvider.select((state) => state.mode));
-    return Column(
+  Widget build(BuildContext context) {
+    // Same content for all three modes — see _ProxiesContent comment.
+    return const Column(
       children: [
-        Expanded(
-          child: switch (mode) {
-            Mode.rule => const _SmartProxiesView(),
-            Mode.direct => const _RulesProxiesView(),
-            Mode.global => const _RulesProxiesView(),
-          },
-        ),
-        const _ModeBottomBar(),
+        Expanded(child: _RulesProxiesView()),
+        _ModeBottomBar(),
       ],
     );
   }
@@ -935,8 +789,7 @@ class SharedProfilesBody extends ConsumerWidget {
       color: colorScheme.primary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding:
-            const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 32),
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 32),
         children: [
           Grid(
             mainAxisSpacing: 16,

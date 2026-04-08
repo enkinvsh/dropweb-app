@@ -116,9 +116,7 @@ UpdateParams updateParams(Ref ref) {
         tun: state.tun.getRealTun(routeMode),
         allowLan: state.allowLan,
         findProcessMode: state.findProcessMode,
-        // Mode.direct is repurposed as "Rules" mode — both Smart and Rules
-        // use mihomo "rule" mode. Only Global maps to mihomo "global".
-        mode: state.mode == Mode.direct ? Mode.rule : state.mode,
+        mode: state.mode,
         logLevel: state.logLevel,
         ipv6: state.ipv6,
         tcpConcurrent: state.tcpConcurrent,
