@@ -13,7 +13,7 @@ A fork of [FlClashX](https://github.com/pluralplay/FlClashX) built on the mihomo
 [![Downloads](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/total?style=flat-square&color=15803d&logo=github&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
 [![Flutter](https://img.shields.io/badge/Flutter-3.5+-15803d?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
 
-[**Russian**](README.md) · [Download the latest build →](https://github.com/enkinvsh/dropweb-app/releases/latest)
+[**Russian**](README.md) · [Download the latest build →](https://github.com/enkinvsh/dropweb-app/releases)
 
 </div>
 
@@ -41,7 +41,7 @@ A fork of [FlClashX](https://github.com/pluralplay/FlClashX) built on the mihomo
 
 ## Download
 
-All builds are published on the [Releases page →](https://github.com/enkinvsh/dropweb-app/releases/latest)
+All builds are published on the [Releases page →](https://github.com/enkinvsh/dropweb-app/releases)
 
 | Platform | File | Recommended for |
 | --- | --- | --- |

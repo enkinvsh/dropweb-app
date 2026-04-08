@@ -13,7 +13,7 @@
 [![Downloads](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/total?style=flat-square&color=15803d&logo=github&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
 [![Flutter](https://img.shields.io/badge/Flutter-3.5+-15803d?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
 
-[**English**](README_EN.md) · [Скачать последнюю сборку →](https://github.com/enkinvsh/dropweb-app/releases/latest)
+[**English**](README_EN.md) · [Скачать последнюю сборку →](https://github.com/enkinvsh/dropweb-app/releases)
 
 </div>
 
@@ -41,7 +41,7 @@
 
 ## Скачать
 
-Все сборки публикуются на странице [Releases →](https://github.com/enkinvsh/dropweb-app/releases/latest)
+Все сборки публикуются на странице [Releases →](https://github.com/enkinvsh/dropweb-app/releases)
 
 | Платформа | Файл | Кому |
 | --- | --- | --- |
