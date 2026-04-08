@@ -24,7 +24,7 @@ class _MagicRingsOverlayState extends ConsumerState<MagicRingsOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 8000),
+      duration: const Duration(milliseconds: 14000),
     );
   }
 
@@ -93,7 +93,7 @@ class _FullscreenRingsPainter extends CustomPainter {
   final Color color;
   final Offset center;
 
-  static const _ringCount = 4;
+  static const _ringCount = 2;
 
   @override
   void paint(Canvas canvas, Size size) {

@@ -6,11 +6,19 @@ import 'package:flutter/scheduler.dart';
 /// Animated color-bends background driven by a GLSL fragment shader.
 ///
 /// Port of reactbits.dev/backgrounds/color-bends for Flutter.
-/// Requires Impeller DISABLED (Skia backend) on Android — Impeller's GLES
-/// backend silently fails to load custom FragmentProgram shaders.
 ///
-/// Performance: [ValueNotifier] drives repaint via `super(repaint:)` —
-/// zero widget rebuilds. Throttled to [targetFps] (default 30).
+/// **Impeller note (2026-04-08):** the upstream FlClashX manifest has
+/// `io.flutter.embedding.android.EnableImpeller="true"` (set in the 2025-09-11
+/// "update mihomo core" commit by pluralplay). Impeller's GLES backend
+/// silently fails to load custom FragmentProgram shaders — the loader throws,
+/// [_shaderFailed] is set, [build] returns [SizedBox.shrink]. App does not
+/// crash; user sees the static container background underneath.
+///
+/// Performance: the [Ticker] is created **only after** the shader loads
+/// successfully. If the shader fails (e.g. Impeller backend), no Ticker
+/// runs → zero per-frame cost. When active, the [ValueNotifier] drives
+/// repaint via `super(repaint:)` — zero widget rebuilds. Throttled to
+/// [targetFps] (default 15).
 class ColorBendsBg extends StatefulWidget {
   const ColorBendsBg({
     super.key,
@@ -21,7 +29,7 @@ class ColorBendsBg extends StatefulWidget {
     this.warpStrength = 1.0,
     this.noise = 0.05,
     this.opacity = 1.0,
-    this.targetFps = 30,
+    this.targetFps = 15,
   });
 
   final double speed;
@@ -41,7 +49,9 @@ class _ColorBendsBgState extends State<ColorBendsBg>
     with SingleTickerProviderStateMixin {
   ui.FragmentProgram? _program;
   bool _shaderFailed = false;
-  late final Ticker _ticker;
+  // Created only after the shader successfully loads. If the shader fails
+  // (e.g. Impeller backend), this stays null and no per-frame work runs.
+  Ticker? _ticker;
   final _timeNotifier = ValueNotifier<double>(0);
   double _time = 0;
   Duration _lastTick = Duration.zero;
@@ -51,14 +61,16 @@ class _ColorBendsBgState extends State<ColorBendsBg>
   void initState() {
     super.initState();
     _loadShader();
-    _ticker = createTicker(_onTick)..start();
   }
 
   Future<void> _loadShader() async {
     try {
       final program =
           await ui.FragmentProgram.fromAsset('shaders/color_bends.frag');
-      if (mounted) setState(() => _program = program);
+      if (!mounted) return;
+      setState(() => _program = program);
+      // Shader loaded — start the animation ticker.
+      _ticker = createTicker(_onTick)..start();
     } catch (e, st) {
       FlutterError.reportError(FlutterErrorDetails(
           exception: e, stack: st, library: 'ColorBendsBg'));
@@ -86,7 +98,7 @@ class _ColorBendsBgState extends State<ColorBendsBg>
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _ticker?.dispose();
     _timeNotifier.dispose();
     super.dispose();
   }

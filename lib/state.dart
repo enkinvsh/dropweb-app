@@ -117,7 +117,10 @@ class GlobalState {
       this.tasks = tasks;
     }
     await executorUpdateTask();
-    timer = Timer(const Duration(seconds: 1), () async {
+    // Throttled from 1s → 2s to halve the background rebuild cascade
+    // (traffic + runtime + proxy state all tick through this loop).
+    // Speedometer/graph feel slightly less live but whole-UI work halves.
+    timer = Timer(const Duration(seconds: 2), () async {
       startUpdateTasks();
     });
   }

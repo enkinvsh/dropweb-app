@@ -38,9 +38,9 @@ class _StartButtonState extends ConsumerState<StartButton>
 
     _breatheController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
     );
-    _breatheAnimation = Tween<double>(begin: 0.2, end: 0.5).animate(
+    _breatheAnimation = Tween<double>(begin: 0.15, end: 0.3).animate(
       CurvedAnimation(parent: _breatheController, curve: Lumina.luminaCurve),
     );
 
@@ -128,8 +128,8 @@ class _StartButtonState extends ConsumerState<StartButton>
                           BoxShadow(
                             color: colorScheme.primary
                                 .withValues(alpha: _breatheAnimation.value),
-                            blurRadius: 16,
-                            spreadRadius: 2,
+                            blurRadius: 8,
+                            spreadRadius: 1,
                           ),
                         ]
                       : [],

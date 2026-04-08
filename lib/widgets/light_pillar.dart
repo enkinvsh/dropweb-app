@@ -55,12 +55,10 @@ class _PillarPainter extends CustomPainter {
   final double progress;
 
   // Define pillars: (xFraction, width, opacity, speed)
-  // Opacities bumped from 2.5-4% → 6-10% so they are actually visible
-  // on near-black backgrounds.
+  // Reduced from 4 → 2 for mid-range Android perf. Kept the two widest/most
+  // visible pillars; visual loss is minor, GPU work is halved.
   static const _pillars = [
-    (0.15, 60.0, 0.06, 1.0),
     (0.4, 100.0, 0.08, 0.7),
-    (0.65, 40.0, 0.06, 1.3),
     (0.85, 80.0, 0.07, 0.9),
   ];
 

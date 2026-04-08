@@ -20,9 +20,11 @@ class Lumina {
   static const double glassHoverOpacity = 0.06;
   static const double glassHoverBorderOpacity = 0.15;
 
-  // Blur — CSS 20px ≈ Flutter sigma 10
-  static const double blurSigma = 10.0;
-  static const double blurSigmaHeavy = 16.0;
+  // Blur — reduced from 10/16 to 4/8 for mid-range Android perf
+  // (Skia without Impeller; BackdropFilter GPU cost ≈ quadratic in sigma).
+  // Visual difference on dark glass is minor; frame-time win is large.
+  static const double blurSigma = 4.0;
+  static const double blurSigmaHeavy = 8.0;
 
   // Glow colors (adapted for dropweb)
   static const Color glowPrimary = Color(0xFF15803D);
