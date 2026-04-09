@@ -1,4 +1,4 @@
-<img src="assets/images/icon.png" alt="dropweb" width="160" />
+<img src="assets/images/header.png" alt="dropweb" width="720" />
 
 # dropweb
 
