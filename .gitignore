@@ -68,3 +68,7 @@ app.*.map.json
 # Environment variables (contains sensitive data)
 .env
 *.local.sh
+
+# Playwright baseline screenshots and session data
+/baseline-*.png
+/.playwright-mcp/
