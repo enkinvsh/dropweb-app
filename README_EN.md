@@ -23,10 +23,24 @@ The mihomo core exposes an HTTP API on localhost for proxy control — unprotect
 
 ## `$ screenshots`
 
-<img src="docs/screenshots/dashboard.png" width="300" alt="dashboard" />&nbsp;<img src="docs/screenshots/proxy.png" width="300" alt="proxies" />
+<table>
+<tr>
+<td><img src="docs/screenshots/dashboard.png" width="300" alt="dashboard" /></td>
+<td><img src="docs/screenshots/proxy.png" width="300" alt="proxies" /></td>
+</tr>
+<tr>
+<td><sub><code>home</code> — profile, limits, controls</sub></td>
+<td><sub><code>proxy</code> — groups, latencies, modes</sub></td>
+</tr>
+</table>
 
 ## `$ license`
 
-`GPL-3.0` — see [LICENSE](LICENSE). All dropweb changes are open in this repository.
+`GPL-3.0` — see [LICENSE](LICENSE). All dropweb changes are open in this repository. The fork builds on the work of others:
 
-The fork builds on the work of others: [FlClashX](https://github.com/pluralplay/FlClashX) → [FlClash](https://github.com/chen08209/FlClash) → [mihomo](https://github.com/MetaCubeX/mihomo).
+<pre>
+dropweb
+   └─ <a href="https://github.com/pluralplay/FlClashX">FlClashX</a>
+       └─ <a href="https://github.com/chen08209/FlClash">FlClash</a>
+           └─ <a href="https://github.com/MetaCubeX/mihomo">mihomo</a>
+</pre>
