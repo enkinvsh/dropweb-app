@@ -19,17 +19,21 @@ A fork of [FlClashX](https://github.com/pluralplay/FlClashX) built on the mihomo
 
 ---
 
-## Features
+## What dropweb adds
 
-- 🎨 **LUMINA 2027** — a custom design system with glass surfaces, mesh gradients and neon iconography
-- 🔐 **Server headers** — the `flclashx-*` protocol lets your provider control widgets, theme and behaviour straight from the subscription page
-- 📡 **Mihomo under the hood** — supports VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC and Remnawave-compatible subscription formats
-- 📱 **HWID device binding** — the app always knows where it's running
-- 📢 **Announcement widget** — providers can post messages directly to the dashboard
-- 🖥️ **120 Hz** — high-refresh display support on Android
-- 📺 **Android TV** — optimised for D-pad navigation and large screens
-- 🇷🇺 **Full Russian localization** — native, not machine-translated
-- 🧹 **No ads**, no telemetry, fully open source
+dropweb is a fork of [FlClashX](https://github.com/pluralplay/FlClashX). Everything FlClashX itself does keeps working. The fork has two things of its own.
+
+### LUMINA — design system
+
+A complete dark-first design system written from scratch specifically for dropweb. A living void background `#030305` with a mesh gradient and slowly drifting light pillars on the home screen, glass surfaces on `white 3%` with blur, bioluminescent glow on active elements — green `#15803d` bleeding into `#22c55e`. This is not a theme layered on top of Material 3 — every screen in the client has been rethought in a single visual language.
+
+Tokens and helpers live in [`lib/common/lumina.dart`](lib/common/lumina.dart), backgrounds in [`lib/widgets/mesh_background.dart`](lib/widgets/mesh_background.dart) and [`lib/widgets/light_pillar.dart`](lib/widgets/light_pillar.dart). The full spec and the CSS → Flutter mapping sit in [`docs/plans/2026-04-06-lumina-design-system.md`](docs/plans/2026-04-06-lumina-design-system.md).
+
+### HWID — subscription-to-device binding
+
+The client reads a stable hardware ID from the device and passes it to the provider when fetching the subscription. If a key leaks, it cannot be used from a different phone — the provider's server sees a foreign identifier and refuses. Protection against key resale, account sharing and replay attacks with leaked subscriptions.
+
+The behaviour is opt-in — it's enabled on the provider side, and the client sends the identifier only when the subscription panel asks for it. Nothing about the user is stored locally and nothing else leaves the device.
 
 ## Screenshots
 
@@ -51,9 +55,13 @@ All builds are published on the [Releases page →](https://github.com/enkinvsh/
 
 > Linux, macOS and Windows ARM builds are temporarily unavailable — they will return in one of the upcoming releases.
 
-## Server headers
+## What's inherited from FlClashX and mihomo
 
-dropweb supports custom HTTP headers on the subscription page. Providers can use them to control which widgets appear on the home screen, how the app looks and how it behaves — without having to ship a new APK. Especially convenient for subscription panels built on [Remnawave](https://remna.st) and similar.
+From [mihomo](https://github.com/MetaCubeX/mihomo) — VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC and Remnawave-compatible subscription formats. From [FlClash](https://github.com/chen08209/FlClash) — Android TV, 120 Hz and the Russian localization base. From [FlClashX](https://github.com/pluralplay/FlClashX) — the `flclashx-*` server headers protocol (reference below) and the announcement widget. All of this works in dropweb as-is; the fork does not break any of it.
+
+## Server headers (FlClashX protocol)
+
+This is a protocol inherited from FlClashX. dropweb does not change it but keeps it working for compatibility with Remnawave-style subscription panels — providers can control which widgets appear on the home screen, how the app looks and how it behaves, straight from the subscription page, without having to ship a new APK.
 
 <details>
 <summary><strong>flclashx-widgets</strong> — widget order on the home screen</summary>
