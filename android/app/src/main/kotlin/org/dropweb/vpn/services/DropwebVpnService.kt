@@ -88,7 +88,7 @@ class DropwebVpnService : VpnService(), BaseServiceInterface {
                 )
             }
             addDnsServer(options.dnsServerAddress)
-            setMtu(9000)
+            setMtu(1500)
             options.accessControl.let { accessControl ->
                 if (accessControl.enable) {
                     when (accessControl.mode) {

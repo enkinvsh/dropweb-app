@@ -4,6 +4,11 @@ go 1.20
 
 replace github.com/metacubex/mihomo => ./Clash.Meta
 
+// GSO UDP/ICMP fix for mixed stack (mihomo commit b7b05e07, v1.19.21)
+// Override sing-tun to the version containing the fix without bumping
+// the Clash.Meta submodule itself (which would break the fork API).
+replace github.com/metacubex/sing-tun => github.com/metacubex/sing-tun v0.4.16-0.20260303144527-b67c0377e081
+
 require (
 	github.com/metacubex/mihomo v0.0.0-00010101000000-000000000000
 	golang.org/x/sync v0.11.0
