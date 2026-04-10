@@ -88,7 +88,7 @@
         <service
             android:name=".services.DropwebTileService"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_launcher_monochrome"
             android:label="dropweb"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:targetApi="n">
