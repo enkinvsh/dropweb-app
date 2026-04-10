@@ -3,17 +3,21 @@ package org.dropweb.vpn.plugins
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import org.dropweb.vpn.DropwebApplication
@@ -151,13 +155,23 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            Log.d("VpnPlugin", "Network available: $network")
             networks.add(network)
             onUpdateNetwork()
+            updateUnderlyingNetworks()
         }
 
         override fun onLost(network: Network) {
+            Log.d("VpnPlugin", "Network lost: $network")
             networks.remove(network)
             onUpdateNetwork()
+            updateUnderlyingNetworks()
+        }
+
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+            Log.d("VpnPlugin", "Link properties changed: $network")
+            onUpdateNetwork()
+            updateUnderlyingNetworks()
         }
     }
 
@@ -166,6 +180,49 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
     }.build()
+
+    // Doze can stale the Network ref — keep VPN routing through the live physical network
+    private fun updateUnderlyingNetworks() {
+        val vpnService = dropwebService as? DropwebVpnService ?: return
+        vpnService.setUnderlyingNetworks(
+            if (networks.isEmpty()) null else networks.toTypedArray()
+        )
+    }
+
+    private var screenReceiverRegistered = false
+
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SCREEN_ON) {
+                Log.d("VpnPlugin", "Screen ON — refreshing network state")
+                onUpdateNetwork()
+                updateUnderlyingNetworks()
+            }
+        }
+    }
+
+    private fun registerScreenReceiver() {
+        if (screenReceiverRegistered) return
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            DropwebApplication.getAppContext().registerReceiver(
+                screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            DropwebApplication.getAppContext().registerReceiver(screenReceiver, filter)
+        }
+        screenReceiverRegistered = true
+    }
+
+    private fun unregisterScreenReceiver() {
+        if (!screenReceiverRegistered) return
+        try {
+            DropwebApplication.getAppContext().unregisterReceiver(screenReceiver)
+        } catch (_: Exception) {}
+        screenReceiverRegistered = false
+    }
 
     private fun registerNetworkCallback() {
         networks.clear()
@@ -237,6 +294,8 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 protect = this::protect,
                 resolverProcess = this::resolverProcess,
             )
+            updateUnderlyingNetworks()
+            registerScreenReceiver()
             startForegroundJob()
         }
     }
@@ -272,6 +331,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             if (GlobalState.runState.value == RunState.STOP) return
             GlobalState.runState.value = RunState.STOP
             dropwebService?.stop()
+            unregisterScreenReceiver()
             stopForegroundJob()
             Core.stopTun()
             GlobalState.handleTryDestroy()
