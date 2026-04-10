@@ -281,13 +281,14 @@ class _RulesProxiesView extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () => _pingAllProxies(ref),
       color: colorScheme.primary,
-      child: ListView(
+      child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: [
-          for (final group in groups)
-            _RulesGroupCard(group: group, isDark: isDark),
-        ],
+        itemCount: groups.length,
+        itemBuilder: (_, index) => _RulesGroupCard(
+            key: ValueKey(groups[index].name),
+            group: groups[index],
+            isDark: isDark),
       ),
     );
   }
@@ -296,7 +297,7 @@ class _RulesProxiesView extends ConsumerWidget {
 class _RulesGroupCard extends ConsumerWidget {
   final Group group;
   final bool isDark;
-  const _RulesGroupCard({required this.group, required this.isDark});
+  const _RulesGroupCard({super.key, required this.group, required this.isDark});
 
   void _openSelector(BuildContext context) {
     showSheet(
@@ -308,8 +309,9 @@ class _RulesGroupCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final proxyName = ref.watch(getProxyNameProvider(group.name));
     final selectedName =
-        ref.watch(getSelectedProxyNameProvider(group.name)) ?? group.realNow;
+        proxyName != null && proxyName.isNotEmpty ? proxyName : group.realNow;
     final selectedProxy =
         group.all.where((p) => p.name == selectedName).firstOrNull;
     final colorScheme = Theme.of(context).colorScheme;
@@ -441,8 +443,9 @@ class _ProxySelectorSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final proxyName = ref.watch(getProxyNameProvider(group.name));
     final selectedName =
-        ref.watch(getSelectedProxyNameProvider(group.name)) ?? group.realNow;
+        proxyName != null && proxyName.isNotEmpty ? proxyName : group.realNow;
 
     return Container(
       constraints: BoxConstraints(

@@ -77,7 +77,7 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
     commonPrint.log("$state");
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      globalState.appController.savePreferences();
+      globalState.appController.savePreferencesDebounce();
     } else {
       render?.resume();
     }
