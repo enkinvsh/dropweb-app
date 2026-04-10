@@ -87,8 +87,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
                   isDark: isDark,
                   colorScheme: colorScheme,
                   tabs: [
-                    appLocalizations.profiles,
                     appLocalizations.proxies,
+                    appLocalizations.profiles,
                   ],
                 ),
               ),
@@ -97,8 +97,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _ProfilesContent(onAdd: _handleShowAddProfilePage),
                     const _ProxiesContent(),
+                    _ProfilesContent(onAdd: _handleShowAddProfilePage),
                   ],
                 ),
               ),
@@ -308,7 +308,8 @@ class _RulesGroupCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedName = group.realNow;
+    final selectedName =
+        ref.watch(getSelectedProxyNameProvider(group.name)) ?? group.realNow;
     final selectedProxy =
         group.all.where((p) => p.name == selectedName).firstOrNull;
     final colorScheme = Theme.of(context).colorScheme;
@@ -440,8 +441,8 @@ class _ProxySelectorSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedName = ref.watch(groupsProvider
-        .select((groups) => groups.getGroup(group.name)?.realNow ?? ''));
+    final selectedName =
+        ref.watch(getSelectedProxyNameProvider(group.name)) ?? group.realNow;
 
     return Container(
       constraints: BoxConstraints(
@@ -474,9 +475,14 @@ class _ProxySelectorSheet extends ConsumerWidget {
                   isSelected: isSelected,
                   isDark: isDark,
                   onTap: () {
-                    globalState.appController.changeProxy(
-                      groupName: group.name,
-                      proxyName: proxy.name,
+                    final appController = globalState.appController;
+                    appController.updateCurrentSelectedMap(
+                      group.name,
+                      proxy.name,
+                    );
+                    appController.changeProxyDebounce(
+                      group.name,
+                      proxy.name,
                     );
                     Navigator.of(context).pop();
                   },
@@ -651,7 +657,7 @@ class _GlassTabBar extends StatelessWidget {
 
 // ── Mode bottom bar ───────────────────────────────────────────────────────
 
-const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
+const _modeOrder = [Mode.rule, Mode.global, Mode.direct];
 
 String _modeLabel(Mode mode) => switch (mode) {
       Mode.rule => Intl.message("rules"),
