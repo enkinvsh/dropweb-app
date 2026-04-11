@@ -231,6 +231,7 @@ jobs:
           echo "commits=$commits_escaped" >> $GITHUB_OUTPUT
 
       - name: Send Telegram notifications
+        continue-on-error: true
         if: success()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
