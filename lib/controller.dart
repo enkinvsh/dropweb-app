@@ -1320,8 +1320,8 @@ class AppController {
       }
     } catch (err) {
       commonPrint.log('Add Profile Failed: $err');
-      unawaited(
-          globalState.showMessage(message: TextSpan(text: err.toString())));
+      final message = ErrorMapper.mapError(err.toString()) ?? err.toString();
+      unawaited(globalState.showMessage(message: TextSpan(text: message)));
     }
   }
 

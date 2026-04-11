@@ -79,6 +79,40 @@ class ErrorMapper {
       ru: 'Ошибка авторизации. Обновите подписку.',
       en: 'Authentication failed. Update your subscription.',
     ),
+    // HTTP 404
+    _ErrorPattern(
+      RegExp(r'status code of 404|404 Not Found', caseSensitive: false),
+      ru: 'Подписка не найдена. Проверьте ссылку.',
+      en: 'Subscription not found. Check the link.',
+    ),
+    // HTTP 403
+    _ErrorPattern(
+      RegExp(r'status code of 403|403 Forbidden', caseSensitive: false),
+      ru: 'Доступ запрещён. Обратитесь к провайдеру.',
+      en: 'Access denied. Contact your provider.',
+    ),
+    // HTTP 5xx server errors
+    _ErrorPattern(
+      RegExp(
+          r'status code of 50[0-9]|502 Bad Gateway|503 Service Unavailable|500 Internal',
+          caseSensitive: false),
+      ru: 'Сервер подписки временно недоступен. Попробуйте позже.',
+      en: 'Subscription server is temporarily unavailable. Try later.',
+    ),
+    // DioException bad response (generic — catches what above didn't)
+    _ErrorPattern(
+      RegExp(r'DioException.*bad response|DioException.*status code',
+          caseSensitive: false),
+      ru: 'Ошибка при загрузке подписки. Проверьте ссылку или попробуйте позже.',
+      en: 'Failed to load subscription. Check the link or try later.',
+    ),
+    // DioException connection error
+    _ErrorPattern(
+      RegExp(r'DioException.*connection error|SocketException',
+          caseSensitive: false),
+      ru: 'Нет подключения к серверу. Проверьте интернет.',
+      en: 'Cannot connect to server. Check your internet.',
+    ),
   ];
 
   /// Translates a raw error string to a human-readable message.

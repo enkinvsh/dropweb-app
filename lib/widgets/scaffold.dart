@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/providers.dart';
@@ -165,10 +166,11 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
       _loading.value = false;
       return res;
     } catch (e) {
+      final message = ErrorMapper.mapError(e.toString()) ?? e.toString();
       globalState.showMessage(
         title: title ?? appLocalizations.tip,
         message: TextSpan(
-          text: e.toString(),
+          text: message,
         ),
       );
       _loading.value = false;
