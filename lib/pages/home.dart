@@ -154,13 +154,16 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
   }
 }
 
-class _BottomBarWithConnect extends StatelessWidget {
+class _BottomBarWithConnect extends ConsumerWidget {
   final Widget navigationBar;
 
   const _BottomBarWithConnect({required this.navigationBar});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasProfile =
+        ref.watch(profilesProvider.select((state) => state.isNotEmpty));
+
     return Container(
       color: Colors.transparent,
       padding: EdgeInsets.only(
@@ -171,12 +174,13 @@ class _BottomBarWithConnect extends StatelessWidget {
       ),
       child: Row(
         children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.55,
+          if (hasProfile)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.55,
+              ),
+              child: navigationBar,
             ),
-            child: navigationBar,
-          ),
           const Spacer(),
           const _ConnectCircle(),
         ],
