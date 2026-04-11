@@ -1,14 +1,14 @@
-package org.dropweb.vpn
+package app.dropweb
 
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
-import org.dropweb.vpn.plugins.AppPlugin
-import org.dropweb.vpn.plugins.ServicePlugin
-import org.dropweb.vpn.plugins.TilePlugin
-import org.dropweb.vpn.plugins.VpnPlugin
+import app.dropweb.plugins.AppPlugin
+import app.dropweb.plugins.ServicePlugin
+import app.dropweb.plugins.TilePlugin
+import app.dropweb.plugins.VpnPlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -47,7 +47,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         
         // Platform Channel for getting Android ID
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "org.dropweb.vpn/device_id")
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/device_id")
             .setMethodCallHandler { call, result ->
                 if (call.method == "getAndroidId") {
                     try {

@@ -1,4 +1,4 @@
-package org.dropweb.vpn.models
+package app.dropweb.models
 
 data class Package(
     val packageName: String,

@@ -1,4 +1,4 @@
-package org.dropweb.vpn.services
+package app.dropweb.services
 
 import android.annotation.SuppressLint
 import android.app.Service
@@ -7,8 +7,8 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import org.dropweb.vpn.GlobalState
-import org.dropweb.vpn.models.VpnOptions
+import app.dropweb.GlobalState
+import app.dropweb.models.VpnOptions
 
 
 class DropwebService : Service(), BaseServiceInterface {

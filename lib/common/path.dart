@@ -38,10 +38,10 @@ class AppPath {
 
   String get corePath {
     if (Platform.isMacOS) {
-      // Core is stored in Application Support/org.dropweb.vpn/cores/ (copied by Swift code on launch)
+      // Core is stored in Application Support/app.dropweb/cores/ (copied by Swift code on launch)
       // Permissions are set automatically in Swift
       final home = Platform.environment['HOME'] ?? '';
-      return '$home/Library/Application Support/org.dropweb.vpn/cores/FlClashCore';
+      return '$home/Library/Application Support/app.dropweb/cores/FlClashCore';
     }
     return join(executableDirPath, "FlClashCore$executableExtension");
   }

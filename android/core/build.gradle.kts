@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "org.dropweb.vpn.core"
+    namespace = "app.dropweb.core"
     compileSdk = 36
     ndkVersion = "28.0.13004108"
 

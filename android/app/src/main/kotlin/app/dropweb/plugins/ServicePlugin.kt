@@ -1,7 +1,7 @@
-package org.dropweb.vpn.plugins
+package app.dropweb.plugins
 
-import org.dropweb.vpn.GlobalState
-import org.dropweb.vpn.models.VpnOptions
+import app.dropweb.GlobalState
+import app.dropweb.models.VpnOptions
 import com.google.gson.Gson
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall

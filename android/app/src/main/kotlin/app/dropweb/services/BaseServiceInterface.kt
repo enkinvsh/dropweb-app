@@ -1,4 +1,4 @@
-package org.dropweb.vpn.services
+package app.dropweb.services
 
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -11,11 +11,11 @@ import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import org.dropweb.vpn.GlobalState
-import org.dropweb.vpn.MainActivity
-import org.dropweb.vpn.R
-import org.dropweb.vpn.extensions.getActionPendingIntent
-import org.dropweb.vpn.models.VpnOptions
+import app.dropweb.GlobalState
+import app.dropweb.MainActivity
+import app.dropweb.R
+import app.dropweb.extensions.getActionPendingIntent
+import app.dropweb.models.VpnOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers

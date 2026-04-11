@@ -1,4 +1,4 @@
-package org.dropweb.vpn.services
+package app.dropweb.services
 
 import android.os.Build
 import android.service.quicksettings.Tile
@@ -6,8 +6,8 @@ import android.service.quicksettings.TileService
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
-import org.dropweb.vpn.GlobalState
-import org.dropweb.vpn.RunState
+import app.dropweb.GlobalState
+import app.dropweb.RunState
 
 
 @RequiresApi(Build.VERSION_CODES.N)

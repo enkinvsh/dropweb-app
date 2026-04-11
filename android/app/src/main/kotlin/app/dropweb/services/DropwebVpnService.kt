@@ -1,4 +1,4 @@
-package org.dropweb.vpn.services
+package app.dropweb.services
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -12,12 +12,12 @@ import android.os.RemoteException
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import android.app.Service
-import org.dropweb.vpn.GlobalState
-import org.dropweb.vpn.extensions.getIpv4RouteAddress
-import org.dropweb.vpn.extensions.getIpv6RouteAddress
-import org.dropweb.vpn.extensions.toCIDR
-import org.dropweb.vpn.models.AccessControlMode
-import org.dropweb.vpn.models.VpnOptions
+import app.dropweb.GlobalState
+import app.dropweb.extensions.getIpv4RouteAddress
+import app.dropweb.extensions.getIpv6RouteAddress
+import app.dropweb.extensions.toCIDR
+import app.dropweb.models.AccessControlMode
+import app.dropweb.models.VpnOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

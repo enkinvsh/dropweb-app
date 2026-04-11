@@ -1,4 +1,4 @@
-package org.dropweb.vpn.models
+package app.dropweb.models
 
 import java.net.InetAddress
 

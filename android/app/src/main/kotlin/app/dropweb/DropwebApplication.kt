@@ -1,4 +1,4 @@
-package org.dropweb.vpn;
+package app.dropweb;
 
 import android.app.Application
 import android.content.Context

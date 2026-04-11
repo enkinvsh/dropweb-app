@@ -1,2 +1,2 @@
 
--keep class org.dropweb.vpn.models.**{ *; }
+-keep class app.dropweb.models.**{ *; }

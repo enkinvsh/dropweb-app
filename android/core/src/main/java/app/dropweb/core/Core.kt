@@ -1,4 +1,4 @@
-package org.dropweb.vpn.core
+package app.dropweb.core
 
 import java.net.InetAddress
 import java.net.InetSocketAddress

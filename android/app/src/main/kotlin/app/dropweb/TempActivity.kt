@@ -1,8 +1,8 @@
-package org.dropweb.vpn
+package app.dropweb
 
 import android.app.Activity
 import android.os.Bundle
-import org.dropweb.vpn.extensions.wrapAction
+import app.dropweb.extensions.wrapAction
 
 class TempActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {

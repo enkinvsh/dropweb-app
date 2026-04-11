@@ -1,10 +1,10 @@
-package org.dropweb.vpn
+package app.dropweb
 
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import org.dropweb.vpn.plugins.AppPlugin
-import org.dropweb.vpn.plugins.TilePlugin
-import org.dropweb.vpn.plugins.VpnPlugin
+import app.dropweb.plugins.AppPlugin
+import app.dropweb.plugins.TilePlugin
+import app.dropweb.plugins.VpnPlugin
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.dart.DartExecutor

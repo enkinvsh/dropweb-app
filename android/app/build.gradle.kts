@@ -23,7 +23,7 @@ val isRelease = mStoreFile.exists()
         && mKeyPassword != null
 
 android {
-    namespace = "org.dropweb.vpn"
+    namespace = "app.dropweb"
     compileSdk = 36
     ndkVersion = "28.0.13004108"
 
@@ -38,8 +38,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "org.dropweb.vpn"
-        minSdk = 23
+        applicationId = "app.dropweb"
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

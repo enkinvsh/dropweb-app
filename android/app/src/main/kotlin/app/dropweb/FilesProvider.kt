@@ -1,4 +1,4 @@
-package org.dropweb.vpn
+package app.dropweb
 
 import android.database.Cursor
 import android.database.MatrixCursor

@@ -1,4 +1,4 @@
-package org.dropweb.vpn.plugins
+package app.dropweb.plugins
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -20,17 +20,17 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
-import org.dropweb.vpn.DropwebApplication
-import org.dropweb.vpn.GlobalState
-import org.dropweb.vpn.RunState
-import org.dropweb.vpn.core.Core
-import org.dropweb.vpn.extensions.awaitResult
-import org.dropweb.vpn.extensions.resolveDns
-import org.dropweb.vpn.models.StartForegroundParams
-import org.dropweb.vpn.models.VpnOptions
-import org.dropweb.vpn.services.BaseServiceInterface
-import org.dropweb.vpn.services.DropwebService
-import org.dropweb.vpn.services.DropwebVpnService
+import app.dropweb.DropwebApplication
+import app.dropweb.GlobalState
+import app.dropweb.RunState
+import app.dropweb.core.Core
+import app.dropweb.extensions.awaitResult
+import app.dropweb.extensions.resolveDns
+import app.dropweb.models.StartForegroundParams
+import app.dropweb.models.VpnOptions
+import app.dropweb.services.BaseServiceInterface
+import app.dropweb.services.DropwebService
+import app.dropweb.services.DropwebVpnService
 import com.google.gson.Gson
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall

@@ -1,4 +1,4 @@
-package org.dropweb.vpn.plugins
+package app.dropweb.plugins
 
 import android.Manifest
 import android.app.Activity
@@ -18,13 +18,13 @@ import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
-import org.dropweb.vpn.DropwebApplication
-import org.dropweb.vpn.GlobalState
-import org.dropweb.vpn.R
-import org.dropweb.vpn.extensions.awaitResult
-import org.dropweb.vpn.extensions.getActionIntent
-import org.dropweb.vpn.extensions.getBase64
-import org.dropweb.vpn.models.Package
+import app.dropweb.DropwebApplication
+import app.dropweb.GlobalState
+import app.dropweb.R
+import app.dropweb.extensions.awaitResult
+import app.dropweb.extensions.getActionIntent
+import app.dropweb.extensions.getBase64
+import app.dropweb.models.Package
 import com.google.gson.Gson
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.plugins.FlutterPlugin

@@ -1,4 +1,4 @@
-package org.dropweb.vpn.plugins
+package app.dropweb.plugins
 
 import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -104,7 +104,7 @@ class TilePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private fun updateTile() {
         Log.d(TAG, "updateTile: syncing status")
         // Force tile service to refresh its state
-        org.dropweb.vpn.GlobalState.syncStatus()
+        app.dropweb.GlobalState.syncStatus()
     }
     
     private fun handleServiceReady() {
