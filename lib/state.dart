@@ -138,11 +138,17 @@ class GlobalState {
     timer = null;
   }
 
-  Future<void> handleStart([UpdateTasks? tasks]) async {
+  Future<bool> handleStart([UpdateTasks? tasks]) async {
     startTime ??= DateTime.now();
     await clashCore.startListener();
-    await service?.startVpn();
+    final started = await service?.startVpn();
+    if (started == false) {
+      startTime = null;
+      await clashCore.stopListener();
+      return false;
+    }
     startUpdateTasks(tasks);
+    return true;
   }
 
   Future updateStartTime() async {

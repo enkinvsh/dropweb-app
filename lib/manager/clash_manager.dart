@@ -1,5 +1,6 @@
 import 'package:dropweb/clash/clash.dart';
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/common/file_logger.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart';
@@ -11,7 +12,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ClashManager extends ConsumerStatefulWidget {
-
   const ClashManager({
     super.key,
     required this.child,
@@ -82,12 +82,13 @@ class _ClashContainerState extends ConsumerState<ClashManager>
   @override
   void onLog(Log log) {
     ref.read(logsProvider.notifier).addLog(log);
-    
+
     // Write core logs to file
     fileLogger.log("[${log.logLevel.name.toUpperCase()}] ${log.payload}");
-    
+
     if (log.logLevel == LogLevel.error) {
-      globalState.showNotifier(log.payload);
+      final message = ErrorMapper.mapError(log.payload) ?? log.payload;
+      globalState.showNotifier(message);
     }
     super.onLog(log);
   }

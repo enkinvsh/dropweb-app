@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'package:archive/archive.dart';
 import 'package:dropweb/clash/clash.dart';
 import 'package:dropweb/common/archive.dart';
+import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/services/subscription_notification_service.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/plugins/app.dart';
@@ -145,10 +146,14 @@ class AppController {
     if (isStart) {
       // Initialize foreground notification cache before starting
       initForegroundCache();
-      await globalState.handleStart([
+      final started = await globalState.handleStart([
         updateRunTime,
         updateTraffic,
       ]);
+      if (!started) {
+        globalState.showNotifier(ErrorMapper.vpnStartFailed);
+        return;
+      }
       final currentLastModified =
           await _ref.read(currentProfileProvider)?.profileLastModified;
       if (currentLastModified == null || lastProfileModified == null) {
