@@ -44,23 +44,25 @@ class _StartButtonState extends ConsumerState<StartButton>
       CurvedAnimation(parent: _breatheController, curve: Lumina.luminaCurve),
     );
 
-    if (isStart) {
+    if (isStart || globalState.config.currentProfileId == null) {
       _breatheController.repeat(reverse: true);
     }
 
     ref.listenManual(
-      runTimeProvider.select((state) => state != null),
+      startButtonSelectorStateProvider,
       (prev, next) {
-        if (next != isStart) {
+        final running = next.hasProfile && ref.read(runTimeProvider) != null;
+        final shouldAnimate = running || !next.hasProfile;
+        if (running != isStart) {
           setState(() {
-            isStart = next;
+            isStart = running;
           });
-          if (next) {
-            _breatheController.repeat(reverse: true);
-          } else {
-            _breatheController.stop();
-            _breatheController.reset();
-          }
+        }
+        if (shouldAnimate && !_breatheController.isAnimating) {
+          _breatheController.repeat(reverse: true);
+        } else if (!shouldAnimate && _breatheController.isAnimating) {
+          _breatheController.stop();
+          _breatheController.reset();
         }
       },
       fireImmediately: true,
@@ -87,14 +89,21 @@ class _StartButtonState extends ConsumerState<StartButton>
     );
   }
 
-  void _handleAddProfile() async {
+  void _handleAddProfile() {
     HapticFeedback.lightImpact();
-    final url = await globalState.showCommonDialog<String>(
-      child: const URLFormDialog(),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => SafeArea(
+        child: SizedBox(
+          height: 240,
+          child: AddProfileView(context: context),
+        ),
+      ),
     );
-    if (url != null) {
-      globalState.appController.addProfileFormURL(url);
-    }
   }
 
   @override
@@ -123,13 +132,13 @@ class _StartButtonState extends ConsumerState<StartButton>
               return Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  boxShadow: isStart && hasProfile
+                  boxShadow: (isStart && hasProfile) || !hasProfile
                       ? [
                           BoxShadow(
                             color: colorScheme.primary
                                 .withValues(alpha: _breatheAnimation.value),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                            blurRadius: !hasProfile ? 12 : 8,
+                            spreadRadius: !hasProfile ? 2 : 1,
                           ),
                         ]
                       : [],
