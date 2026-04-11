@@ -55,6 +55,7 @@ _$ProfileImpl _$$ProfileImplFromJson(Map<String, dynamic> json) =>
             (k, e) => MapEntry(k, e as String),
           ) ??
           const {},
+      fallbackUrl: json['fallbackUrl'] as String?,
     );
 
 Map<String, dynamic> _$$ProfileImplToJson(_$ProfileImpl instance) =>
@@ -71,6 +72,7 @@ Map<String, dynamic> _$$ProfileImplToJson(_$ProfileImpl instance) =>
       'unfoldSet': instance.unfoldSet.toList(),
       'overrideData': instance.overrideData,
       'providerHeaders': instance.providerHeaders,
+      'fallbackUrl': instance.fallbackUrl,
     };
 
 _$OverrideDataImpl _$$OverrideDataImplFromJson(Map<String, dynamic> json) =>

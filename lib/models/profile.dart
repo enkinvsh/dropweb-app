@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:dropweb/clash/core.dart';
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/enum/enum.dart';
@@ -63,6 +64,7 @@ class Profile with _$Profile {
     @Default(false)
     bool isUpdating,
     @Default({}) Map<String, String> providerHeaders,
+    String? fallbackUrl,
   }) = _Profile;
 
   factory Profile.fromJson(Map<String, Object?> json) =>
@@ -71,12 +73,13 @@ class Profile with _$Profile {
   factory Profile.normal({
     String? label,
     String url = '',
-  }) => Profile(
-      label: label,
-      url: url,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      autoUpdateDuration: defaultUpdateDuration,
-    );
+  }) =>
+      Profile(
+        label: label,
+        url: url,
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        autoUpdateDuration: defaultUpdateDuration,
+      );
 }
 
 @freezed
@@ -180,41 +183,54 @@ extension ProfileExtension on Profile {
       if (details.model != null) headers['x-device-model'] = details.model;
     }
 
-    final response = await request.getFileResponseForUrl(
-      url,
-      headers: headers.isNotEmpty ? headers : null,
-    );
+    Response<Uint8List> response;
+    try {
+      response = await request.getFileResponseForUrl(
+        url,
+        headers: headers.isNotEmpty ? headers : null,
+      );
+    } catch (e) {
+      if (fallbackUrl != null && fallbackUrl!.isNotEmpty) {
+        response = await request.getFileResponseForUrl(
+          fallbackUrl!,
+          headers: headers.isNotEmpty ? headers : null,
+        );
+      } else {
+        rethrow;
+      }
+    }
 
     final disposition = response.headers.value("content-disposition");
     final userinfo = response.headers.value('subscription-userinfo');
-    
+
     final responseData = response.data;
     if (responseData == null) {
       throw Exception("Failed to get profile data from response.");
     }
 
     final providerHeaders = <String, String>{};
-    
+
     final headersToCollect = [
       'announce',
-      'support-url', 
+      'support-url',
       'profile-update-interval',
       'x-hwid-limit',
+      'fallback-url',
     ];
-    
+
     for (final headerName in headersToCollect) {
       final value = response.headers.value(headerName);
       if (value != null && value.isNotEmpty) {
         providerHeaders[headerName] = value;
       }
     }
-    
+
     response.headers.forEach((name, values) {
       if (name.toLowerCase().startsWith('flclashx-') && values.isNotEmpty) {
         providerHeaders[name.toLowerCase()] = values.first;
       }
     });
-    
+
     Duration? durationFromHeader;
     final updateIntervalHeader = providerHeaders['profile-update-interval'];
     if (updateIntervalHeader != null) {
@@ -223,12 +239,15 @@ extension ProfileExtension on Profile {
         durationFromHeader = Duration(hours: hours);
       }
     }
-    
+
+    final newFallbackUrl = providerHeaders['fallback-url'];
+
     return copyWith(
       label: label ?? utils.getFileNameForDisposition(disposition) ?? id,
       subscriptionInfo: SubscriptionInfo.formHString(userinfo),
       autoUpdateDuration: durationFromHeader ?? autoUpdateDuration,
       providerHeaders: providerHeaders,
+      fallbackUrl: newFallbackUrl ?? fallbackUrl,
     ).saveFile(responseData);
   }
 
