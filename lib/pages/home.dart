@@ -175,10 +175,8 @@ class _BottomBarWithConnect extends ConsumerWidget {
       child: Row(
         children: [
           if (hasProfile)
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.55,
-              ),
+            SizedBox(
+              width: 140,
               child: navigationBar,
             ),
           const Spacer(),
@@ -282,6 +280,17 @@ class CommonNavigationBar extends ConsumerWidget {
     required this.currentIndex,
   });
 
+  static const _icons = <PageLabel, (IconData, IconData)>{
+    PageLabel.dashboard: (Icons.dashboard_outlined, Icons.dashboard_rounded),
+    PageLabel.tools: (Icons.settings_outlined, Icons.settings_rounded),
+  };
+
+  static IconData _navIcon(PageLabel label, bool selected) {
+    final pair = _icons[label];
+    if (pair == null) return Icons.circle_outlined;
+    return selected ? pair.$2 : pair.$1;
+  }
+
   Widget _buildTabBarContent(
     BuildContext context,
     ColorScheme colorScheme,
@@ -293,75 +302,50 @@ class CommonNavigationBar extends ConsumerWidget {
         color: isDark
             ? Colors.white.withValues(alpha: Lumina.glassOpacity)
             : colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(Lumina.radiusXl),
+        borderRadius: BorderRadius.circular(Lumina.radiusXxl),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: Lumina.glassBorderOpacity)
               : colorScheme.outlineVariant.withValues(alpha: 0.3),
-          width: 1,
         ),
       ),
-      child: Row(
-        children: List.generate(navigationItems.length, (index) {
-          final item = navigationItems[index];
-          final isSelected = index == currentIndex;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                globalState.appController.toPage(item.label);
-              },
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconTheme(
-                    data: IconThemeData(
-                      size: 22,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Row(
+          children: List.generate(navigationItems.length, (index) {
+            final item = navigationItems[index];
+            final isSelected = index == currentIndex;
+            return Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  globalState.appController.toPage(item.label);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (isDark
+                            ? colorScheme.primary.withValues(alpha: 0.15)
+                            : colorScheme.primary.withValues(alpha: 0.12))
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(Lumina.radiusXxl - 6),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      _navIcon(item.label, isSelected),
+                      size: 24,
                       color: isSelected
                           ? colorScheme.primary
                           : colorScheme.onSurfaceVariant,
                     ),
-                    child: item.icon,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    Intl.message(item.label.name),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  // Bioluminescent glow dot under selected tab (dark theme only)
-                  if (isSelected && isDark)
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      width: 20,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: colorScheme.primary.withValues(alpha: 0.6),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.primary.withValues(alpha: 0.5),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 6),
-                ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -374,11 +358,11 @@ class CommonNavigationBar extends ConsumerWidget {
       return RepaintBoundary(
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Lumina.radiusXl),
+            borderRadius: BorderRadius.circular(Lumina.radiusXxl),
             boxShadow: isDark
                 ? Lumina.glassShadow
-                : [
-                    const BoxShadow(
+                : const [
+                    BoxShadow(
                       color: Color(0x14000000),
                       blurRadius: 12,
                       offset: Offset(0, 4),
@@ -386,7 +370,7 @@ class CommonNavigationBar extends ConsumerWidget {
                   ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(Lumina.radiusXl),
+            borderRadius: BorderRadius.circular(Lumina.radiusXxl),
             child: isDark
                 ? BackdropFilter(
                     filter: Lumina.glassBlur,
