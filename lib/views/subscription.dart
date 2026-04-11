@@ -660,12 +660,12 @@ class _GlassTabBar extends StatelessWidget {
 
 // ── Mode bottom bar ───────────────────────────────────────────────────────
 
-const _modeOrder = [Mode.rule, Mode.global, Mode.direct];
+const _modeOrder = [Mode.rule, Mode.global];
 
 String _modeLabel(Mode mode) => switch (mode) {
       Mode.rule => Intl.message("rules"),
-      Mode.direct => Intl.message("direct"),
       Mode.global => Intl.message("global"),
+      _ => "",
     };
 
 class _ModeBottomBar extends ConsumerWidget {

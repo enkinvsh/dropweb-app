@@ -51,12 +51,15 @@ GroupsState currentGroupsState(Ref ref) {
   final groups = ref.watch(groupsProvider);
   return GroupsState(
     value: switch (mode) {
-      // Smart (Mode.rule) and Rules (Mode.direct) both show rule-filtered groups
-      Mode.rule || Mode.direct => groups
+      Mode.rule => groups
           .where((item) => item.hidden == false)
           .where((element) => element.name != GroupName.GLOBAL.name)
           .toList(),
       Mode.global => groups.toList(),
+      _ => groups
+          .where((item) => item.hidden == false)
+          .where((element) => element.name != GroupName.GLOBAL.name)
+          .toList(),
     },
   );
 }

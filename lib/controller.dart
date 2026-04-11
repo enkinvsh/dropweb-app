@@ -1597,8 +1597,25 @@ class AppController {
         );
     if (mode == Mode.global) {
       updateCurrentGroupName(GroupName.GLOBAL.name);
+      _autoSelectFastestForGlobal();
     }
     addCheckIpNumDebounce();
+  }
+
+  /// When switching to Global mode, auto-select the first url-test group
+  /// (e.g. "⚡ Fastest") so the user doesn't have to pick manually.
+  void _autoSelectFastestForGlobal() {
+    final groups = _ref.read(groupsProvider);
+    final urlTestGroup = groups.cast<Group?>().firstWhere(
+          (g) => g!.type == GroupType.URLTest,
+          orElse: () => null,
+        );
+    if (urlTestGroup != null) {
+      changeProxy(
+        groupName: GroupName.GLOBAL.name,
+        proxyName: urlTestGroup.name,
+      );
+    }
   }
 
   void updateAutoLaunch() {

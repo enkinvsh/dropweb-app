@@ -8,16 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
-/// FlClashX-original three modes (no client-side repurposing):
+/// Two user-facing modes:
 /// Mode.rule   = Rule routing  (mihomo "rule"   — uses rule-set)
-/// Mode.direct = Direct/bypass (mihomo "direct" — all traffic bypasses proxies)
 /// Mode.global = Global        (mihomo "global" — everything via GLOBAL group)
-const _modeOrder = [Mode.rule, Mode.direct, Mode.global];
+const _modeOrder = [Mode.rule, Mode.global];
 
 String _modeLabel(Mode mode) => switch (mode) {
       Mode.rule => Intl.message("rules"),
-      Mode.direct => Intl.message("direct"),
       Mode.global => Intl.message("global"),
+      _ => "",
     };
 
 Widget _modeIcon(Mode mode, {double size = 18}) => switch (mode) {
@@ -25,14 +24,11 @@ Widget _modeIcon(Mode mode, {double size = 18}) => switch (mode) {
           icon: HugeIcons.strokeRoundedFilter,
           size: size,
         ),
-      Mode.direct => HugeIcon(
-          icon: HugeIcons.strokeRoundedArrowRight01,
-          size: size,
-        ),
       Mode.global => HugeIcon(
           icon: HugeIcons.strokeRoundedGlobe02,
           size: size,
         ),
+      _ => const SizedBox.shrink(),
     };
 
 class OutboundMode extends StatelessWidget {
@@ -115,7 +111,7 @@ class OutboundModeV2 extends StatelessWidget {
   Color _getTextColor(BuildContext context, Mode mode) => switch (mode) {
         Mode.rule => context.colorScheme.onSecondaryContainer,
         Mode.global => context.colorScheme.onPrimaryContainer,
-        Mode.direct => context.colorScheme.onTertiaryContainer,
+        _ => context.colorScheme.onSurface,
       };
 
   @override
@@ -135,7 +131,7 @@ class OutboundModeV2 extends StatelessWidget {
             final thumbColor = switch (mode) {
               Mode.rule => context.colorScheme.secondaryContainer,
               Mode.global => globalState.theme.darken3PrimaryContainer,
-              Mode.direct => context.colorScheme.tertiaryContainer,
+              _ => context.colorScheme.tertiaryContainer,
             };
             return Container(
               constraints: const BoxConstraints.expand(),
