@@ -23,7 +23,7 @@ import androidx.core.content.getSystemService
 import app.dropweb.DropwebApplication
 import app.dropweb.GlobalState
 import app.dropweb.RunState
-import app.dropweb.core.Core
+import org.dropweb.vpn.core.Core
 import app.dropweb.extensions.awaitResult
 import app.dropweb.extensions.resolveDns
 import app.dropweb.models.StartForegroundParams

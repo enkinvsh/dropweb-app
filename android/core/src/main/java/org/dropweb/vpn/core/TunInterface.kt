@@ -1,4 +1,4 @@
-package app.dropweb.core
+package org.dropweb.vpn.core
 
 import androidx.annotation.Keep
 
