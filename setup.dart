@@ -535,6 +535,23 @@ class BuildCommand extends Command {
       distDir.createSync(recursive: true);
     }
 
+    // Stage a folder with the .app + Applications symlink for drag-to-install
+    final stagingPath = join(current, "build", "macos", "dmg-staging");
+    final stagingDir = Directory(stagingPath);
+    if (stagingDir.existsSync()) {
+      stagingDir.deleteSync(recursive: true);
+    }
+    stagingDir.createSync(recursive: true);
+
+    await Build.exec(
+      name: "copy app to staging",
+      ["cp", "-R", appPath, stagingPath],
+    );
+    await Build.exec(
+      name: "create Applications symlink",
+      ["ln", "-s", "/Applications", join(stagingPath, "Applications")],
+    );
+
     final targetDmgName = "$appName-macos-${arch.name}.dmg";
     final targetDmgPath = join(Build.distPath, targetDmgName);
 
@@ -548,7 +565,7 @@ class BuildCommand extends Command {
         "-volname",
         appName,
         "-srcfolder",
-        appPath,
+        stagingPath,
         "-ov",
         "-format",
         "UDZO",
@@ -556,6 +573,7 @@ class BuildCommand extends Command {
       ],
     );
 
+    stagingDir.deleteSync(recursive: true);
     print("✅ DMG created: $targetDmgPath");
   }
 
