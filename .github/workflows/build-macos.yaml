@@ -1,0 +1,43 @@
+name: build-macos
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.0"
+          cache-dependency-path: core/go.sum
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+          flutter-version: 3.32.8
+
+      - name: Get Flutter Dependency
+        run: flutter pub get
+
+      - name: Build macOS
+        run: dart run setup.dart macos --arch arm64
+
+      - name: Ad-hoc sign
+        run: codesign -s - --deep --force "build/macos/Build/Products/Release/dropweb.app" || true
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dropweb-macos-arm64
+          path: |
+            build/macos/Build/Products/Release/dropweb.app
+            dist/
