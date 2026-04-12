@@ -17,7 +17,8 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' show dirname, join;
 
-import 'backup_and_recovery.dart';
+import 'package:dropweb/pages/send_to_tv_page.dart';
+
 import 'developer.dart';
 import 'theme.dart';
 
@@ -65,17 +66,21 @@ class _ToolboxViewState extends ConsumerState<ToolsView> {
         ],
       );
 
-  List<Widget> _getSettingList(BuildContext context) => generateSection(
-        title: AppLocalizations.of(context).settings,
+  List<Widget> _getSettingList(
+    BuildContext context,
+    bool enableDeveloperMode,
+  ) =>
+      generateSection(
+        title: null,
         items: [
           const _LocaleItem(),
           const _ThemeItem(),
-          const _BackupItem(),
           if (system.isDesktop) const _HotkeyItem(),
           if (Platform.isWindows) const _LoopbackItem(),
           if (Platform.isAndroid) const _AccessItem(),
-          const _ConfigItem(),
-          const _SettingItem(),
+          if (Platform.isAndroid) const _TvItem(),
+          if (enableDeveloperMode) const _ConfigItem(),
+          if (enableDeveloperMode) const _SettingItem(),
         ],
       );
 
@@ -102,7 +107,7 @@ class _ToolboxViewState extends ConsumerState<ToolsView> {
           );
         },
       ),
-      ..._getSettingList(context),
+      ..._getSettingList(context, vm2.b),
       ..._getOtherList(context, vm2.b),
     ];
     return ListView.builder(
@@ -160,24 +165,6 @@ class _ThemeItem extends StatelessWidget {
       delegate: OpenDelegate(
         title: appLocale.theme,
         widget: const ThemeView(),
-      ),
-    );
-  }
-}
-
-class _BackupItem extends StatelessWidget {
-  const _BackupItem();
-
-  @override
-  Widget build(BuildContext context) {
-    final appLocale = AppLocalizations.of(context);
-    return ListItem.open(
-      leading: HugeIcon(icon: HugeIcons.strokeRoundedCloudUpload, size: 24),
-      title: Text(appLocale.backupAndRecovery),
-      subtitle: Text(appLocale.backupAndRecoveryDesc),
-      delegate: OpenDelegate(
-        title: appLocale.backupAndRecovery,
-        widget: const BackupAndRecovery(),
       ),
     );
   }
@@ -326,6 +313,30 @@ class _DeveloperItem extends StatelessWidget {
         title: appLocale.developerMode,
         widget: const DeveloperView(),
       ),
+    );
+  }
+}
+
+class _TvItem extends ConsumerWidget {
+  const _TvItem();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appLocale = AppLocalizations.of(context);
+    final profile = ref.watch(currentProfileProvider);
+    final hasUrl = profile != null && profile.url.isNotEmpty;
+    return ListItem(
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedTv01, size: 24),
+      title: Text(appLocale.connectTv),
+      subtitle: Text(appLocale.connectTvDesc),
+      onTap: hasUrl
+          ? () {
+              BaseNavigator.push(
+                context,
+                SendToTvPage(profileUrl: profile.url),
+              );
+            }
+          : null,
     );
   }
 }
