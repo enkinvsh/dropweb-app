@@ -19,6 +19,9 @@ jobs:
           - platform: windows
             os: windows-latest
             arch: amd64
+          - platform: macos
+            os: macos-latest
+            arch: arm64
 
     steps:
       - name: Checkout
@@ -33,6 +36,11 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/local.properties
           echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/local.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/local.properties
+
+      - name: Configure CI code signing (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          echo 'CODE_SIGN_IDENTITY = -' > macos/Runner/Configs/Local.xcconfig
 
       - name: Setup Go
         uses: actions/setup-go@v5
