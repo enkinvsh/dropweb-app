@@ -509,12 +509,6 @@ class BuildCommand extends Command {
     }
   }
 
-  _getMacosDependencies() async {
-    await Build.exec(
-      Build.getExecutable("npm install -g create-dmg"),
-    );
-  }
-
   _buildMacosApp({
     required Arch arch,
     required String env,
@@ -532,11 +526,6 @@ class BuildCommand extends Command {
       ],
     );
 
-    final pubspecFile = File(join(current, "pubspec.yaml"));
-    final pubspecContent = pubspecFile.readAsStringSync();
-    final versionMatch = RegExp(r'version:\s*(.+)').firstMatch(pubspecContent);
-    final version = versionMatch?.group(1)?.split('+').first ?? "0.0.0";
-
     final appName = Build.appName;
     final appPath = join(current, "build", "macos", "Build", "Products",
         "Release", "$appName.app");
@@ -546,37 +535,28 @@ class BuildCommand extends Command {
       distDir.createSync(recursive: true);
     }
 
-    print("Creating DMG with create-dmg...");
+    final targetDmgName = "$appName-macos-${arch.name}.dmg";
+    final targetDmgPath = join(Build.distPath, targetDmgName);
+
+    print("Creating DMG with hdiutil...");
 
     await Build.exec(
       name: "create-dmg",
       [
-        "create-dmg",
-        "--overwrite",
-        "--dmg-title",
+        "hdiutil",
+        "create",
+        "-volname",
         appName,
+        "-srcfolder",
         appPath,
-        Build.distPath,
+        "-ov",
+        "-format",
+        "UDZO",
+        targetDmgPath,
       ],
     );
 
-    final createdDmgName = "$appName $version.dmg";
-    final createdDmgPath = join(Build.distPath, createdDmgName);
-    final targetDmgName = "$appName-macos-${arch.name}.dmg";
-    final targetDmgPath = join(Build.distPath, targetDmgName);
-
-    final createdDmg = File(createdDmgPath);
-    if (createdDmg.existsSync()) {
-      final targetDmg = File(targetDmgPath);
-      if (targetDmg.existsSync()) {
-        targetDmg.deleteSync();
-      }
-
-      createdDmg.renameSync(targetDmgPath);
-      print("✅ DMG created: $targetDmgPath");
-    } else {
-      throw "DMG file not created: $createdDmgPath";
-    }
+    print("✅ DMG created: $targetDmgPath");
   }
 
   _buildDistributor({
@@ -688,7 +668,6 @@ class BuildCommand extends Command {
 
         return;
       case Target.macos:
-        await _getMacosDependencies();
         await _buildMacosApp(
           arch: arch!,
           env: env,
