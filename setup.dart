@@ -133,7 +133,7 @@ class Build {
 
   static String get appName => "dropweb";
 
-  static String get coreName => "FlClashCore";
+  static String get coreName => "DropwebCore";
 
   static String get libName => "libclash";
 

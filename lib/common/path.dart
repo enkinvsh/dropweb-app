@@ -41,9 +41,9 @@ class AppPath {
       // Core is stored in Application Support/app.dropweb/cores/ (copied by Swift code on launch)
       // Permissions are set automatically in Swift
       final home = Platform.environment['HOME'] ?? '';
-      return '$home/Library/Application Support/app.dropweb/cores/FlClashCore';
+      return '$home/Library/Application Support/app.dropweb/cores/DropwebCore';
     }
-    return join(executableDirPath, "FlClashCore$executableExtension");
+    return join(executableDirPath, "DropwebCore$executableExtension");
   }
 
   String get helperPath =>
