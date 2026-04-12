@@ -106,6 +106,26 @@ flutter:
     - family: Unbounded
       fonts:
         - asset: assets/fonts/Unbounded-Variable.ttf
+    - family: Onest
+      fonts:
+        - asset: assets/fonts/Onest-Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Onest-ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/Onest-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Onest-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Onest-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Onest-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Onest-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Onest-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Onest-Black.ttf
+          weight: 900
 
 ffigen:
   name: "ClashFFI"

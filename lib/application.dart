@@ -207,15 +207,22 @@ class ApplicationState extends ConsumerState<Application> {
       brightness: brightness,
       primaryColor: primaryColor,
     );
-    const unbounded = TextTheme(
-      displayLarge: TextStyle(fontFamily: 'Unbounded'),
-      displayMedium: TextStyle(fontFamily: 'Unbounded'),
-      displaySmall: TextStyle(fontFamily: 'Unbounded'),
-      headlineLarge: TextStyle(fontFamily: 'Unbounded'),
-      headlineMedium: TextStyle(fontFamily: 'Unbounded'),
-      headlineSmall: TextStyle(fontFamily: 'Unbounded'),
-      titleLarge: TextStyle(fontFamily: 'Unbounded'),
-      titleMedium: TextStyle(fontFamily: 'Unbounded'),
+    const onest = TextTheme(
+      displayLarge: TextStyle(fontFamily: 'Onest'),
+      displayMedium: TextStyle(fontFamily: 'Onest'),
+      displaySmall: TextStyle(fontFamily: 'Onest'),
+      headlineLarge: TextStyle(fontFamily: 'Onest'),
+      headlineMedium: TextStyle(fontFamily: 'Onest'),
+      headlineSmall: TextStyle(fontFamily: 'Onest'),
+      titleLarge: TextStyle(fontFamily: 'Onest'),
+      titleMedium: TextStyle(fontFamily: 'Onest'),
+      titleSmall: TextStyle(fontFamily: 'Onest'),
+      bodyLarge: TextStyle(fontFamily: 'Onest'),
+      bodyMedium: TextStyle(fontFamily: 'Onest'),
+      bodySmall: TextStyle(fontFamily: 'Onest'),
+      labelLarge: TextStyle(fontFamily: 'Onest'),
+      labelMedium: TextStyle(fontFamily: 'Onest'),
+      labelSmall: TextStyle(fontFamily: 'Onest'),
     );
     var scheme = pureBlack ? colorScheme.toPureBlack(true) : colorScheme;
     // LUMINA: override surfaces for dark theme — tactile void
@@ -233,7 +240,7 @@ class ApplicationState extends ConsumerState<Application> {
       useMaterial3: true,
       pageTransitionsTheme: _pageTransitionsTheme,
       colorScheme: scheme,
-      textTheme: unbounded,
+      textTheme: onest,
       visualDensity: VisualDensity.adaptivePlatformDensity,
       // LUMINA: cards use void-level elevation
       cardTheme: CardThemeData(

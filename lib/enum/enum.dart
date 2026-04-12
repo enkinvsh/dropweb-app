@@ -232,6 +232,7 @@ enum ProxiesIconStyle {
 enum FontFamily {
   twEmoji("Twemoji"),
   jetBrainsMono("JetBrainsMono"),
+  onest("Onest"),
   icon("Icons");
 
   final String value;

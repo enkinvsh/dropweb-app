@@ -237,7 +237,7 @@ class AboutView extends StatelessWidget {
                       'REMNAFAMILY ONE LOVE',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontFamily: 'Unbounded',
+                        fontFamily: 'Onest',
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -260,7 +260,7 @@ class AboutView extends StatelessWidget {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.blue,
-                              fontFamily: 'Unbounded',
+                              fontFamily: 'Onest',
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
@@ -345,7 +345,7 @@ class Avatar extends StatelessWidget {
                     contributor.name[0].toUpperCase(),
                     style: TextStyle(
                       color: Colors.white,
-                      fontFamily: 'Unbounded',
+                      fontFamily: 'Onest',
                       fontSize: avatarFontSize,
                       fontWeight: FontWeight.bold,
                     ),
@@ -359,7 +359,7 @@ class Avatar extends StatelessWidget {
         Text(
           contributor.name,
           style: TextStyle(
-            fontFamily: 'Unbounded',
+            fontFamily: 'Onest',
             fontSize: fontSize,
           ),
         )
@@ -411,7 +411,7 @@ class ThanksAvatar extends StatelessWidget {
                     person.name[0].toUpperCase(),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontFamily: 'Unbounded',
+                      fontFamily: 'Onest',
                       fontSize: avatarFontSize,
                       fontWeight: FontWeight.bold,
                     ),
@@ -428,7 +428,7 @@ class ThanksAvatar extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontFamily: 'Unbounded',
+            fontFamily: 'Onest',
             fontSize: fontSize,
           ),
         )
