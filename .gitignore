@@ -72,3 +72,7 @@ app.*.map.json
 # Playwright baseline screenshots and session data
 /baseline-*.png
 /.playwright-mcp/
+
+# OpenCode local config
+.opencode/
+opencode.json
