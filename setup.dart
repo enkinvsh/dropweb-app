@@ -560,7 +560,7 @@ class BuildCommand extends Command {
       ["ln", "-s", "/Applications", join(stagingPath, "Applications")],
     );
 
-    final targetDmgName = "$appName-macos-${arch.name}.dmg";
+    final targetDmgName = "$appName-${arch.name}.dmg";
     final targetDmgPath = join(Build.distPath, targetDmgName);
 
     print("Creating DMG with hdiutil...");
