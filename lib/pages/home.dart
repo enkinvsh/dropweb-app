@@ -180,7 +180,7 @@ class _BottomBarWithConnect extends ConsumerWidget {
               child: navigationBar,
             ),
           const Spacer(),
-          const _ConnectCircle(),
+          _ConnectCircle(),
         ],
       ),
     );
@@ -204,21 +204,45 @@ final connectButtonCenter = ValueNotifier<Offset?>(null);
 
 class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
   final _key = GlobalKey();
+  bool _tracking = false;
 
   void _reportPosition() {
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
     final center =
         box.localToGlobal(Offset(box.size.width / 2, box.size.height / 2));
-    connectButtonCenter.value = center;
+    if (connectButtonCenter.value != center) {
+      connectButtonCenter.value = center;
+    }
+  }
+
+  void _scheduleTracking() {
+    if (!_tracking) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_tracking) return;
+      _reportPosition();
+      _scheduleTracking();
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tracking = true;
+    _scheduleTracking();
+  }
+
+  @override
+  void dispose() {
+    _tracking = false;
+    connectButtonCenter.value = null;
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reportPosition());
 
     if (!isDark) {
       return RepaintBoundary(
@@ -268,6 +292,30 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
   }
 }
 
+/// Developer mode activation via 5 rapid taps on the Settings tab.
+int _devTapCount = 0;
+DateTime _devTapLast = DateTime(0);
+const _devTapThreshold = 5;
+const _devTapWindow = Duration(seconds: 3);
+
+void _handleDevTap(BuildContext context, WidgetRef ref) {
+  final now = DateTime.now();
+  if (now.difference(_devTapLast) > _devTapWindow) {
+    _devTapCount = 0;
+  }
+  _devTapLast = now;
+  _devTapCount++;
+  final alreadyEnabled = ref.read(appSettingProvider).developerMode;
+  if (alreadyEnabled) return;
+  if (_devTapCount >= _devTapThreshold) {
+    _devTapCount = 0;
+    ref.read(appSettingProvider.notifier).updateState(
+          (state) => state.copyWith(developerMode: true),
+        );
+    globalState.showNotifier(appLocalizations.developerModeEnableTip);
+  }
+}
+
 class CommonNavigationBar extends ConsumerWidget {
   final ViewMode viewMode;
   final List<NavigationItem> navigationItems;
@@ -295,6 +343,7 @@ class CommonNavigationBar extends ConsumerWidget {
     BuildContext context,
     ColorScheme colorScheme,
     bool isDark,
+    WidgetRef ref,
   ) {
     return Container(
       height: 64,
@@ -321,6 +370,9 @@ class CommonNavigationBar extends ConsumerWidget {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   globalState.appController.toPage(item.label);
+                  if (item.label == PageLabel.tools) {
+                    _handleDevTap(context, ref);
+                  }
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -374,9 +426,10 @@ class CommonNavigationBar extends ConsumerWidget {
             child: isDark
                 ? BackdropFilter(
                     filter: Lumina.glassBlur,
-                    child: _buildTabBarContent(context, colorScheme, isDark),
+                    child:
+                        _buildTabBarContent(context, colorScheme, isDark, ref),
                   )
-                : _buildTabBarContent(context, colorScheme, isDark),
+                : _buildTabBarContent(context, colorScheme, isDark, ref),
           ),
         ),
       );
