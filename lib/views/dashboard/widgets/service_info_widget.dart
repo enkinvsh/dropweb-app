@@ -4,6 +4,7 @@ import 'package:dropweb/common/common.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -20,6 +21,20 @@ class ServiceInfoWidget extends ConsumerWidget {
       return decoded;
     } catch (e) {
       return value;
+    }
+  }
+
+  String? _decodeAnnounce(String? encodedText) {
+    if (encodedText == null || encodedText.isEmpty) return null;
+    var textToDecode = encodedText;
+    if (encodedText.startsWith('base64:')) {
+      textToDecode = encodedText.substring(7);
+    }
+    try {
+      final normalized = base64.normalize(textToDecode);
+      return utf8.decode(base64.decode(normalized));
+    } catch (e) {
+      return encodedText;
     }
   }
 
@@ -74,6 +89,39 @@ class ServiceInfoWidget extends ConsumerWidget {
     );
   }
 
+  List<InlineSpan> _buildAnnounceSpans(BuildContext context, String text) {
+    final urlPattern = RegExp(r'https?://[^\s]+', caseSensitive: false);
+    final spans = <InlineSpan>[];
+    var lastIndex = 0;
+    final style = context.textTheme.bodyMedium?.copyWith(
+      color: context.colorScheme.onSurfaceVariant,
+    );
+
+    for (final match in urlPattern.allMatches(text)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: style,
+        ));
+      }
+      final url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: style?.copyWith(color: context.colorScheme.primary),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => globalState.openUrl(url),
+      ));
+      lastIndex = match.end;
+    }
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: style,
+      ));
+    }
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(currentProfileProvider);
@@ -86,66 +134,80 @@ class ServiceInfoWidget extends ConsumerWidget {
     final serviceName = _decodeBase64IfNeeded(headers['flclashx-servicename']);
     final supportUrl = headers['support-url'];
     final logoUrl = _decodeBase64IfNeeded(headers['flclashx-servicelogo']);
+    final announceText = _decodeAnnounce(headers['announce']);
 
     if (serviceName == null || serviceName.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    return SizedBox(
-      height: getWidgetHeight(1),
-      child: CommonCard(
-        onPressed: (supportUrl != null && supportUrl.isNotEmpty)
-            ? () {
-                globalState.openUrl(supportUrl);
-              }
-            : null,
-        child: Container(
-          padding: baseInfoEdgeInsets.copyWith(
-            top: 8,
-            bottom: 8,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildLogo(context, logoUrl),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: EmojiText(
-                        serviceName,
-                        style: context.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w400,
+    final hasAnnounce = announceText != null && announceText.isNotEmpty;
+
+    return CommonCard(
+      onPressed: (supportUrl != null && supportUrl.isNotEmpty)
+          ? () {
+              globalState.openUrl(supportUrl);
+            }
+          : null,
+      child: Padding(
+        padding: baseInfoEdgeInsets.copyWith(top: 8, bottom: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildLogo(context, logoUrl),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: EmojiText(
+                          serviceName,
+                          style: context.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w400,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
+                    ],
+                  ),
+                ),
+                if (supportUrl != null && supportUrl.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: context.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedCustomerSupport,
+                      size: 28,
+                      color: context.colorScheme.onPrimary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (hasAnnounce) ...[
+              const SizedBox(height: 8),
+              Divider(
+                  height: 1,
+                  color: context.colorScheme.outlineVariant
+                      .withValues(alpha: 0.3)),
+              const SizedBox(height: 8),
+              RichText(
+                text: TextSpan(
+                  children: _buildAnnounceSpans(context, announceText),
                 ),
               ),
-              if (supportUrl != null && supportUrl.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: context.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedCustomerSupport,
-                    size: 28,
-                    color: context.colorScheme.onPrimary,
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
     );

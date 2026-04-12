@@ -72,7 +72,6 @@ const _$DashboardWidgetEnumMap = {
   DashboardWidget.outboundModeV2: 'outboundModeV2',
   DashboardWidget.outboundMode: 'outboundMode',
   DashboardWidget.trafficUsage: 'trafficUsage',
-  DashboardWidget.announce: 'announce',
   DashboardWidget.metainfo: 'metainfo',
   DashboardWidget.networkDetection: 'networkDetection',
   DashboardWidget.tunButton: 'tunButton',
@@ -270,7 +269,7 @@ _$ThemePropsImpl _$$ThemePropsImplFromJson(Map<String, dynamic> json) =>
           ThemeMode.dark,
       schemeVariant: $enumDecodeNullable(
               _$DynamicSchemeVariantEnumMap, json['schemeVariant']) ??
-          DynamicSchemeVariant.content,
+          DynamicSchemeVariant.vibrant,
       pureBlack: json['pureBlack'] as bool? ?? true,
       textScale: json['textScale'] == null
           ? const TextScale()
