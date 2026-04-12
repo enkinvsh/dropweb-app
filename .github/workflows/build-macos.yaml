@@ -25,19 +25,18 @@ jobs:
           cache: true
           flutter-version: 3.32.8
 
-      - name: Get Flutter Dependency
+      - name: Configure CI code signing
+        run: |
+          echo 'CODE_SIGN_IDENTITY = -' > macos/Runner/Configs/Local.xcconfig
+
+      - name: Get Flutter dependencies
         run: flutter pub get
 
       - name: Build macOS
         run: dart run setup.dart macos --arch arm64
 
-      - name: Ad-hoc sign
-        run: codesign -s - --deep --force "build/macos/Build/Products/Release/dropweb.app" || true
-
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: dropweb-macos-arm64
-          path: |
-            build/macos/Build/Products/Release/dropweb.app
-            dist/
+          path: dist/

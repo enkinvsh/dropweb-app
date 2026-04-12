@@ -256,6 +256,13 @@ class Build {
       final realOutPath = join(outFilePath, fileName);
       corePaths.add(realOutPath);
 
+      // Ensure the output directory exists (libclash/ is gitignored,
+      // so it won't be present on a fresh CI checkout)
+      final outDirectory = Directory(dirname(realOutPath));
+      if (!outDirectory.existsSync()) {
+        await outDirectory.create(recursive: true);
+      }
+
       final Map<String, String> env = {};
       env["GOOS"] = item.target.os;
       if (item.arch != null) {
