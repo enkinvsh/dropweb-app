@@ -144,58 +144,32 @@ jobs:
 
       - name: Generate release.md
         run: |
-          tags=($(git tag --merged $(git rev-parse HEAD) --sort=-creatordate))
-          
-          # Determine previous tag based on release type
+          version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+
+          # Template first
           if [ "${{ env.IS_STABLE }}" == "true" ]; then
-            # For stable: get latest stable release from API
+            sed "s|VERSION|$version|g" ./.github/release_template.md > release.md
+          else
+            sed "s|VERSION|$version|g" ./.github/pre_release_template.md > release.md
+          fi
+
+          # Find previous tag
+          if [ "${{ env.IS_STABLE }}" == "true" ]; then
             preTag=$(curl --silent "https://api.github.com/repos/enkinvsh/dropweb-app/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")' || echo "")
           else
-            # For pre-release: get the latest pre-release tag (last tag with '-' in name before current)
-            preTag=""
-            for tag in "${tags[@]}"; do
-              if [ "$tag" != "${tags[0]}" ] && [[ "$tag" == *-* ]]; then
-                preTag="$tag"
-                break
-              fi
-            done
-            # If no previous pre-release found, use latest stable
-            if [ -z "$preTag" ]; then
-              preTag=$(curl --silent "https://api.github.com/repos/enkinvsh/dropweb-app/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")' || echo "")
-            fi
+            preTag=$(git tag --sort=-creatordate | grep -v "^${{ github.ref_name }}$" | head -1)
           fi
-          
-          currentTag=""
-          for ((i = 0; i <= ${#tags[@]}; i++)); do
-            if (( i < ${#tags[@]} )); then
-              tag=${tags[$i]}
-            else
-              tag=""
-            fi
-            if [ -n "$currentTag" ]; then
-              if [ "$(echo -e "$currentTag\n$preTag" | sort -V | head -n 1)" == "$currentTag" ]; then
-                break
-              fi
-            fi
-            if [ -n "$currentTag" ]; then
-              if [ -n "$tag" ]; then
-                git log --pretty=format:"%B" "$tag..$currentTag" | awk 'NF {print "- " $0} !NF {print ""}' >> release.md
-              else
-                git log --pretty=format:"%B" "$currentTag" | awk 'NF {print "- " $0} !NF {print ""}' >> release.md
-              fi
-              echo "" >> release.md
-            fi
-            currentTag=$tag
-          done
 
-      - name: Patch release.md
-        run: |
-          version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
-          if [ "${{ env.IS_STABLE }}" == "true" ]; then
-            sed "s|VERSION|$version|g" ./.github/release_template.md >> release.md
+          # Append compact changelog (subject lines only)
+          echo "" >> release.md
+          echo "## Коммиты" >> release.md
+          echo "" >> release.md
+          if [ -n "$preTag" ]; then
+            git log --pretty=format:"- %s" "$preTag..${{ github.ref_name }}" >> release.md
           else
-            sed "s|VERSION|$version|g" ./.github/pre_release_template.md >> release.md
+            git log --pretty=format:"- %s" "${{ github.ref_name }}" -20 >> release.md
           fi
+          echo "" >> release.md
 
       - name: Generate sha256
         if: env.IS_STABLE == 'true'
