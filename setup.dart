@@ -530,6 +530,14 @@ class BuildCommand extends Command {
     final appPath = join(current, "build", "macos", "Build", "Products",
         "Release", "$appName.app");
 
+    // Re-sign entire bundle so all frameworks share the same ad-hoc identity.
+    // Without this, CocoaPods/SPM frameworks may have mismatched Team IDs
+    // and macOS refuses to load them at runtime.
+    await Build.exec(
+      name: "ad-hoc codesign",
+      ["codesign", "-s", "-", "--deep", "--force", appPath],
+    );
+
     final distDir = Directory(Build.distPath);
     if (!distDir.existsSync()) {
       distDir.createSync(recursive: true);
