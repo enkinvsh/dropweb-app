@@ -182,7 +182,7 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
           (state) => state.copyWith(
             primaryColors: defaultPrimaryColors,
             primaryColor: defaultPrimaryColor,
-            schemeVariant: DynamicSchemeVariant.tonalSpot,
+            schemeVariant: DynamicSchemeVariant.vibrant,
           ),
         );
   }

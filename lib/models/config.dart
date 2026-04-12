@@ -188,7 +188,7 @@ class ThemeProps with _$ThemeProps {
     int? primaryColor,
     @Default(defaultPrimaryColors) List<int> primaryColors,
     @Default(ThemeMode.dark) ThemeMode themeMode,
-    @Default(DynamicSchemeVariant.content) DynamicSchemeVariant schemeVariant,
+    @Default(DynamicSchemeVariant.vibrant) DynamicSchemeVariant schemeVariant,
     @Default(true) bool pureBlack,
     @Default(TextScale()) TextScale textScale,
   }) = _ThemeProps;
