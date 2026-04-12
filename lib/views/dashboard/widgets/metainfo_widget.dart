@@ -1,11 +1,16 @@
+import 'dart:convert';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/views/subscription.dart';
 import 'package:dropweb/widgets/widgets.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
@@ -51,6 +56,95 @@ class MetainfoWidget extends ConsumerWidget {
     return appLocalizations.remainingPlural;
   }
 
+  String? _decodeBase64IfNeeded(String? value) {
+    if (value == null || value.isEmpty) return value;
+    try {
+      return utf8.decode(base64.decode(value));
+    } catch (e) {
+      return value;
+    }
+  }
+
+  String? _decodeAnnounce(String? encodedText) {
+    if (encodedText == null || encodedText.isEmpty) return null;
+    var textToDecode = encodedText;
+    if (encodedText.startsWith('base64:')) {
+      textToDecode = encodedText.substring(7);
+    }
+    try {
+      final normalized = base64.normalize(textToDecode);
+      return utf8.decode(base64.decode(normalized));
+    } catch (e) {
+      return encodedText;
+    }
+  }
+
+  Widget _buildLogo(BuildContext context, String logoUrl) {
+    const logoSize = 36.0;
+    const borderRadius = 8.0;
+    const placeholder = SizedBox(width: logoSize, height: logoSize);
+
+    final isSvg = logoUrl.toLowerCase().endsWith('.svg');
+
+    Widget logoWidget;
+    if (isSvg) {
+      logoWidget = SvgPicture.network(
+        logoUrl,
+        width: logoSize,
+        height: logoSize,
+        placeholderBuilder: (_) => placeholder,
+      );
+    } else {
+      logoWidget = CachedNetworkImage(
+        imageUrl: logoUrl,
+        width: logoSize,
+        height: logoSize,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => placeholder,
+        errorWidget: (_, __, ___) => placeholder,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: logoWidget,
+    );
+  }
+
+  List<InlineSpan> _buildAnnounceSpans(BuildContext context, String text) {
+    final urlPattern = RegExp(r'https?://[^\s]+', caseSensitive: false);
+    final spans = <InlineSpan>[];
+    var lastIndex = 0;
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
+    for (final match in urlPattern.allMatches(text)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: style,
+        ));
+      }
+      final url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: style?.copyWith(color: theme.colorScheme.primary),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => globalState.openUrl(url),
+      ));
+      lastIndex = match.end;
+    }
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: style,
+      ));
+    }
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allProfiles = ref.watch(profilesProvider);
@@ -58,7 +152,6 @@ class MetainfoWidget extends ConsumerWidget {
     final theme = Theme.of(context);
 
     if (allProfiles.isEmpty) {
-      // No profile card — the connect button handles add-profile action.
       return const SizedBox.shrink();
     }
 
@@ -70,7 +163,19 @@ class MetainfoWidget extends ConsumerWidget {
 
     final isUnlimitedTraffic = subscriptionInfo.total == 0;
     final isPerpetual = subscriptionInfo.expire == 0;
-    final supportUrl = currentProfile.providerHeaders['support-url'];
+
+    final headers = currentProfile.providerHeaders;
+    final supportUrl = headers['support-url'];
+    final serviceName = _decodeBase64IfNeeded(headers['flclashx-servicename']);
+    final logoUrl = _decodeBase64IfNeeded(headers['flclashx-servicelogo']);
+    final announceText = _decodeAnnounce(headers['announce']);
+
+    final hasLogo = logoUrl != null && logoUrl.isNotEmpty;
+    final hasServiceName = serviceName != null && serviceName.isNotEmpty;
+    final hasAnnounce = announceText != null && announceText.isNotEmpty;
+
+    final titleText =
+        hasServiceName ? serviceName : appLocalizations.subscription;
 
     var timeLeftValue = '';
     var timeLeftUnit = '';
@@ -120,11 +225,15 @@ class MetainfoWidget extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        if (hasLogo) ...[
+                          _buildLogo(context, logoUrl),
+                          const SizedBox(width: 10),
+                        ],
                         Expanded(
-                          child: Text(
-                            currentProfile.label ?? appLocalizations.profile,
+                          child: EmojiText(
+                            titleText,
                             style: theme.textTheme.headlineSmall,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -212,6 +321,20 @@ class MetainfoWidget extends ConsumerWidget {
                           : '${appLocalizations.expiresOn} ${DateFormat('dd.MM.yyyy').format(DateTime.fromMillisecondsSinceEpoch(subscriptionInfo.expire * 1000))}',
                       style: theme.textTheme.bodyMedium,
                     ),
+                    if (hasAnnounce) ...[
+                      const SizedBox(height: 10),
+                      Divider(
+                        height: 1,
+                        color: theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 10),
+                      RichText(
+                        text: TextSpan(
+                          children: _buildAnnounceSpans(context, announceText),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
