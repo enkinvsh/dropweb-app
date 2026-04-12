@@ -693,6 +693,9 @@ class MessageLookup extends MessageLookupByLibrary {
         "selectedCountTitle": m7,
         "sendToTv": MessageLookupByLibrary.simpleMessage("Send to TV"),
         "sendToTvTitle": MessageLookupByLibrary.simpleMessage("Send to TV"),
+        "connectTv": MessageLookupByLibrary.simpleMessage("Connect TV"),
+        "connectTvDesc":
+            MessageLookupByLibrary.simpleMessage("Transfer subscription"),
         "sentSuccessfullyMessage": MessageLookupByLibrary.simpleMessage(
           "Sent successfully",
         ),

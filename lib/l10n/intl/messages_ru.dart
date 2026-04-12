@@ -50,7 +50,7 @@ class MessageLookup extends MessageLookupByLibrary {
           "Только выбранные приложения будут использовать VPN",
         ),
         "accessControlDesc": MessageLookupByLibrary.simpleMessage(
-          "Управление доступом приложений к прокси",
+          "Настроить приложения",
         ),
         "accessControlNotAllowDesc": MessageLookupByLibrary.simpleMessage(
           "Выбранные приложения не будут использовать VPN",
@@ -742,6 +742,9 @@ class MessageLookup extends MessageLookupByLibrary {
         "sendToTv": MessageLookupByLibrary.simpleMessage("Отправить на ТВ"),
         "sendToTvTitle":
             MessageLookupByLibrary.simpleMessage("Отправить на ТВ"),
+        "connectTv": MessageLookupByLibrary.simpleMessage("Подключить TV"),
+        "connectTvDesc":
+            MessageLookupByLibrary.simpleMessage("Передать подписку"),
         "sentSuccessfullyMessage": MessageLookupByLibrary.simpleMessage(
           "Отправлено успешно",
         ),
@@ -814,7 +817,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "theme": MessageLookupByLibrary.simpleMessage("Тема"),
         "themeColor": MessageLookupByLibrary.simpleMessage("Цвет темы"),
         "themeDesc": MessageLookupByLibrary.simpleMessage(
-          "Установить темный режим, настроить цвет",
+          "Изменить",
         ),
         "themeMode": MessageLookupByLibrary.simpleMessage("Режим темы"),
         "threeColumns": MessageLookupByLibrary.simpleMessage("Три столбца"),

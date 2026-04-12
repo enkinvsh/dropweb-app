@@ -3485,6 +3485,17 @@ class AppLocalizations {
     return Intl.message('Send to TV', name: 'sendToTv', desc: '', args: []);
   }
 
+  /// `Connect TV`
+  String get connectTv {
+    return Intl.message('Connect TV', name: 'connectTv', desc: '', args: []);
+  }
+
+  /// `Transfer subscription`
+  String get connectTvDesc {
+    return Intl.message('Transfer subscription',
+        name: 'connectTvDesc', desc: '', args: []);
+  }
+
   /// `Support`
   String get support {
     return Intl.message('Support', name: 'support', desc: '', args: []);
