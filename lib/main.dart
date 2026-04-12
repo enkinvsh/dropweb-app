@@ -5,6 +5,8 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/models/common.dart';
 import 'package:dropweb/plugins/app.dart';
 import 'package:dropweb/plugins/tile.dart';
 import 'package:dropweb/plugins/vpn.dart';
@@ -203,13 +205,20 @@ Future<void> _service(List<String> flags) async {
     ),
   );
 
-  // Provide foreground notification params using data from globalState.config
-  // This runs in service isolate, so we read from the in-memory config (loaded at service start)
+  // Provide foreground notification params using data from globalState.config.
+  // Shows: title = "Mode • Server", content = "↑ speed ↓ speed", subText = "uptime • total".
   vpn?.handleGetStartForegroundParams = () {
     try {
       final traffic = clashLibHandler.getTraffic();
       final profile = globalState.config.currentProfile;
-      final profileName = profile?.label ?? profile?.id ?? "dropweb";
+
+      // Current routing mode (synced from UI via IPC 'updateMode')
+      final mode = globalState.config.patchClashConfig.mode;
+      final modeLabel = switch (mode) {
+        Mode.rule => appLocalizations.rule,
+        Mode.global => appLocalizations.global,
+        Mode.direct => appLocalizations.direct,
+      };
 
       // Get server group name from header (may be base64-encoded)
       String? groupName = profile?.providerHeaders['flclashx-serverinfo'];
@@ -217,9 +226,7 @@ Future<void> _service(List<String> flags) async {
         try {
           final normalized = base64.normalize(groupName);
           groupName = utf8.decode(base64.decode(normalized));
-        } catch (_) {
-          // not base64, keep as is
-        }
+        } catch (_) {}
         groupName = groupName?.trim();
       }
 
@@ -230,32 +237,44 @@ Future<void> _service(List<String> flags) async {
         serverName = selectedMap[groupName] ?? "";
       }
 
-      // Build title using active server (keep flags/emojis)
+      // Title: "Mode • Server"
       final serverDisplay = serverName.trim();
       final title = serverDisplay.isNotEmpty
-          ? "$profileName / $serverDisplay"
-          : profileName;
+          ? "$modeLabel \u2022 $serverDisplay"
+          : modeLabel;
 
-      // Service name (subtext) from header flclashx-servicename (constant per profile)
-      String serviceName = "";
+      // Content: "↑ speed  ↓ speed"
+      final content =
+          "\u2191 ${traffic.up.show}/s  \u2193 ${traffic.down.show}/s";
+
+      // SubText: "uptime • total traffic"
+      String subText = "";
       try {
-        String? svc = profile?.providerHeaders['flclashx-servicename'];
-        if (svc != null && svc.isNotEmpty) {
-          try {
-            final normalized = base64.normalize(svc);
-            svc = utf8.decode(base64.decode(normalized));
-          } catch (_) {}
-          serviceName = svc?.trim() ?? "";
+        final startTime = clashLibHandler.getRunTime();
+        if (startTime != null) {
+          final elapsed = DateTime.now().difference(startTime);
+          final h = elapsed.inHours;
+          final m = elapsed.inMinutes % 60;
+          final uptime = h > 0 ? "${h}h ${m}m" : "${m}m";
+          final total = clashLibHandler.getTotalTraffic(false);
+          final totalBytes = total.up.value + total.down.value;
+          final totalShow = TrafficValue(value: totalBytes).show;
+          subText = "$uptime \u2022 $totalShow";
         }
       } catch (_) {}
 
-      return json.encode(
-          {"title": title, "server": serviceName, "content": "$traffic"});
+      return json.encode({
+        "title": title,
+        "server": subText,
+        "content": content,
+      });
     } catch (_) {
-      // Fallback minimal
       return json.encode({"title": "dropweb", "server": "", "content": ""});
     }
   };
+
+  // Initialize cached mode from config at service start
+  vpn?.updateMode(globalState.config.patchClashConfig.mode);
 
   commonPrint.log("[DART] Adding VPN listener");
   vpn?.addListener(
@@ -311,6 +330,19 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
                 .toList(),
           );
         }
+        sendPort.send({'success': true});
+        return;
+      }
+      if (action == 'updateMode') {
+        final modeName = message['mode'] as String? ?? 'rule';
+        final mode = Mode.values.firstWhere(
+          (m) => m.name == modeName,
+          orElse: () => Mode.rule,
+        );
+        globalState.config = globalState.config.copyWith(
+          patchClashConfig:
+              globalState.config.patchClashConfig.copyWith(mode: mode),
+        );
         sendPort.send({'success': true});
         return;
       }

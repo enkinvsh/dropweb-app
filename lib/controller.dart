@@ -1595,6 +1595,11 @@ class AppController {
     _ref.read(patchClashConfigProvider.notifier).updateState(
           (state) => state.copyWith(mode: mode),
         );
+    // Sync mode to service isolate for notification display
+    clashLib?.sendIpcMessage({
+      'action': 'updateMode',
+      'mode': mode.name,
+    });
     if (mode == Mode.global) {
       updateCurrentGroupName(GroupName.GLOBAL.name);
       _autoSelectFastestForGlobal();
