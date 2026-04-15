@@ -39,7 +39,7 @@ android {
 
     defaultConfig {
         applicationId = "app.dropweb"
-        minSdk = flutter.minSdkVersion
+        minSdk = 23  // core module requires ≥23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
