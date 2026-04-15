@@ -19,7 +19,7 @@ class Navigation {
   }) =>
       [
         NavigationItem(
-          keep: false,
+          keep: true, // keep alive to avoid rebuild lag on return
           icon: HugeIcon(
               icon: HugeIcons.strokeRoundedDashboardSquare01, size: 24),
           label: PageLabel.dashboard,
@@ -28,6 +28,7 @@ class Navigation {
           ),
         ),
         NavigationItem(
+          keep: true, // keep alive to avoid rebuild lag on return
           icon: HugeIcon(icon: HugeIcons.strokeRoundedSettings02, size: 24),
           label: PageLabel.tools,
           view: const ToolsView(

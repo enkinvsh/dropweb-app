@@ -244,12 +244,14 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
 
+    const buttonSize = 64.0; // same as navbar
+
     if (!isDark) {
       return RepaintBoundary(
         key: _key,
         child: Container(
-          width: 64,
-          height: 64,
+          width: buttonSize,
+          height: buttonSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: colorScheme.surfaceContainer,
@@ -272,19 +274,17 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
     return RepaintBoundary(
       key: _key,
       child: Container(
-        width: 64,
-        height: 64,
+        width: buttonSize,
+        height: buttonSize,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           boxShadow: Lumina.glassShadow,
         ),
         child: ClipOval(
-          child: BackdropFilter(
-            filter: Lumina.glassBlur,
-            child: Container(
-              decoration: Lumina.glassCircle(),
-              child: const StartButton(),
-            ),
+          // BackdropFilter disabled for perf test
+          child: Container(
+            decoration: Lumina.glassCircle(),
+            child: const StartButton(),
           ),
         ),
       ),
@@ -423,13 +423,8 @@ class CommonNavigationBar extends ConsumerWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(Lumina.radiusXxl),
-            child: isDark
-                ? BackdropFilter(
-                    filter: Lumina.glassBlur,
-                    child:
-                        _buildTabBarContent(context, colorScheme, isDark, ref),
-                  )
-                : _buildTabBarContent(context, colorScheme, isDark, ref),
+            // BackdropFilter disabled for perf test
+            child: _buildTabBarContent(context, colorScheme, isDark, ref),
           ),
         ),
       );

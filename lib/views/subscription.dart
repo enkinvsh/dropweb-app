@@ -138,12 +138,22 @@ Future<void> _refreshProfiles(BuildContext context) async {
   }
 }
 
-class _ProfilesContent extends ConsumerWidget {
+class _ProfilesContent extends ConsumerStatefulWidget {
   final VoidCallback onAdd;
   const _ProfilesContent({required this.onAdd});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProfilesContent> createState() => _ProfilesContentState();
+}
+
+class _ProfilesContentState extends ConsumerState<_ProfilesContent>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     final state = ref.watch(profilesSelectorStateProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -152,7 +162,7 @@ class _ProfilesContent extends ConsumerWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: _AddProfileCard(onTap: onAdd, isDark: isDark),
+          child: _AddProfileCard(onTap: widget.onAdd, isDark: isDark),
         ),
       );
     }
@@ -180,7 +190,7 @@ class _ProfilesContent extends ConsumerWidget {
                   ),
                 ),
               GridItem(
-                child: _AddProfileCard(onTap: onAdd, isDark: isDark),
+                child: _AddProfileCard(onTap: widget.onAdd, isDark: isDark),
               ),
             ],
           ),
@@ -230,11 +240,21 @@ class _AddProfileCard extends StatelessWidget {
 
 // ── Proxies content ───────────────────────────────────────────────────────
 
-class _ProxiesContent extends StatelessWidget {
+class _ProxiesContent extends StatefulWidget {
   const _ProxiesContent();
 
   @override
+  State<_ProxiesContent> createState() => _ProxiesContentState();
+}
+
+class _ProxiesContentState extends State<_ProxiesContent>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     // Original behavior: the proxies UI is the same for all
     // three modes (rule / direct / global). Mode only changes mihomo
     // routing, never the on-screen proxy list. The bottom mode bar
@@ -647,12 +667,8 @@ class _GlassTabBar extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(Lumina.radiusLg),
-        child: isDark
-            ? BackdropFilter(
-                filter: Lumina.glassBlur,
-                child: _buildContent(),
-              )
-            : _buildContent(),
+        // BackdropFilter disabled for perf test
+        child: _buildContent(),
       ),
     );
   }
@@ -738,9 +754,8 @@ class _ModeBottomBar extends ConsumerWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(Lumina.radiusLg),
-          child: isDark
-              ? BackdropFilter(filter: Lumina.glassBlur, child: content)
-              : content,
+          // BackdropFilter disabled for perf test
+          child: content,
         ),
       ),
     );
