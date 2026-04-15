@@ -20,6 +20,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'common/common.dart';
+import 'common/proxy_credentials.dart';
 import 'controller.dart';
 import 'models/models.dart';
 
@@ -62,6 +63,25 @@ class GlobalState {
   AppController? _appController;
   GlobalKey<CommonScaffoldState> homeScaffoldKey = GlobalKey();
   bool isInit = false;
+
+  /// Current session's proxy credentials (regenerated on each connect)
+  ProxyCredentials? _currentProxyCredentials;
+
+  /// Get or generate proxy credentials for current session
+  ProxyCredentials get currentProxyCredentials {
+    _currentProxyCredentials ??= ProxyCredentialsGenerator.generate();
+    return _currentProxyCredentials!;
+  }
+
+  /// Clear credentials (call on disconnect)
+  void clearProxyCredentials() {
+    _currentProxyCredentials = null;
+  }
+
+  /// Force regenerate credentials (call on connect)
+  void regenerateProxyCredentials() {
+    _currentProxyCredentials = ProxyCredentialsGenerator.generate();
+  }
 
   bool get isStart => startTime != null && startTime!.isBeforeNow;
 
@@ -436,6 +456,29 @@ class GlobalState {
         rawConfig["mixed-port"] = realPatchConfig.mixedPort;
       }
     }
+
+    // === SOCKS PORT PROTECTION ===
+    // Generate random port + auth to prevent detection by other apps
+    // Reference: https://habr.com/ru/articles/1022422/
+    final proxyCredentials = currentProxyCredentials;
+    commonPrint.log(
+        '[SOCKS Protection] Using port ${proxyCredentials.port} with auth');
+
+    // Always use random port (override any static config)
+    rawConfig["mixed-port"] = proxyCredentials.port;
+
+    // Add authentication to protect the proxy from external detection
+    rawConfig["authentication"] =
+        ProxyCredentialsGenerator.toMihomoAuth(proxyCredentials);
+
+    // IMPORTANT: Allow localhost connections without auth
+    // Reason: dropweb-app itself uses the proxy for HTTP requests (subscriptions, IP check)
+    // via DropwebHttpOverrides in lib/common/http.dart
+    //
+    // Security tradeoff: Other localhost apps could theoretically find the port by scanning.
+    // BUT: Random port (50000 options) makes scanning slow and detectable.
+    // This stops quick detectors like RKNHardening that only check known ports (7890, 1080, 8080).
+    rawConfig["skip-auth-prefixes"] = ["127.0.0.1/8", "::1/128"];
 
     if (rawConfig["tun"] == null) {
       rawConfig["tun"] = {};

@@ -144,6 +144,8 @@ class AppController {
     await StatusBarManager.updateIcon(isConnected: isStart);
 
     if (isStart) {
+      // Regenerate proxy credentials for this session (SOCKS port protection)
+      globalState.regenerateProxyCredentials();
       // Initialize foreground notification cache before starting
       initForegroundCache();
       final started = await globalState.handleStart([
@@ -167,6 +169,8 @@ class AppController {
       applyProfileDebounce();
     } else {
       await globalState.handleStop();
+      // Clear credentials on disconnect
+      globalState.clearProxyCredentials();
       clashCore.resetTraffic();
       _ref.read(trafficsProvider.notifier).clear();
       _ref.read(totalTrafficProvider.notifier).value = Traffic();

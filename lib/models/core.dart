@@ -99,6 +99,20 @@ class AndroidVpnOptions with _$AndroidVpnOptions {
       _$AndroidVpnOptionsFromJson(json);
 }
 
+/// Randomly generated credentials for SOCKS/HTTP proxy authentication.
+/// Regenerated on each VPN connect to prevent detection by other apps.
+@freezed
+class ProxyCredentials with _$ProxyCredentials {
+  const factory ProxyCredentials({
+    required int port,
+    required String username,
+    required String password,
+  }) = _ProxyCredentials;
+
+  factory ProxyCredentials.fromJson(Map<String, Object?> json) =>
+      _$ProxyCredentialsFromJson(json);
+}
+
 @freezed
 class InitParams with _$InitParams {
   const factory InitParams({

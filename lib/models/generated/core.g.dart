@@ -142,6 +142,22 @@ Map<String, dynamic> _$$AndroidVpnOptionsImplToJson(
       'excludePackage': instance.excludePackage,
     };
 
+_$ProxyCredentialsImpl _$$ProxyCredentialsImplFromJson(
+        Map<String, dynamic> json) =>
+    _$ProxyCredentialsImpl(
+      port: (json['port'] as num).toInt(),
+      username: json['username'] as String,
+      password: json['password'] as String,
+    );
+
+Map<String, dynamic> _$$ProxyCredentialsImplToJson(
+        _$ProxyCredentialsImpl instance) =>
+    <String, dynamic>{
+      'port': instance.port,
+      'username': instance.username,
+      'password': instance.password,
+    };
+
 _$InitParamsImpl _$$InitParamsImplFromJson(Map<String, dynamic> json) =>
     _$InitParamsImpl(
       homeDir: json['home-dir'] as String,

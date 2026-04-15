@@ -1,11 +1,11 @@
 import 'package:dropweb/common/proxy.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/state.dart';
+import 'package:dropweb/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ProxyManager extends ConsumerStatefulWidget {
-
   const ProxyManager({super.key, required this.child});
   final Widget child;
 
@@ -17,7 +17,9 @@ class _ProxyManagerState extends ConsumerState<ProxyManager> {
   Future<void> _updateProxy(ProxyState proxyState) async {
     final isStart = proxyState.isStart;
     final systemProxy = proxyState.systemProxy;
-    final port = proxyState.port;
+    // Use actual random port from globalState instead of configured port
+    // This ensures system proxy points to the correct mihomo listener
+    final port = globalState.currentProxyCredentials.port;
     if (isStart && systemProxy) {
       proxy?.startProxy(port, proxyState.bassDomain);
     } else {
