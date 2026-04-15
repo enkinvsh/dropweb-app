@@ -1,46 +1,40 @@
-<img src="assets/images/header.png" alt="dropweb" width="720" />
+<img src="assets/images/header.png" alt="dropweb - proxy client Android Windows macOS" width="720" />
 
-A fork of [FlClashX](https://github.com/pluralplay/FlClashX) built on the `mihomo` core. Custom Flutter UI, no ads, no telemetry, `GPL-3.0` licensed.
+# dropweb
 
-[![license](https://img.shields.io/github/license/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117)](LICENSE)
+**Cross-platform proxy client** powered by [mihomo](https://github.com/MetaCubeX/mihomo) core. Flutter UI, open-source.
+
+[![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
+[![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
+[![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
+[![GitHub stars](https://img.shields.io/github/stars/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117)](https://github.com/enkinvsh/dropweb-app/stargazers)
 [![release](https://img.shields.io/github/v/release/enkinvsh/dropweb-app?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release)](https://github.com/enkinvsh/dropweb-app/releases)
 
-[russian](README.md) · [download the latest build →](https://github.com/enkinvsh/dropweb-app/releases)
+[Русский](README.md) · [Download →](https://github.com/enkinvsh/dropweb-app/releases) · [dropweb.org](https://dropweb.org)
 
 ---
 
-## `$ what dropweb does`
+## Features
 
-dropweb is a fork of [FlClashX](https://github.com/pluralplay/FlClashX). Everything FlClashX itself does keeps working. The fork has two things of its own.
+- **Protocols**: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard
+- **Platforms**: Android 6+, Windows 10+, macOS 11+
+- **Subscriptions**: auto-update, QR code, URL import
+- **Routing**: rules by domain, IP, GeoIP
+- **UI**: dark theme, minimalist design
 
-### `lumina` — design system
-
-A complete dark-first design system written from scratch specifically for dropweb. A living void background `#030305` with a mesh gradient and slowly drifting light pillars on the home screen, glass surfaces on `white 3%` with blur, bioluminescent glow on active elements — green `#15803d` bleeding into `#22c55e`. This is not a theme layered on top of Material 3 — every screen in the client has been rethought in a single visual language.
-
-### `api/secret` — localhost hardening
-
-The mihomo core exposes an HTTP API on localhost for proxy control — unprotected, any process on the device could reach it and drive the VPN: switch servers, rewrite the config, snoop traffic. dropweb generates a random 64-character secret at every launch and sets it as the mihomo `external-controller` secret. Without it the API returns 401 to every request. The secret lives in memory only for the current session — it is never persisted and never transmitted anywhere.
-
-## `$ screenshots`
+## Screenshots
 
 <table>
 <tr>
-<td><img src="docs/screenshots/dashboard.png" width="300" alt="dashboard" /></td>
-<td><img src="docs/screenshots/proxy.png" width="300" alt="proxies" /></td>
-</tr>
-<tr>
-<td><sub><code>home</code> — profile, limits, controls</sub></td>
-<td><sub><code>proxy</code> — groups, latencies, modes</sub></td>
+<td><img src="docs/screenshots/dashboard.png" width="300" alt="dropweb dashboard proxy client" /></td>
+<td><img src="docs/screenshots/proxy.png" width="300" alt="dropweb server selection" /></td>
 </tr>
 </table>
 
-## `$ license`
+## License
 
-`GPL-3.0` — see [LICENSE](LICENSE). All dropweb changes are open in this repository. The fork builds on the work of others:
+GPL-3.0 — see [LICENSE](LICENSE).
 
-<pre>
-dropweb
-   └─ <a href="https://github.com/pluralplay/FlClashX">FlClashX</a>
-       └─ <a href="https://github.com/chen08209/FlClash">FlClash</a>
-           └─ <a href="https://github.com/MetaCubeX/mihomo">mihomo</a>
-</pre>
+---
+
+<sub>This application is not intended for bypassing restrictions or violating any laws. Use it for accessing AI services — ChatGPT, GPT-4, Claude, Gemini, Midjourney, Sora — remote work, development, and other legitimate purposes. User assumes all responsibility.</sub>

@@ -1,4 +1,4 @@
-<img src="assets/images/header.png" alt="dropweb" width="720" />
+<img src="assets/images/header.png" alt="dropweb - прокси клиент Android Windows macOS" width="720" />
 
 # dropweb
 
@@ -7,7 +7,7 @@
 [![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
 [![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
-[![license](https://img.shields.io/github/license/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117)](https://github.com/enkinvsh/dropweb-app/stargazers)
 [![release](https://img.shields.io/github/v/release/enkinvsh/dropweb-app?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release)](https://github.com/enkinvsh/dropweb-app/releases)
 
 [English](README_EN.md) · [Скачать →](https://github.com/enkinvsh/dropweb-app/releases) · [dropweb.org](https://dropweb.org)
@@ -26,8 +26,8 @@
 
 <table>
 <tr>
-<td><img src="docs/screenshots/dashboard.png" width="300" alt="dashboard" /></td>
-<td><img src="docs/screenshots/proxy.png" width="300" alt="proxy" /></td>
+<td><img src="docs/screenshots/dashboard.png" width="300" alt="dropweb главный экран прокси клиент" /></td>
+<td><img src="docs/screenshots/proxy.png" width="300" alt="dropweb выбор сервера прокси" /></td>
 </tr>
 </table>
 
