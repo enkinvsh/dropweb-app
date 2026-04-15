@@ -81,6 +81,9 @@ dev_dependencies:
   custom_lint: ^0.7.3
   flutter_launcher_icons: ^0.14.4
 
+dependency_overrides:
+  analyzer_plugin: ^0.13.0
+
 flutter:
   uses-material-design: true
   shaders:

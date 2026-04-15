@@ -1008,10 +1008,12 @@ class _$AndroidVpnOptionsCopyWithImpl<$Res, $Val extends AndroidVpnOptions>
               as String,
       includePackage: freezed == includePackage
           ? _value.includePackage
-          : includePackage as List<String>?,
+          : includePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       excludePackage: freezed == excludePackage
           ? _value.excludePackage
-          : excludePackage as List<String>?,
+          : excludePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
     ) as $Val);
   }
 
@@ -1125,10 +1127,12 @@ class __$$AndroidVpnOptionsImplCopyWithImpl<$Res>
               as String,
       includePackage: freezed == includePackage
           ? _value._includePackage
-          : includePackage as List<String>?,
+          : includePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       excludePackage: freezed == excludePackage
           ? _value._excludePackage
-          : excludePackage as List<String>?,
+          : excludePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
     ));
   }
 }
@@ -1195,7 +1199,7 @@ class _$AndroidVpnOptionsImpl implements _AndroidVpnOptions {
   List<String>? get includePackage {
     final value = _includePackage;
     if (value == null) return null;
-    if (value is EqualUnmodifiableListView) return value;
+    if (_includePackage is EqualUnmodifiableListView) return _includePackage;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(value);
   }
@@ -1205,7 +1209,7 @@ class _$AndroidVpnOptionsImpl implements _AndroidVpnOptions {
   List<String>? get excludePackage {
     final value = _excludePackage;
     if (value == null) return null;
-    if (value is EqualUnmodifiableListView) return value;
+    if (_excludePackage is EqualUnmodifiableListView) return _excludePackage;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(value);
   }
@@ -1246,21 +1250,20 @@ class _$AndroidVpnOptionsImpl implements _AndroidVpnOptions {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hashAll([
-        runtimeType,
-        enable,
-        port,
-        accessControl,
-        allowBypass,
-        systemProxy,
-        const DeepCollectionEquality().hash(_bypassDomain),
-        ipv4Address,
-        ipv6Address,
-        const DeepCollectionEquality().hash(_routeAddress),
-        dnsServerAddress,
-        const DeepCollectionEquality().hash(_includePackage),
-        const DeepCollectionEquality().hash(_excludePackage)
-      ]);
+  int get hashCode => Object.hash(
+      runtimeType,
+      enable,
+      port,
+      accessControl,
+      allowBypass,
+      systemProxy,
+      const DeepCollectionEquality().hash(_bypassDomain),
+      ipv4Address,
+      ipv6Address,
+      const DeepCollectionEquality().hash(_routeAddress),
+      dnsServerAddress,
+      const DeepCollectionEquality().hash(_includePackage),
+      const DeepCollectionEquality().hash(_excludePackage));
 
   /// Create a copy of AndroidVpnOptions
   /// with the given fields replaced by the non-null parameter values.
