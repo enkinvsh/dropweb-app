@@ -484,7 +484,7 @@ packages:
       path: "."
       ref: master
       resolved-ref: c0e10a5dab0e22cd616ec92ae71471d76369cbfe
-      url: "https://github.com/chen08209/flutter_js"
+      url: "https://github.com/enkinvsh/flutter_js.git"
     source: git
     version: "0.8.3"
   flutter_launcher_icons:
@@ -1115,7 +1115,7 @@ packages:
       path: "."
       ref: main
       resolved-ref: "7cda330fc33d5ef9e00333048b70ce65a5f5d550"
-      url: "https://github.com/chen08209/re-editor.git"
+      url: "https://github.com/enkinvsh/re-editor.git"
     source: git
     version: "0.7.0"
   re_highlight:
