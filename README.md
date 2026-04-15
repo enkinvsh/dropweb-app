@@ -31,13 +31,6 @@
 </tr>
 </table>
 
-## Сборка
-
-```bash
-flutter pub get
-dart run setup.dart android
-```
-
 ## Лицензия
 
 GPL-3.0 — см. [LICENSE](LICENSE).
