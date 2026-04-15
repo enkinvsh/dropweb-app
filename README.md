@@ -10,7 +10,7 @@
 [![license](https://img.shields.io/github/license/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117)](LICENSE)
 [![release](https://img.shields.io/github/v/release/enkinvsh/dropweb-app?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release)](https://github.com/enkinvsh/dropweb-app/releases)
 
-[English](README_EN.md) · [Скачать →](https://github.com/enkinvsh/dropweb-app/releases)
+[English](README_EN.md) · [Скачать →](https://github.com/enkinvsh/dropweb-app/releases) · [dropweb.org](https://dropweb.org)
 
 ---
 
