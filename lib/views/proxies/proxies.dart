@@ -15,7 +15,29 @@ class ProxiesView extends ConsumerStatefulWidget {
 
 class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
   @override
-  List<Widget> get actions => [];
+  List<Widget> get actions => [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Consumer(
+              builder: (context, ref, _) => TextField(
+                decoration: InputDecoration(
+                  hintText: appLocalizations.search,
+                  prefixIcon: const Icon(Icons.search),
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                onChanged: (value) {
+                  ref.read(proxiesQueryProvider.notifier).value =
+                      value.toLowerCase();
+                },
+              ),
+            ),
+          ),
+        ),
+      ];
 
   @override
   Widget? get floatingActionButton => null;
