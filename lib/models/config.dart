@@ -76,7 +76,7 @@ class AppSettingProps with _$AppSettingProps {
     @Default(false) bool autoCheckUpdate,
     @Default(false) bool showLabel,
     @Default(false) bool disclaimerAccepted,
-    @Default(false) bool minimizeOnExit,
+    @Default(true) bool minimizeOnExit,
     @Default(false) bool hidden,
     @Default(false) bool developerMode,
     @Default(false) bool overrideProviderSettings,

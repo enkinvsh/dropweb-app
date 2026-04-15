@@ -360,7 +360,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
       this.autoCheckUpdate = false,
       this.showLabel = false,
       this.disclaimerAccepted = false,
-      this.minimizeOnExit = false,
+      this.minimizeOnExit = true,
       this.hidden = false,
       this.developerMode = false,
       this.overrideProviderSettings = false,

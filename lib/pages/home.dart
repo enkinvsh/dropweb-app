@@ -169,7 +169,7 @@ class _BottomBarWithConnect extends ConsumerWidget {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
+        bottom: MediaQuery.of(context).padding.bottom + 20,
         top: 8,
       ),
       child: Row(

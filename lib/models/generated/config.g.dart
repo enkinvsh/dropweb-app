@@ -24,7 +24,7 @@ _$AppSettingPropsImpl _$$AppSettingPropsImplFromJson(
       autoCheckUpdate: json['autoCheckUpdate'] as bool? ?? false,
       showLabel: json['showLabel'] as bool? ?? false,
       disclaimerAccepted: json['disclaimerAccepted'] as bool? ?? false,
-      minimizeOnExit: json['minimizeOnExit'] as bool? ?? false,
+      minimizeOnExit: json['minimizeOnExit'] as bool? ?? true,
       hidden: json['hidden'] as bool? ?? false,
       developerMode: json['developerMode'] as bool? ?? false,
       overrideProviderSettings:
