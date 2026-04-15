@@ -93,19 +93,50 @@ class DropwebVpnService : VpnService(), BaseServiceInterface {
                 )
             }
             addDnsServer(options.dnsServerAddress)
-            setMtu(1500)
-            options.accessControl.let { accessControl ->
-                if (accessControl.enable) {
-                    when (accessControl.mode) {
-                        AccessControlMode.acceptSelected -> {
-                            (accessControl.acceptList + packageName).forEach {
-                                addAllowedApplication(it)
-                            }
+            setMtu(9000)
+            // Profile-level tun.include-package / tun.exclude-package take
+            // precedence over the app-level access control
+            val include = options.includePackage.orEmpty()
+            val exclude = options.excludePackage.orEmpty()
+            when {
+                include.isNotEmpty() -> {
+                    (include + packageName).distinct().forEach { pkg ->
+                        try {
+                            addAllowedApplication(pkg)
+                        } catch (_: Exception) {
+                            Log.d("VpnService", "addAllowedApplication failed: $pkg")
                         }
-
-                        AccessControlMode.rejectSelected -> {
-                            (accessControl.rejectList - packageName).forEach {
-                                addDisallowedApplication(it)
+                    }
+                }
+                exclude.isNotEmpty() -> {
+                    (exclude - packageName).forEach { pkg ->
+                        try {
+                            addDisallowedApplication(pkg)
+                        } catch (_: Exception) {
+                            Log.d("VpnService", "addDisallowedApplication failed: $pkg")
+                        }
+                    }
+                }
+                else -> options.accessControl.let { accessControl ->
+                    if (accessControl.enable) {
+                        when (accessControl.mode) {
+                            AccessControlMode.acceptSelected -> {
+                                (accessControl.acceptList + packageName).forEach {
+                                    try {
+                                        addAllowedApplication(it)
+                                    } catch (_: Exception) {
+                                        Log.d("VpnService", "addAllowedApplication failed: $it")
+                                    }
+                                }
+                            }
+                            AccessControlMode.rejectSelected -> {
+                                (accessControl.rejectList - packageName).forEach {
+                                    try {
+                                        addDisallowedApplication(it)
+                                    } catch (_: Exception) {
+                                        Log.d("VpnService", "addDisallowedApplication failed: $it")
+                                    }
+                                }
                             }
                         }
                     }

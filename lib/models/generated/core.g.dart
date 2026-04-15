@@ -117,6 +117,12 @@ _$AndroidVpnOptionsImpl _$$AndroidVpnOptionsImplFromJson(
               .toList() ??
           const [],
       dnsServerAddress: json['dnsServerAddress'] as String,
+      includePackage: (json['includePackage'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      excludePackage: (json['excludePackage'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
     );
 
 Map<String, dynamic> _$$AndroidVpnOptionsImplToJson(
@@ -132,6 +138,8 @@ Map<String, dynamic> _$$AndroidVpnOptionsImplToJson(
       'ipv6Address': instance.ipv6Address,
       'routeAddress': instance.routeAddress,
       'dnsServerAddress': instance.dnsServerAddress,
+      'includePackage': instance.includePackage,
+      'excludePackage': instance.excludePackage,
     };
 
 _$InitParamsImpl _$$InitParamsImplFromJson(Map<String, dynamic> json) =>
