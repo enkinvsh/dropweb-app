@@ -8,6 +8,13 @@ class DropwebHttpOverrides extends HttpOverrides {
     if ([localhost].contains(url.host)) {
       return "DIRECT";
     }
+
+    // Mobile: app excluded from VPN, always go direct
+    if (Platform.isAndroid || Platform.isIOS) {
+      return "DIRECT";
+    }
+
+    // Desktop: use proxy when VPN is running (for subscription updates via VPN)
     final port = globalState.config.patchClashConfig.mixedPort;
     final isStart = globalState.appState.runTime != null;
     commonPrint.log("find $url proxy:$isStart");

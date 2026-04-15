@@ -94,8 +94,6 @@ class DropwebVpnService : VpnService(), BaseServiceInterface {
             }
             addDnsServer(options.dnsServerAddress)
             setMtu(9000)
-            // Profile-level tun.include-package / tun.exclude-package take
-            // precedence over the app-level access control
             val include = options.includePackage.orEmpty()
             val exclude = options.excludePackage.orEmpty()
             when {
@@ -149,15 +147,6 @@ class DropwebVpnService : VpnService(), BaseServiceInterface {
             }
             if (options.allowBypass) {
                 allowBypass()
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && options.systemProxy) {
-                setHttpProxy(
-                    ProxyInfo.buildDirectProxy(
-                        "127.0.0.1",
-                        options.port,
-                        options.bypassDomain
-                    )
-                )
             }
             establish()?.detachFd()
                 ?: throw NullPointerException("Establish VPN rejected by system")

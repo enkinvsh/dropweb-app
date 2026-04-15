@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' show Pointer;
+import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:animations/animations.dart';
@@ -458,27 +459,17 @@ class GlobalState {
     }
 
     // === SOCKS PORT PROTECTION ===
-    // Generate random port + auth to prevent detection by other apps
     // Reference: https://habr.com/ru/articles/1022422/
     final proxyCredentials = currentProxyCredentials;
+
+    // DEBUG: Force disable all ports to test if this code runs
     commonPrint.log(
-        '[SOCKS Protection] Using port ${proxyCredentials.port} with auth');
-
-    // Always use random port (override any static config)
+        '[SOCKS Protection] FORCING port=0, mixed-port=${proxyCredentials.port}');
     rawConfig["mixed-port"] = proxyCredentials.port;
-
-    // Add authentication to protect the proxy from external detection
+    rawConfig["port"] = 0;
+    rawConfig["socks-port"] = 0;
     rawConfig["authentication"] =
         ProxyCredentialsGenerator.toMihomoAuth(proxyCredentials);
-
-    // IMPORTANT: Allow localhost connections without auth
-    // Reason: dropweb-app itself uses the proxy for HTTP requests (subscriptions, IP check)
-    // via DropwebHttpOverrides in lib/common/http.dart
-    //
-    // Security tradeoff: Other localhost apps could theoretically find the port by scanning.
-    // BUT: Random port (50000 options) makes scanning slow and detectable.
-    // This stops quick detectors like RKNHardening that only check known ports (7890, 1080, 8080).
-    rawConfig["skip-auth-prefixes"] = ["127.0.0.1/8", "::1/128"];
 
     if (rawConfig["tun"] == null) {
       rawConfig["tun"] = {};
