@@ -53,8 +53,16 @@ class _WindowContainerState extends ConsumerState<WindowManager>
 
   @override
   void onWindowClose() async {
-    await globalState.appController.handleBackOrExit();
-    super.onWindowClose();
+    final minimizeOnExit = ref.read(appSettingProvider).minimizeOnExit;
+    if (minimizeOnExit) {
+      // Hide to tray instead of closing
+      await globalState.appController.handleBackOrExit();
+      // Don't call super.onWindowClose() - we want to keep running
+    } else {
+      // Actually close the app
+      await globalState.appController.handleExit();
+      super.onWindowClose();
+    }
   }
 
   @override
