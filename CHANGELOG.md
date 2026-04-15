@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.0
+
+- Улучшена стабильность и безопасность соединения
+
 ## v0.3.4
 
 - feat(ui): remove Direct mode, auto-select fastest proxy for Global
