@@ -45,7 +45,7 @@ dependencies:
   ffi: ^2.1.5
   re_editor:
     git:
-      url: https://github.com/chen08209/re-editor.git
+      url: https://github.com/enkinvsh/re-editor.git
       ref: main
   re_highlight: ^0.0.3
   archive: ^4.0.7
@@ -61,7 +61,7 @@ dependencies:
   riverpod_annotation: ^2.6.1
   flutter_js:
     git:
-      url: https://github.com/chen08209/flutter_js
+      url: https://github.com/enkinvsh/flutter_js.git
       ref: master
   flutter_svg: ^2.2.3
   flutter_cache_manager: ^3.4.1
