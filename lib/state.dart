@@ -460,16 +460,23 @@ class GlobalState {
 
     // === SOCKS PORT PROTECTION ===
     // Reference: https://habr.com/ru/articles/1022422/
-    final proxyCredentials = currentProxyCredentials;
-
-    // DEBUG: Force disable all ports to test if this code runs
-    commonPrint.log(
-        '[SOCKS Protection] FORCING port=0, mixed-port=${proxyCredentials.port}');
-    rawConfig["mixed-port"] = proxyCredentials.port;
-    rawConfig["port"] = 0;
-    rawConfig["socks-port"] = 0;
-    rawConfig["authentication"] =
-        ProxyCredentialsGenerator.toMihomoAuth(proxyCredentials);
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Mobile: random port + auth (защита от VPN детекторов типа YourVPNDead)
+      final proxyCredentials = currentProxyCredentials;
+      commonPrint.log(
+          '[SOCKS Protection] Mobile: port=${proxyCredentials.port} with auth');
+      rawConfig["mixed-port"] = proxyCredentials.port;
+      rawConfig["port"] = 0;
+      rawConfig["socks-port"] = 0;
+      rawConfig["authentication"] =
+          ProxyCredentialsGenerator.toMihomoAuth(proxyCredentials);
+    } else {
+      // Desktop: фиксированный порт из конфига + skip-auth для localhost
+      // Браузеры используют system proxy (127.0.0.1:7890)
+      commonPrint.log(
+          '[SOCKS Protection] Desktop: using configured port, localhost allowed');
+      rawConfig["skip-auth-prefixes"] = ["127.0.0.1/8", "::1/128"];
+    }
 
     if (rawConfig["tun"] == null) {
       rawConfig["tun"] = {};
