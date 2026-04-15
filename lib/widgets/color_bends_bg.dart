@@ -7,7 +7,7 @@ import 'package:flutter/scheduler.dart';
 ///
 /// Port of reactbits.dev/backgrounds/color-bends for Flutter.
 ///
-/// **Impeller note (2026-04-08):** the upstream FlClashX manifest has
+/// **Impeller note (2026-04-08):** the Dropweb manifest has
 /// `io.flutter.embedding.android.EnableImpeller="true"` (set in the 2025-09-11
 /// "update mihomo core" commit by pluralplay). Impeller's GLES backend
 /// silently fails to load custom FragmentProgram shaders — the loader throws,

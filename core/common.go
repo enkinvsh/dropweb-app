@@ -89,17 +89,11 @@ func sideUpdateExternalProvider(p cp.Provider, bytes []byte) error {
 	case *provider.ProxySetProvider:
 		psp := p.(*provider.ProxySetProvider)
 		_, _, err := psp.SideUpdate(bytes)
-		if err == nil {
-			return err
-		}
-		return nil
+		return err
 	case rp.RuleSetProvider:
 		rsp := p.(*rp.RuleSetProvider)
 		_, _, err := rsp.SideUpdate(bytes)
-		if err == nil {
-			return err
-		}
-		return nil
+		return err
 	default:
 		return errors.New("not external provider")
 	}
@@ -241,9 +235,9 @@ func setupConfig(params *SetupParams) error {
 	defer runLock.Unlock()
 	var err error
 	constant.DefaultTestURL = params.TestURL
-	
+
 	extractProxyDescriptionsFromRaw(params.Config)
-	
+
 	currentConfig, err = config.ParseRawConfig(params.Config)
 	if err != nil {
 		currentConfig, _ = config.ParseRawConfig(config.DefaultRawConfig())

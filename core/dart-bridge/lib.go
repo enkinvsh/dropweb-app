@@ -21,10 +21,10 @@ import (
 
 func InitDartApi(api unsafe.Pointer) {
 	if C.Dart_InitializeApiDL(api) != 0 {
-		panic("failed to create dart bridge")
-	} else {
-		fmt.Println("Dart Api DL is initialized")
+		fmt.Println("ERROR: failed to initialize Dart API bridge - FFI calls will not work")
+		return
 	}
+	fmt.Println("Dart Api DL is initialized")
 }
 
 func SendToPort(port int64, msg string) bool {

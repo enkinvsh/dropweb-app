@@ -1,12 +1,13 @@
-<div align="center">
+**pre-release vVERSION**
 
-<img src="https://raw.githubusercontent.com/enkinvsh/dropweb-app/main/assets/images/icon.png" alt="dropweb" width="96" />
+#### Android
 
-### dropweb vVERSION · pre-release
+[![arm64](https://img.shields.io/badge/arm64-apk-eab308?style=flat-square&logo=android&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-arm64-v8a.apk)  [![universal](https://img.shields.io/badge/universal-apk-6b7280?style=flat-square&logo=android&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-universal.apk)
 
-[![arm64](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/vVERSION/dropweb-android-arm64-v8a.apk?style=for-the-badge&logo=android&logoColor=white&label=arm64&color=eab308)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-arm64-v8a.apk)
-[![universal](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/vVERSION/dropweb-android-universal.apk?style=for-the-badge&logo=android&logoColor=white&label=universal&color=334155)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-android-universal.apk)
-[![setup.exe](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/vVERSION/dropweb-windows-amd64-setup.exe?style=for-the-badge&logo=windows&logoColor=white&label=setup.exe&color=eab308)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-amd64-setup.exe)
-[![portable.zip](https://img.shields.io/github/downloads/enkinvsh/dropweb-app/vVERSION/dropweb-windows-amd64.zip?style=for-the-badge&logo=windows&logoColor=white&label=portable.zip&color=334155)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-windows-amd64.zip)
+#### macOS
 
-</div>
+[![arm64](https://img.shields.io/badge/Apple_Silicon-dmg-eab308?style=flat-square&logo=apple&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-arm64.dmg)
+
+#### Windows
+
+[![setup](https://img.shields.io/badge/installer-exe-eab308?style=flat-square&logo=windows&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-amd64-setup.exe)  [![portable](https://img.shields.io/badge/portable-zip-6b7280?style=flat-square&logo=windows&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases/download/vVERSION/dropweb-amd64.zip)

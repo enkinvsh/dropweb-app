@@ -410,7 +410,7 @@ class GlobalState {
     rawConfig["socks-port"] = realPatchConfig.socksPort;
     rawConfig["redir-port"] = realPatchConfig.redirPort;
     rawConfig["tproxy-port"] = realPatchConfig.tproxyPort;
-    // FlClashX-original three modes — direct passthrough to mihomo:
+    // Original three modes — direct passthrough to mihomo:
     // Mode.rule → "rule", Mode.direct → "direct", Mode.global → "global".
     rawConfig["mode"] = realPatchConfig.mode.name;
 

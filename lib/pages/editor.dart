@@ -123,7 +123,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
     final url = await globalState.showCommonDialog(
       child: InputDialog(
-        title: "导入",
+        title: appLocalizations.import,
         value: "",
         labelText: appLocalizations.url,
         validator: (value) {

@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ConnectionItem extends ConsumerWidget {
-
   const ConnectionItem({
     super.key,
     required this.connection,
@@ -21,7 +20,8 @@ class ConnectionItem extends ConsumerWidget {
   final Function(String)? onClickKeyword;
   final Widget? trailing;
 
-  Future<ImageProvider?> _getPackageIcon(Connection connection) async => await app?.getPackageIcon(connection.metadata.process);
+  Future<ImageProvider?> _getPackageIcon(Connection connection) async =>
+      await app?.getPackageIcon(connection.metadata.process);
 
   String _getSourceText(Connection connection) {
     final metadata = connection.metadata;
@@ -86,77 +86,77 @@ class ConnectionItem extends ConsumerWidget {
           // }
 
           InkWell(
-          child: GestureDetector(
-            // onLongPressStart: (details) {
-            //   if (!system.isDesktop) {
-            //     return;
-            //   }
-            //   openPopup(details.localPosition);
-            // },
-            // onSecondaryTapDown: (details) {
-            //   if (!system.isDesktop) {
-            //     return;
-            //   }
-            //   openPopup(details.localPosition);
-            // },
-            child: ListItem(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
-              tileTitleAlignment: ListTileTitleAlignment.titleHeight,
-              leading: value
-                  ? GestureDetector(
-                      onTap: () {
-                        if (onClickKeyword == null) return;
-                        final process = connection.metadata.process;
-                        if (process.isEmpty) return;
-                        onClickKeyword!(process);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        width: 48,
-                        height: 48,
-                        child: FutureBuilder<ImageProvider?>(
-                          future: _getPackageIcon(connection),
-                          builder: (_, snapshot) {
-                            if (!snapshot.hasData && snapshot.data == null) {
-                              return Container();
-                            } else {
-                              return Image(
-                                image: snapshot.data!,
-                                gaplessPlayback: true,
-                                width: 48,
-                                height: 48,
-                              );
-                            }
-                          },
-                        ),
-                      ),
-                    )
-                  : null,
-              title: title,
-              subtitle: subTitle,
-              trailing: trailing,
+        child: GestureDetector(
+          // onLongPressStart: (details) {
+          //   if (!system.isDesktop) {
+          //     return;
+          //   }
+          //   openPopup(details.localPosition);
+          // },
+          // onSecondaryTapDown: (details) {
+          //   if (!system.isDesktop) {
+          //     return;
+          //   }
+          //   openPopup(details.localPosition);
+          // },
+          child: ListItem(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
             ),
+            tileTitleAlignment: ListTileTitleAlignment.titleHeight,
+            leading: value
+                ? GestureDetector(
+                    onTap: () {
+                      if (onClickKeyword == null) return;
+                      final process = connection.metadata.process;
+                      if (process.isEmpty) return;
+                      onClickKeyword!(process);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      width: 48,
+                      height: 48,
+                      child: FutureBuilder<ImageProvider?>(
+                        future: _getPackageIcon(connection),
+                        builder: (_, snapshot) {
+                          if (!snapshot.hasData && snapshot.data == null) {
+                            return Container();
+                          } else {
+                            return Image(
+                              image: snapshot.data!,
+                              gaplessPlayback: true,
+                              width: 48,
+                              height: 48,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  )
+                : null,
+            title: title,
+            subtitle: subTitle,
+            trailing: trailing,
           ),
-          onTap: () {},
         ),
+        onTap: () {},
+      ),
       popup: CommonPopupMenu(
         minWidth: 160,
         items: [
           PopupMenuItemData(
-            label: "编辑规则",
+            label: "Edit rules",
             onPressed: () {
               // _handleShowEditExtendPage(context);
             },
           ),
           PopupMenuItemData(
-            label: "设置直连",
+            label: "Set direct",
             onPressed: () {},
           ),
           PopupMenuItemData(
-            label: "一键屏蔽",
+            label: "Block",
             onPressed: () {},
           ),
         ],

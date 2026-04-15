@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 )
 
@@ -45,7 +46,8 @@ func startServer(arg string) {
 		conn, err = net.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", arg))
 	}
 	if err != nil {
-		panic(err.Error())
+		fmt.Printf("ERROR: failed to connect to server: %v\n", err)
+		os.Exit(1)
 	}
 
 	defer func(conn net.Conn) {

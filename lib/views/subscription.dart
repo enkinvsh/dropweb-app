@@ -235,7 +235,7 @@ class _ProxiesContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FlClashX-original behavior: the proxies UI is the same for all
+    // Original behavior: the proxies UI is the same for all
     // three modes (rule / direct / global). Mode only changes mihomo
     // routing, never the on-screen proxy list. The bottom mode bar
     // (_ModeBottomBar) watches mode internally for its tab highlight.

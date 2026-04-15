@@ -158,12 +158,12 @@ class Utils {
       // macOS always uses white icon for menu bar
       return "assets/images/icon_white.png";
     }
-    
+
     // When running - use colored icon
     if (isRunning) {
       return "assets/images/icon.ico";
     }
-    
+
     // When stopped - use stop icons based on theme
     return switch (brightness) {
       Brightness.dark => "assets/images/icon_stop_white.ico",
@@ -189,14 +189,16 @@ class Utils {
     if (patch1 != patch2) {
       return patch1.compareTo(patch2);
     }
-    final build1 = version1.contains('+') ? int.parse(version1.split('+')[1]) : 0;
-    final build2 = version2.contains('+') ? int.parse(version2.split('+')[1]) : 0;
+    final build1 =
+        version1.contains('+') ? int.parse(version1.split('+')[1]) : 0;
+    final build2 =
+        version2.contains('+') ? int.parse(version2.split('+')[1]) : 0;
     return build1.compareTo(build2);
   }
 
   String getPinyin(String value) => value.isNotEmpty
-        ? PinyinHelper.getFirstWordPinyin(value.substring(0, 1))
-        : "";
+      ? PinyinHelper.getFirstWordPinyin(value.substring(0, 1))
+      : "";
 
   String? getFileNameForDisposition(String? disposition) {
     if (disposition == null) return null;
@@ -216,7 +218,8 @@ class Utils {
     return parameters[fileNameKey];
   }
 
-  FlutterView getScreen() => WidgetsBinding.instance.platformDispatcher.views.first;
+  FlutterView getScreen() =>
+      WidgetsBinding.instance.platformDispatcher.views.first;
 
   List<String> parseReleaseBody(String? body) {
     if (body == null) return [];
@@ -393,7 +396,7 @@ class Utils {
       final stopwatch = Stopwatch()..start();
       final res = await function();
       stopwatch.stop();
-      commonPrint.log('耗时：${stopwatch.elapsedMilliseconds} ms');
+      commonPrint.log('Elapsed: ${stopwatch.elapsedMilliseconds} ms');
       return res;
     }
     return await function();
