@@ -164,11 +164,8 @@ class Utils {
       return "assets/images/icon.ico";
     }
 
-    // When stopped - use stop icons based on theme
-    return switch (brightness) {
-      Brightness.dark => "assets/images/icon_stop_white.ico",
-      Brightness.light => "assets/images/icon_stop_black.ico",
-    };
+    // When stopped - use inactive icon (black bg, gray db)
+    return "assets/images/icon_inactive.ico";
   }
 
   int compareVersions(String version1, String version2) {
