@@ -6,5 +6,5 @@
 
 [submodule "core/Clash.Meta"]
 	path = core/Clash.Meta
-	url = https://github.com/MetaCubeX/mihomo.git
-	branch = Meta
+	url = https://github.com/enkinvsh/xHomo.git
+	branch = main
