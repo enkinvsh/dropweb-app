@@ -1,40 +1,100 @@
-<img src="assets/images/header.png" alt="dropweb - proxy client Android Windows macOS" width="720" />
+<div align="right">
+  <a href="README.md">Русский</a>
+</div>
+
+<img src="assets/images/header.png" alt="dropweb — proxy client for Android Windows macOS" width="720" />
 
 # dropweb
 
-**Cross-platform proxy client** powered by [mihomo](https://github.com/MetaCubeX/mihomo) core. Flutter UI, open-source.
+<a href="https://github.com/enkinvsh/dropweb-app/releases">
+  <img src="https://img.shields.io/github/v/release/enkinvsh/dropweb-app?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release" alt="Latest Release">
+</a>
+<a href="https://github.com/enkinvsh/dropweb-app/stargazers">
+  <img src="https://img.shields.io/github/stars/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117" alt="GitHub Stars">
+</a>
 
-[![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
-[![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
-[![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/enkinvsh/dropweb-app/releases)
-[![GitHub stars](https://img.shields.io/github/stars/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117)](https://github.com/enkinvsh/dropweb-app/stargazers)
-[![release](https://img.shields.io/github/v/release/enkinvsh/dropweb-app?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release)](https://github.com/enkinvsh/dropweb-app/releases)
+<br>
 
-[Русский](README.md) · [Download →](https://github.com/enkinvsh/dropweb-app/releases) · [dropweb.org](https://dropweb.org)
+<a href="https://github.com/enkinvsh/dropweb-app/releases">
+  <img src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Download for Android">
+</a>
+<a href="https://github.com/enkinvsh/dropweb-app/releases">
+  <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows">
+</a>
+<a href="https://github.com/enkinvsh/dropweb-app/releases">
+  <img src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS">
+</a>
 
 ---
 
+Cross-platform proxy client powered by [mihomo](https://github.com/MetaCubeX/mihomo) core. Fork of [FlClashX](https://github.com/chen08209/FlClash) focused on local scanning protection and utilitarian interface.
+
+Built for a specific task: give engineers a tool they can deploy to non-technical users (or use themselves) for stable bypass of restrictions, without detection risks or broken configs.
+
+## Download
+
+- [Android](https://github.com/enkinvsh/dropweb-app/releases) — APK, 6.0+
+- [Windows](https://github.com/enkinvsh/dropweb-app/releases) — Portable/Setup, 10+
+- [macOS](https://github.com/enkinvsh/dropweb-app/releases) — DMG, 11+ (Intel and Apple Silicon)
+
+Or from website: [dropweb.org](https://dropweb.org)
+
 ## Features
 
-- **Protocols**: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard
-- **Platforms**: Android 6+, Windows 10+, macOS 11+
-- **Subscriptions**: auto-update, QR code, URL import
-- **Routing**: rules by domain, IP, GeoIP
-- **UI**: dark theme, minimalist design
+- **Protocols:** VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard
+- **Subscriptions:** Import via URL/QR, auto-update in background
+- **Routing:** Local traffic direct, blocked — through proxy (GeoIP/Geosite)
+- **UI:** Stripped down to essentials, only necessary controls
 
-## Screenshots
+---
 
-<table>
-<tr>
-<td><img src="docs/screenshots/dashboard.png" width="300" alt="dropweb dashboard proxy client" /></td>
-<td><img src="docs/screenshots/proxy.png" width="300" alt="dropweb server selection" /></td>
-</tr>
-</table>
+## Why Fork and Detection Protection
+
+FlClashX is an excellent client, but most popular apps (Happ, v2rayNG, Hiddify, Neko Box) are vulnerable to local scanning. Any app on the device can find the standard SOCKS port (7890) without root — this is actively used for VPN user detection.
+
+**How dropweb solves this:**
+
+- **Dynamic ports** — randomization instead of default 7890/7891
+- **SOCKS authentication** — enforced, scanners can't verify traffic type
+- **TUN only** — removed system proxy (readable from OS settings), all routing via virtual interface
+
+---
+
+## Build from Source
+
+```bash
+git clone https://github.com/enkinvsh/dropweb-app.git
+cd dropweb-app
+flutter pub get
+
+# Android
+dart run setup.dart android --arch arm64
+
+# Windows  
+dart run setup.dart windows
+
+# macOS
+dart run setup.dart macos
+```
+
+Requires Flutter SDK 3.24+. Mihomo binaries are downloaded automatically.
+
+---
+
+## Known Issues
+
+- **Android:** Aggressive battery optimization (MIUI, ColorOS) may kill VPN in background. Disable battery optimization for dropweb
+- **macOS:** First launch requires admin rights for TUN interface
+- **Old devices:** Android with <3GB RAM may crash with heavy GeoIP databases
+
+---
 
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
 
+**Links:** [dropweb.org](https://dropweb.org) · [FlClash — original project](https://github.com/chen08209/FlClash)
+
 ---
 
-<sub>This application is not intended for bypassing restrictions or violating any laws. Use it for accessing AI services — ChatGPT, GPT-4, Claude, Gemini, Midjourney, Sora — remote work, development, and other legitimate purposes. User assumes all responsibility.</sub>
+<sub>This tool is designed for personal traffic security and information access. User assumes responsibility for compliance with local laws.</sub>
