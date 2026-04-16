@@ -2,7 +2,7 @@
   <a href="README.md">Русский</a>
 </div>
 
-<img src="assets/images/header.png" alt="dropweb — proxy client for Android Windows macOS" width="720" />
+<img src="assets/images/header.png" alt="dropweb — VPN proxy client mihomo Clash Meta for Android Windows macOS with anti-detection" width="720" />
 
 # dropweb
 
@@ -27,7 +27,7 @@
 
 ---
 
-Cross-platform proxy client powered by [mihomo](https://github.com/MetaCubeX/mihomo) core. Fork of [FlClashX](https://github.com/chen08209/FlClash) focused on local scanning protection and utilitarian interface.
+Cross-platform proxy client powered by [mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta) core. Fork of [FlClashX](https://github.com/chen08209/FlClash) focused on local scanning protection, DPI bypass and utilitarian interface.
 
 Built for a specific task: give engineers a tool they can deploy to non-technical users (or use themselves) for stable access to international services, without detection risks or broken configs.
 
@@ -39,9 +39,9 @@ Built for a specific task: give engineers a tool they can deploy to non-technica
 
 ## Features
 
-- **Protocols:** VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard
+- **Protocols:** VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard (Xray-core compatible)
 - **Subscriptions:** Import via URL/QR, auto-update in background
-- **Routing:** Local traffic direct, blocked — through proxy (GeoIP/Geosite)
+- **Routing:** Split tunneling — local traffic direct, blocked through proxy (GeoIP/Geosite)
 - **UI:** Stripped down to essentials, only necessary controls
 
 ---

@@ -2,7 +2,7 @@
   <a href="README_EN.md">English</a>
 </div>
 
-<img src="assets/images/header.png" alt="dropweb — прокси клиент для Android Windows macOS" width="720" />
+<img src="assets/images/header.png" alt="dropweb — VPN прокси клиент mihomo Clash Meta для Android Windows macOS с защитой от детекции" width="720" />
 
 # dropweb
 
@@ -27,7 +27,7 @@
 
 ---
 
-Кроссплатформенный прокси-клиент на базе ядра [mihomo](https://github.com/MetaCubeX/mihomo). Форк [FlClashX](https://github.com/chen08209/FlClash) с фокусом на защиту от локального сканирования и утилитарный интерфейс.
+Кроссплатформенный прокси-клиент на базе ядра [mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta). Форк [FlClashX](https://github.com/chen08209/FlClash) с фокусом на защиту от локального сканирования, обход DPI и утилитарный интерфейс.
 
 Создавался для конкретной задачи: дать инженеру инструмент, который можно поставить нетехническим пользователям (или использовать самому) для стабильной работы с зарубежными сервисами, без риска детекции и сломанных руками конфигов.
 
@@ -39,9 +39,9 @@
 
 ## Фичи
 
-- **Протоколы:** VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard
+- **Протоколы:** VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard (Xray-core совместимые)
 - **Подписки:** Импорт по URL/QR, автообновление в фоне
-- **Маршрутизация:** Локальный трафик напрямую, заблокированный — через прокси (GeoIP/Geosite)
+- **Маршрутизация:** Split tunneling — локальный трафик напрямую, заблокированный через прокси (GeoIP/Geosite)
 - **UI:** Максимально урезан, только необходимые переключатели
 
 ---
