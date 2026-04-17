@@ -355,22 +355,23 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     final backgroundUrl =
         widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
     final isTransparent = backgroundUrl != null;
+    // Theme.of(context) was hit 7 times inside this single build path —
+    // cache it once so scaffold rebuilds don't pay the InheritedWidget
+    // lookup cost per frame.
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final iconBrightness = isDark ? Brightness.light : Brightness.dark;
+    final transparentAppBar = isTransparent || isDark;
 
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
       child: Theme(
-        data: Theme.of(context).copyWith(
+        data: theme.copyWith(
           appBarTheme: AppBarTheme(
             systemOverlayStyle: SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness:
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Brightness.light
-                      : Brightness.dark,
-              systemNavigationBarIconBrightness:
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Brightness.light
-                      : Brightness.dark,
+              statusBarIconBrightness: iconBrightness,
+              systemNavigationBarIconBrightness: iconBrightness,
               systemNavigationBarColor: context.colorScheme.surface,
               systemNavigationBarDividerColor: Colors.transparent,
             ),
@@ -384,14 +385,9 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
                   valueListenable: _appBarState,
                   builder: (_, state, __) => _buildAppBarWrap(
                     AppBar(
-                      backgroundColor: (isTransparent ||
-                              Theme.of(context).brightness == Brightness.dark)
-                          ? Colors.transparent
-                          : null,
-                      elevation: (isTransparent ||
-                              Theme.of(context).brightness == Brightness.dark)
-                          ? 0
-                          : null,
+                      backgroundColor:
+                          transparentAppBar ? Colors.transparent : null,
+                      elevation: transparentAppBar ? 0 : null,
                       centerTitle: widget.centerTitle ?? false,
                       automaticallyImplyLeading:
                           widget.automaticallyImplyLeading,

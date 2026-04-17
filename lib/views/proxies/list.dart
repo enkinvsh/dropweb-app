@@ -39,10 +39,27 @@ class _ProxiesListViewState extends State<ProxiesListView> {
   int _lastGroupsVersion = 0;
   List<String> _lastGroupNames = [];
 
+  // Coalesce scroll-driven header updates to one per frame. ScrollController
+  // fires 60+ times per second; without this debounce we rebuilt the sticky
+  // header on every pixel of movement. mounted + hasClients guards prevent
+  // post-dispose access if the widget tree is torn down between scroll and
+  // the post-frame callback.
+  bool _headerUpdateScheduled = false;
+
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_adjustHeader);
+    _controller.addListener(_scheduleHeaderUpdate);
+  }
+
+  void _scheduleHeaderUpdate() {
+    if (_headerUpdateScheduled) return;
+    _headerUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _headerUpdateScheduled = false;
+      if (!mounted || !_controller.hasClients) return;
+      _adjustHeader();
+    });
   }
 
   void _adjustHeader() {
@@ -67,7 +84,7 @@ class _ProxiesListViewState extends State<ProxiesListView> {
   void dispose() {
     _headerStateNotifier.dispose();
     _controller
-      ..removeListener(_adjustHeader)
+      ..removeListener(_scheduleHeaderUpdate)
       ..dispose();
     super.dispose();
   }
