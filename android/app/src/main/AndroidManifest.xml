@@ -63,9 +63,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Impeller disabled: two FlutterEngine instances (main UI + VPN service)
+             both try to init Impeller Vulkan which hangs Surface creation on
+             some devices (Pixel 10 at least), causing infinite splash.
+             Custom shaders were removed, Skia handles everything we use. -->
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
-            android:value="true" />
+            android:value="false" />
 
         <activity
             android:name=".TempActivity"
