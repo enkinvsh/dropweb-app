@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'constant.dart';
 
 class Preferences {
-
   factory Preferences() {
     _instance ??= Preferences._internal();
     return _instance!;
@@ -57,6 +56,18 @@ class Preferences {
   Future<void> clearPreferences() async {
     final sharedPreferencesIns = await sharedPreferencesCompleter.future;
     sharedPreferencesIns?.clear();
+  }
+
+  /// Get persisted SOCKS port (null if never generated)
+  Future<int?> getSocksPort() async {
+    final preferences = await sharedPreferencesCompleter.future;
+    return preferences?.getInt(socksPortKey);
+  }
+
+  /// Save SOCKS port for persistence across restarts
+  Future<bool> saveSocksPort(int port) async {
+    final preferences = await sharedPreferencesCompleter.future;
+    return await preferences?.setInt(socksPortKey, port) ?? false;
   }
 }
 

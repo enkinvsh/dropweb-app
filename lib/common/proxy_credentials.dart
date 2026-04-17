@@ -18,10 +18,17 @@ class ProxyCredentialsGenerator {
         .join();
   }
 
-  /// Generate new random credentials for this VPN session
-  static ProxyCredentials generate() {
+  /// Generate a random port in the valid range
+  static int generatePort() {
+    return _minPort + _random.nextInt(_maxPort - _minPort);
+  }
+
+  /// Generate new random credentials for this VPN session.
+  /// If [persistedPort] is provided, uses that port instead of generating new.
+  /// Username/password are always regenerated per session for security.
+  static ProxyCredentials generate({int? persistedPort}) {
     return ProxyCredentials(
-      port: _minPort + _random.nextInt(_maxPort - _minPort),
+      port: persistedPort ?? generatePort(),
       username: 'u${_randomString(8)}',
       password: _randomString(24),
     );

@@ -65,23 +65,42 @@ class GlobalState {
   GlobalKey<CommonScaffoldState> homeScaffoldKey = GlobalKey();
   bool isInit = false;
 
-  /// Current session's proxy credentials (regenerated on each connect)
+  /// Persisted SOCKS port (loaded from SharedPreferences on init)
+  /// Survives app restarts to avoid VPN detection via port scanning
+  int? _persistedSocksPort;
+
+  /// Current session's proxy credentials (auth regenerated per connect, port persisted)
   ProxyCredentials? _currentProxyCredentials;
 
-  /// Get or generate proxy credentials for current session
+  /// Get or generate proxy credentials for current session.
+  /// Port is persisted across app restarts; username/password regenerate per session.
   ProxyCredentials get currentProxyCredentials {
-    _currentProxyCredentials ??= ProxyCredentialsGenerator.generate();
+    if (_currentProxyCredentials == null) {
+      _currentProxyCredentials = ProxyCredentialsGenerator.generate(
+        persistedPort: _persistedSocksPort,
+      );
+      // If we generated a new port, persist it
+      if (_persistedSocksPort == null) {
+        _persistedSocksPort = _currentProxyCredentials!.port;
+        preferences.saveSocksPort(_persistedSocksPort!);
+        commonPrint.log(
+            '[SOCKS Port] Generated and saved new port: $_persistedSocksPort');
+      }
+    }
     return _currentProxyCredentials!;
   }
 
-  /// Clear credentials (call on disconnect)
+  /// Clear credentials (call on disconnect). Port remains persisted.
   void clearProxyCredentials() {
     _currentProxyCredentials = null;
   }
 
-  /// Force regenerate credentials (call on connect)
+  /// Force regenerate credentials (call on connect).
+  /// Reuses persisted port; only regenerates username/password.
   void regenerateProxyCredentials() {
-    _currentProxyCredentials = ProxyCredentialsGenerator.generate();
+    _currentProxyCredentials = ProxyCredentialsGenerator.generate(
+      persistedPort: _persistedSocksPort,
+    );
   }
 
   bool get isStart => startTime != null && startTime!.isBeforeNow;
@@ -128,6 +147,12 @@ class GlobalState {
       utils.getLocaleForString(config.appSetting.locale) ??
           WidgetsBinding.instance.platformDispatcher.locale,
     );
+    // Load persisted SOCKS port for VPN detection protection
+    _persistedSocksPort = await preferences.getSocksPort();
+    if (_persistedSocksPort != null) {
+      commonPrint
+          .log('[SOCKS Port] Loaded persisted port: $_persistedSocksPort');
+    }
   }
 
   String get ua => config.patchClashConfig.globalUa ?? packageInfo.ua;

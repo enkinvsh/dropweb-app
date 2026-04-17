@@ -44,6 +44,7 @@ const profilesDirectoryName = "profiles";
 const localhost = "127.0.0.1";
 const clashConfigKey = "clash_config";
 const configKey = "config";
+const socksPortKey = "socks_port";
 const double dialogCommonWidth = 300;
 const repository = "enkinvsh/dropweb-app";
 const defaultExternalController = "127.0.0.1:9090";
