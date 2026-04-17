@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.follow" "\0"
+            VALUE "CompanyName", "dropweb" "\0"
             VALUE "FileDescription", "dropweb" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "clashx" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2023 com.follow. All rights reserved." "\0"
+            VALUE "InternalName", "dropweb" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 dropweb. All rights reserved." "\0"
             VALUE "OriginalFilename", "dropweb.exe" "\0"
-            VALUE "ProductName", "clashx" "\0"
+            VALUE "ProductName", "dropweb" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
