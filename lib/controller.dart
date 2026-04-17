@@ -1245,6 +1245,24 @@ class AppController {
     await _handlePreference();
     await _handlerDisclaimer();
     _ref.read(initProvider.notifier).value = true;
+
+    // Kick the Phase-9 URL migration AFTER the UI has rendered. We can't
+    // do it inside preferences.getConfig() — on Pixel 10 after a cold
+    // boot the Android Keystore IPC may block for tens of seconds while
+    // Gatekeeper settles, which would freeze the app on the native
+    // splash. Running it post-frame means the worst case is that the
+    // scrubbed-URL persistence completes a few seconds into the user
+    // session instead of before first frame; the secure values were
+    // already there since saveConfig() on any previous launch.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        preferences.migrateProfileUrlsIfNeeded().catchError(
+              (e) => commonPrint.log(
+                '[migrateProfileUrlsIfNeeded] deferred: $e',
+              ),
+            ),
+      );
+    });
   }
 
   Future<void> _initStatus() async {

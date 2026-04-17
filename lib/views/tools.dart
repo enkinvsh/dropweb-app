@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
@@ -317,14 +318,40 @@ class _DeveloperItem extends StatelessWidget {
   }
 }
 
-class _TvItem extends ConsumerWidget {
+class _TvItem extends ConsumerStatefulWidget {
   const _TvItem();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TvItem> createState() => _TvItemState();
+}
+
+class _TvItemState extends ConsumerState<_TvItem> {
+  // Cached subscription URL for the current profile. Read from the
+  // encrypted store because the URL on the Profile model is stripped
+  // after Phase-9 migration (see Preferences.getConfig docstring).
+  String? _profileUrl;
+  String? _lastLoadedProfileId;
+
+  Future<void> _ensureUrl(Profile profile) async {
+    if (_lastLoadedProfileId == profile.id) return;
+    _lastLoadedProfileId = profile.id;
+    final url = await preferences.getProfileUrl(profile);
+    if (!mounted) return;
+    setState(() {
+      _profileUrl = url;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     final profile = ref.watch(currentProfileProvider);
-    final hasUrl = profile != null && profile.url.isNotEmpty;
+    if (profile != null) {
+      // Fire-and-forget — result is applied via setState when it lands.
+      unawaited(_ensureUrl(profile));
+    }
+    final url = _profileUrl;
+    final hasUrl = profile != null && url != null && url.isNotEmpty;
     return ListItem(
       leading: HugeIcon(icon: HugeIcons.strokeRoundedTv01, size: 24),
       title: Text(appLocale.connectTv),
@@ -333,7 +360,7 @@ class _TvItem extends ConsumerWidget {
           ? () {
               BaseNavigator.push(
                 context,
-                SendToTvPage(profileUrl: profile.url),
+                SendToTvPage(profileUrl: url),
               );
             }
           : null,

@@ -32,78 +32,102 @@ class Preferences {
     return ClashConfig.fromJson(clashConfigMap);
   }
 
+  /// Load the app's Config from SharedPreferences.
+  ///
+  /// NOTE: profile URLs are NOT rehydrated here. They live in the
+  /// encrypted [SecureProfileUrlStore] and are read on demand — by
+  /// [Profile.update] when refreshing a subscription, by the edit-profile
+  /// form when the user opens it, etc. That design keeps the startup path
+  /// free of any Android Keystore IPC, which after a cold boot on some
+  /// devices can block for seconds (or indefinitely until the user unlocks)
+  /// and leaves the app stuck on the native splash.
+  ///
+  /// On the first launch after the Phase-9 upgrade the JSON blob still
+  /// carries plaintext URLs; [_migrateIfNeeded] moves them to the secure
+  /// store and scrubs the blob. That happens AFTER the splash is gone and
+  /// the UI has rendered (see [AppController.init]).
   Future<Config?> getConfig() async {
     final preferences = await sharedPreferencesCompleter.future;
     if (preferences == null) return null;
     final configString = preferences.getString(configKey);
     if (configString == null) return null;
     final configMap = json.decode(configString);
-    final config = Config.compatibleFromJson(configMap);
+    return Config.compatibleFromJson(configMap);
+  }
 
-    // SECURITY: one-time migration of subscription URLs out of
-    // SharedPreferences into encrypted storage. On the first launch after
-    // the upgrade, URLs are still present in the JSON blob — harvest them,
-    // write them to secure storage, and persist the stripped config back so
-    // the plaintext leaks only once. After markMigrated() this branch never
-    // runs again.
-    final alreadyMigrated = await secureProfileUrlStore.isMigrated();
-    if (!alreadyMigrated) {
-      var anyUrlPresent = false;
-      for (final profile in config.profiles) {
-        if (profile.url.isNotEmpty) {
-          await secureProfileUrlStore.setUrl(profile.id, profile.url);
-          anyUrlPresent = true;
-        }
-        final fb = profile.fallbackUrl;
-        if (fb != null && fb.isNotEmpty) {
-          await secureProfileUrlStore.setFallbackUrl(profile.id, fb);
-          anyUrlPresent = true;
-        }
-      }
+  /// Read a profile's URL from encrypted storage.
+  ///
+  /// Falls back to the URL embedded in the config blob for pre-migration
+  /// state (i.e. someone upgrading from <0.4.7 whose migration hasn't run
+  /// yet, or whose migration deferred). Callers MUST be tolerant of the
+  /// keystore being unavailable right after boot.
+  Future<String?> getProfileUrl(Profile profile) async {
+    final fromStore = await secureProfileUrlStore.getUrl(profile.id);
+    if (fromStore != null && fromStore.isNotEmpty) return fromStore;
+    return profile.url.isEmpty ? null : profile.url;
+  }
+
+  Future<String?> getProfileFallbackUrl(Profile profile) async {
+    final fromStore = await secureProfileUrlStore.getFallbackUrl(profile.id);
+    if (fromStore != null && fromStore.isNotEmpty) return fromStore;
+    return profile.fallbackUrl;
+  }
+
+  /// Idempotent URL migration — moves any plaintext URLs from the config
+  /// blob into the secure store, then rewrites the blob with stripped
+  /// copies. Safe to call repeatedly; does nothing if already migrated.
+  ///
+  /// Must be invoked AFTER the UI is running (e.g. from a post-frame
+  /// callback in AppController.init) so a slow keystore can't keep the
+  /// splash on screen. See getConfig() docstring for the rationale.
+  Future<void> migrateProfileUrlsIfNeeded() async {
+    if (await secureProfileUrlStore.isMigrated()) return;
+
+    final preferences = await sharedPreferencesCompleter.future;
+    if (preferences == null) return;
+    final configString = preferences.getString(configKey);
+    if (configString == null) {
       await secureProfileUrlStore.markMigrated();
-      if (anyUrlPresent) {
-        // Overwrite the plaintext blob in-place with a stripped copy.
-        await _writeConfigStripped(config, preferences);
-      }
-      return _rehydrateWithSecureUrls(config);
+      return;
     }
 
-    return _rehydrateWithSecureUrls(config);
-  }
-
-  /// After [_writeConfigStripped] cleared the in-memory [Profile.url] /
-  /// [Profile.fallbackUrl] fields on disk, this fills them back from the
-  /// encrypted store so the rest of the app sees a fully-populated Config.
-  Future<Config> _rehydrateWithSecureUrls(Config config) async {
-    if (config.profiles.isEmpty) return config;
-    final rehydrated = <Profile>[];
+    final config = Config.compatibleFromJson(json.decode(configString));
+    var wrotePlaintext = false;
     for (final profile in config.profiles) {
-      final secureUrl = await secureProfileUrlStore.getUrl(profile.id);
-      final secureFallback =
-          await secureProfileUrlStore.getFallbackUrl(profile.id);
-      rehydrated.add(
-        profile.copyWith(
-          url: secureUrl ?? profile.url,
-          fallbackUrl: secureFallback ?? profile.fallbackUrl,
-        ),
-      );
+      if (profile.url.isNotEmpty) {
+        await secureProfileUrlStore.setUrl(profile.id, profile.url);
+        wrotePlaintext = true;
+      }
+      final fb = profile.fallbackUrl;
+      if (fb != null && fb.isNotEmpty) {
+        await secureProfileUrlStore.setFallbackUrl(profile.id, fb);
+        wrotePlaintext = true;
+      }
     }
-    return config.copyWith(profiles: rehydrated);
+    await secureProfileUrlStore.markMigrated();
+    if (wrotePlaintext) {
+      await _writeConfigStripped(config, preferences);
+    }
   }
 
+  /// Persist a Config. Any non-empty URLs carried on [Profile] (added
+  /// through the UI, or freshly imported) are copied into the encrypted
+  /// store here; the on-disk JSON blob gets the URLs stripped so the
+  /// SharedPreferences file never contains plaintext subscription tokens.
   Future<bool> saveConfig(Config config) async {
     final preferences = await sharedPreferencesCompleter.future;
     if (preferences == null) return false;
 
-    // Sync the encrypted store with the current profile list so URLs we
-    // haven't seen before land there (new subscription added at runtime),
-    // and URLs for deleted profiles are scrubbed.
     for (final profile in config.profiles) {
-      await secureProfileUrlStore.setUrl(profile.id, profile.url);
-      await secureProfileUrlStore.setFallbackUrl(
-        profile.id,
-        profile.fallbackUrl,
-      );
+      if (profile.url.isNotEmpty) {
+        await secureProfileUrlStore.setUrl(profile.id, profile.url);
+      }
+      if (profile.fallbackUrl != null && profile.fallbackUrl!.isNotEmpty) {
+        await secureProfileUrlStore.setFallbackUrl(
+          profile.id,
+          profile.fallbackUrl,
+        );
+      }
     }
 
     return _writeConfigStripped(config, preferences);

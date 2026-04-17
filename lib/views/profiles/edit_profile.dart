@@ -37,6 +37,11 @@ class _EditProfileViewState extends State<EditProfileView> {
 
   Profile get profile => widget.profile;
 
+  // Real subscription URL for the currently-edited profile. Populated
+  // asynchronously in initState via the secure store so that opening this
+  // form triggers a keystore read only here, not on app launch.
+  String? _originalUrl;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +54,19 @@ class _EditProfileViewState extends State<EditProfileView> {
     appPath.getProfilePath(widget.profile.id).then((path) async {
       fileInfoNotifier.value = await _getFileInfo(path);
     });
+    _loadSecureUrl();
+  }
+
+  Future<void> _loadSecureUrl() async {
+    final resolved = await preferences.getProfileUrl(widget.profile);
+    if (!mounted) return;
+    final value = resolved ?? '';
+    _originalUrl = value;
+    // Preserve whatever the user has already typed — only overwrite if
+    // the field still matches the placeholder we put in initState().
+    if (urlController.text == widget.profile.url) {
+      urlController.text = value;
+    }
   }
 
   Future<void> _handleConfirm() async {
@@ -64,7 +82,7 @@ class _EditProfileViewState extends State<EditProfileView> {
             ),
           ),
         );
-    final hasUpdate = widget.profile.url != profile.url;
+    final hasUpdate = (_originalUrl ?? widget.profile.url) != profile.url;
     if (fileData != null) {
       if (profile.type == ProfileType.url && autoUpdate) {
         final res = await globalState.showMessage(
