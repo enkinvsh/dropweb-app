@@ -483,7 +483,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: c0e10a5dab0e22cd616ec92ae71471d76369cbfe
+      resolved-ref: "17be98e84d41d50aaf8ad45eb22d1bacde01ceea"
       url: "https://github.com/enkinvsh/flutter_js.git"
     source: git
     version: "0.8.3"
