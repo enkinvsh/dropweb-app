@@ -140,6 +140,44 @@ class AppController {
     }
   }
 
+  /// Reconcile Dart-side VPN state with the actual native runtime.
+  ///
+  /// Called from the app lifecycle observer on AppLifecycleState.resumed so
+  /// that if the user toggled the QS tile / clicked STOP on the foreground
+  /// notification / revoked the tunnel from system settings while the UI
+  /// was backgrounded, the connect button snaps to the correct state as
+  /// soon as the user returns to the app. This is a read-only sync — it
+  /// NEVER calls handleStart/handleStop on its own, so it can't accidentally
+  /// toggle the VPN just because the lifecycle fired.
+  Future<void> syncRunStateFromNative() async {
+    if (!Platform.isAndroid) return;
+    final prevStartTime = globalState.startTime;
+    await globalState.updateStartTime();
+    final nativeIsRunning = globalState.startTime != null;
+    final uiIsRunning = _ref.read(runTimeProvider.notifier).isStart;
+    if (nativeIsRunning == uiIsRunning) return;
+
+    commonPrint.log(
+      'syncRunStateFromNative: native=$nativeIsRunning ui=$uiIsRunning '
+      '(prev startTime=$prevStartTime, new=${globalState.startTime})',
+    );
+
+    if (nativeIsRunning) {
+      updateRunTime();
+    } else {
+      // Native tunnel is already gone — just tear down Dart-side bookkeeping
+      // without re-entering handleStop(), which would try to stop something
+      // that's already stopped and log spurious errors.
+      clashCore.resetTraffic();
+      _ref.read(trafficsProvider.notifier).clear();
+      _ref.read(totalTrafficProvider.notifier).value = Traffic();
+      _ref.read(runTimeProvider.notifier).value = null;
+      globalState.stopUpdateTasks();
+      await StatusBarManager.updateIcon(isConnected: false);
+      addCheckIpNumDebounce();
+    }
+  }
+
   Future<void> updateStatus(bool isStart) async {
     await StatusBarManager.updateIcon(isConnected: isStart);
 

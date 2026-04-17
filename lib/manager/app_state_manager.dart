@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -85,6 +84,14 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       globalState.appController.savePreferencesDebounce();
+    } else if (state == AppLifecycleState.resumed) {
+      render?.resume();
+      // BUGFIX: when the user toggled the VPN from the QS tile or the
+      // foreground notification while this Flutter isolate was backgrounded,
+      // the connect button stayed in its old state because we never pulled
+      // the native runtime back. Sync on every resume so the FAB matches
+      // reality.
+      unawaited(globalState.appController.syncRunStateFromNative());
     } else {
       render?.resume();
     }

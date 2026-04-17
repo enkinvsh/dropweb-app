@@ -21,12 +21,10 @@ class _StartButtonState extends ConsumerState<StartButton>
   late Animation<double> _scaleAnimation;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
-  bool isStart = false;
 
   @override
   void initState() {
     super.initState();
-    isStart = globalState.appState.runTime != null;
 
     _pressController = AnimationController(
       vsync: this,
@@ -46,29 +44,26 @@ class _StartButtonState extends ConsumerState<StartButton>
       CurvedAnimation(parent: _breatheController, curve: Lumina.luminaCurve),
     );
 
-    if (isStart || globalState.config.currentProfileId == null) {
+    final initialRunning = globalState.appState.runTime != null;
+    if (initialRunning || globalState.config.currentProfileId == null) {
       _breatheController.repeat(reverse: true);
     }
+  }
 
-    ref.listenManual(
-      startButtonSelectorStateProvider,
-      (prev, next) {
-        final running = next.hasProfile && ref.read(runTimeProvider) != null;
-        final shouldAnimate = running || !next.hasProfile;
-        if (running != isStart) {
-          setState(() {
-            isStart = running;
-          });
-        }
-        if (shouldAnimate && !_breatheController.isAnimating) {
-          _breatheController.repeat(reverse: true);
-        } else if (!shouldAnimate && _breatheController.isAnimating) {
-          _breatheController.stop();
-          _breatheController.reset();
-        }
-      },
-      fireImmediately: true,
-    );
+  /// Drive the breathing halo off whatever the current VPN state is.
+  /// Called from build() so it stays in sync with runTimeProvider — the
+  /// previous implementation listened on startButtonSelectorStateProvider,
+  /// whose dependencies (init/profiles/proxies) don't change when the VPN
+  /// toggles, so external stops (QS tile, notification STOP, system revoke)
+  /// left the icon stuck in its old state.
+  void _syncBreathe({required bool running, required bool hasProfile}) {
+    final shouldAnimate = running || !hasProfile;
+    if (shouldAnimate && !_breatheController.isAnimating) {
+      _breatheController.repeat(reverse: true);
+    } else if (!shouldAnimate && _breatheController.isAnimating) {
+      _breatheController.stop();
+      _breatheController.reset();
+    }
   }
 
   @override
@@ -80,12 +75,14 @@ class _StartButtonState extends ConsumerState<StartButton>
 
   void handleSwitchStart() {
     HapticFeedback.mediumImpact();
-    isStart = !isStart;
-    setState(() {});
+    // Derive target state from the canonical source (runTimeProvider),
+    // not from a local mirror that could drift after background toggles.
+    final currentlyRunning = ref.read(runTimeProvider) != null;
+    final next = !currentlyRunning;
     debouncer.call(
       FunctionTag.updateStatus,
       () {
-        globalState.appController.updateStatus(isStart);
+        globalState.appController.updateStatus(next);
       },
       duration: commonDuration,
     );
@@ -111,10 +108,22 @@ class _StartButtonState extends ConsumerState<StartButton>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(startButtonSelectorStateProvider);
+    // Watch runTimeProvider directly so the icon updates immediately when
+    // the VPN is toggled by the QS tile, the foreground-notification STOP,
+    // or a system revoke — none of those go through startButtonSelector.
+    final isStart = ref.watch(runTimeProvider) != null;
     if (!state.isInit) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
     final hasProfile = state.hasProfile;
+    // Defer AnimationController state changes out of the build phase —
+    // starting/stopping a ticker inside build is a framework no-op that
+    // also kicks off another build, causing a busy loop under fast
+    // provider transitions.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncBreathe(running: isStart, hasProfile: hasProfile);
+    });
 
     return AnimatedBuilder(
       animation: _pressController,

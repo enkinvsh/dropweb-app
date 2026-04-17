@@ -1,9 +1,9 @@
+import 'package:dropweb/common/print.dart';
 import 'package:dropweb/plugins/tile.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/material.dart';
 
 class TileManager extends StatefulWidget {
-
   const TileManager({
     super.key,
     required this.child,
@@ -20,12 +20,14 @@ class _TileContainerState extends State<TileManager> with TileListener {
 
   @override
   void onStart() {
+    commonPrint.log('TileManager.onStart — syncing UI to running');
     globalState.appController.updateStatus(true);
     super.onStart();
   }
 
   @override
   Future<void> onStop() async {
+    commonPrint.log('TileManager.onStop — syncing UI to stopped');
     globalState.appController.updateStatus(false);
     super.onStop();
   }
