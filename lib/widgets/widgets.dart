@@ -15,7 +15,6 @@ export 'grid.dart';
 export 'icon.dart';
 export 'input.dart';
 export 'keep_scope.dart';
-export 'color_bends_bg.dart';
 export 'light_pillar.dart';
 export 'line_chart.dart';
 export 'list.dart';

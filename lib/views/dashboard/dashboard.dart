@@ -155,16 +155,6 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
     });
     return Stack(
       children: [
-        // ColorBendsBg disabled for perf test — shader load on every rebuild
-        // const Positioned.fill(
-        //     child: ColorBendsBg(
-        //   speed: 0.15,
-        //   rotation: 35,
-        //   scale: 1.2,
-        //   frequency: 0.8,
-        //   warpStrength: 0.7,
-        //   noise: 0.03,
-        // )),
         SingleChildScrollView(
           padding: const EdgeInsets.all(16).copyWith(
             bottom: 16,

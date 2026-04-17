@@ -10,8 +10,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-class ServiceInfoWidget extends ConsumerWidget {
+class ServiceInfoWidget extends ConsumerStatefulWidget {
   const ServiceInfoWidget({super.key});
+
+  @override
+  ConsumerState<ServiceInfoWidget> createState() => _ServiceInfoWidgetState();
+}
+
+class _ServiceInfoWidgetState extends ConsumerState<ServiceInfoWidget> {
+  final List<TapGestureRecognizer> _recognizers = [];
+
+  @override
+  void dispose() {
+    _disposeRecognizers();
+    super.dispose();
+  }
+
+  void _disposeRecognizers() {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    _recognizers.clear();
+  }
 
   String? _decodeBase64IfNeeded(String? value) {
     if (value == null || value.isEmpty) return value;
@@ -105,11 +125,13 @@ class ServiceInfoWidget extends ConsumerWidget {
         ));
       }
       final url = match.group(0)!;
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () => globalState.openUrl(url);
+      _recognizers.add(recognizer);
       spans.add(TextSpan(
         text: url,
         style: style?.copyWith(color: context.colorScheme.primary),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () => globalState.openUrl(url),
+        recognizer: recognizer,
       ));
       lastIndex = match.end;
     }
@@ -123,8 +145,11 @@ class ServiceInfoWidget extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final profile = ref.watch(currentProfileProvider);
+
+    // Dispose previous recognizers before rebuilding spans.
+    _disposeRecognizers();
 
     if (profile == null) {
       return const SizedBox.shrink();

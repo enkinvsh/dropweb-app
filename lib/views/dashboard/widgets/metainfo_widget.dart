@@ -14,8 +14,28 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
-class MetainfoWidget extends ConsumerWidget {
+class MetainfoWidget extends ConsumerStatefulWidget {
   const MetainfoWidget({super.key});
+
+  @override
+  ConsumerState<MetainfoWidget> createState() => _MetainfoWidgetState();
+}
+
+class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
+  final List<TapGestureRecognizer> _recognizers = [];
+
+  @override
+  void dispose() {
+    _disposeRecognizers();
+    super.dispose();
+  }
+
+  void _disposeRecognizers() {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    _recognizers.clear();
+  }
 
   String _getDaysDeclension(int days) {
     if (days % 100 >= 11 && days % 100 <= 19) {
@@ -128,11 +148,13 @@ class MetainfoWidget extends ConsumerWidget {
         ));
       }
       final url = match.group(0)!;
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () => globalState.openUrl(url);
+      _recognizers.add(recognizer);
       spans.add(TextSpan(
         text: url,
         style: style?.copyWith(color: theme.colorScheme.primary),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () => globalState.openUrl(url),
+        recognizer: recognizer,
       ));
       lastIndex = match.end;
     }
@@ -146,10 +168,14 @@ class MetainfoWidget extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final allProfiles = ref.watch(profilesProvider);
     final currentProfile = ref.watch(currentProfileProvider);
     final theme = Theme.of(context);
+
+    // Dispose previous recognizers before rebuilding spans to avoid leaks
+    // (announce text can change when profile headers update).
+    _disposeRecognizers();
 
     if (allProfiles.isEmpty) {
       return const SizedBox.shrink();

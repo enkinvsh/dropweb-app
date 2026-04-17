@@ -78,8 +78,14 @@ class ProxyCard extends StatelessWidget {
     if (type == ProxyCardType.oneline) {
       return Consumer(
         builder: (context, ref, child) {
-          final isSelected = groupType.isComputedSelected &&
-              ref.watch(getProxyNameProvider(groupName)) == proxy.name;
+          // .select narrows the dependency to the bool result — sibling
+          // proxies in the same group no longer rebuild when the active
+          // proxy name changes (only the card whose selection flipped does).
+          final isSelected = ref.watch(
+            getProxyNameProvider(groupName).select(
+              (name) => groupType.isComputedSelected && name == proxy.name,
+            ),
+          );
 
           return Padding(
             padding:
@@ -161,14 +167,18 @@ class ProxyCard extends StatelessWidget {
       children: [
         Consumer(
           builder: (_, ref, child) {
-            final selectedProxyName =
-                ref.watch(getSelectedProxyNameProvider(groupName));
+            // Narrow to bool — this card only rebuilds when its own
+            // selected-state flips, not on every group-selection change.
+            final isSelected = ref.watch(
+              getSelectedProxyNameProvider(groupName)
+                  .select((name) => name == proxy.name),
+            );
             return CommonCard(
               key: key,
               onPressed: () {
                 _changeProxy(ref);
               },
-              isSelected: selectedProxyName == proxy.name,
+              isSelected: isSelected,
               child: child!,
             );
           },
@@ -272,10 +282,12 @@ class _ProxyComputedMark extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final proxyName = ref.watch(
-      getProxyNameProvider(groupName),
+    // Narrow to bool so this mark only rebuilds when its own
+    // visibility flips, not when any sibling proxy is selected.
+    final isSelected = ref.watch(
+      getProxyNameProvider(groupName).select((name) => name == proxy.name),
     );
-    if (proxyName != proxy.name) {
+    if (!isSelected) {
       return const SizedBox();
     }
 

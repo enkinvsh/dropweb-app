@@ -145,10 +145,6 @@ enum RecoveryOption {
 enum ChipType { action, delete }
 
 enum CommonCardType { plain, filled }
-//
-// extension CommonCardTypeExt on CommonCardType {
-//   CommonCardType get variant => CommonCardType.plain;
-// }
 
 enum ProxiesType { tab, list }
 

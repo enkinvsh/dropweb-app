@@ -37,7 +37,9 @@ class _TrayContainerState extends ConsumerState<TrayManager> with TrayListener {
       }
 
       calloc.free(className);
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('[tray] _closeWindowsPopupMenu failed: $e');
+    }
 
     _stopMenuMonitor();
   }
@@ -49,7 +51,10 @@ class _TrayContainerState extends ConsumerState<TrayManager> with TrayListener {
     var themeApplied = false;
     var waitCycles = 0;
 
-    _menuMonitor = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    // 200ms balances responsiveness (user clicks outside menu) vs CPU cost.
+    // TODO(perf): replace with SetWinEventHook(EVENT_SYSTEM_MENUPOPUPEND) for
+    // a proper event-driven approach — requires FFI hook plumbing.
+    _menuMonitor = Timer.periodic(const Duration(milliseconds: 200), (timer) {
       try {
         final className = '#32768'.toNativeUtf16();
         final hwnd = FindWindow(className, nullptr);
