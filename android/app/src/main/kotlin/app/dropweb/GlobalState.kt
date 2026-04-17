@@ -156,15 +156,9 @@ object GlobalState {
             serviceEngine = FlutterEngine(DropwebApplication.getAppContext())
             Log.d("GlobalState", "Registering plugins")
             io.flutter.plugins.GeneratedPluginRegistrant.registerWith(serviceEngine!!)
-            // VpnPlugin is a `data object` (singleton): re-attaching it to a
-            // second engine rebinds its MethodChannel to that engine's
-            // binaryMessenger, breaking the UI↔native bridge and hanging
-            // the splash. Only attach when no main engine owns it yet.
-            if (flutterEngine == null) {
-                serviceEngine?.plugins?.add(VpnPlugin)
-                serviceEngine?.plugins?.add(AppPlugin())
-                serviceEngine?.plugins?.add(TilePlugin())
-            }
+            serviceEngine?.plugins?.add(VpnPlugin)
+            serviceEngine?.plugins?.add(AppPlugin())
+            serviceEngine?.plugins?.add(TilePlugin())
             val vpnService = DartExecutor.DartEntrypoint(
                 FlutterInjector.instance().flutterLoader().findAppBundlePath(),
                 "_service"
