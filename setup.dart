@@ -272,6 +272,12 @@ class Build {
         env["CGO_ENABLED"] = "1";
         env["CC"] = _getCc(item);
         env["CFLAGS"] = "-O3 -Werror";
+        // Android 16KB page size alignment — required by Google Play (Nov 2025+).
+        // Without this, libclash.so fails Pixel 10/9/8 page alignment check and
+        // is rejected by Play Console. See developer.android.com/16kb-page-size.
+        if (item.target == Target.android) {
+          env["CGO_LDFLAGS"] = "-O2 -s -w -Wl,-z,max-page-size=16384";
+        }
       } else {
         env["CGO_ENABLED"] = "0";
       }

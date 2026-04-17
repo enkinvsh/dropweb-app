@@ -39,7 +39,7 @@ android {
 
     defaultConfig {
         applicationId = "app.dropweb"
-        minSdk = 23  // core module requires ≥23
+        minSdk = flutter.minSdkVersion  // core module requires ≥23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -58,7 +58,11 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            // MUST be false for 16KB page size alignment. Legacy packaging
+            // extracts .so at install time which breaks 16KB alignment.
+            // Google Play requires this as of Nov 2025 for apps targeting
+            // Android 15+.
+            useLegacyPackaging = false
         }
     }
 
@@ -89,6 +93,19 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Force androidx.datastore 1.1.7 — 1.2.0 ships a libdatastore_shared_counter.so
+// that is NOT 16KB-aligned and causes Google Play rejection.
+// See: https://github.com/flutter/flutter/issues/182898
+// TODO: remove once datastore 1.3.0 (with proper 16KB alignment) is stable.
+configurations.all {
+    resolutionStrategy {
+        force("androidx.datastore:datastore:1.1.7")
+        force("androidx.datastore:datastore-android:1.1.7")
+        force("androidx.datastore:datastore-preferences:1.1.7")
+        force("androidx.datastore:datastore-preferences-android:1.1.7")
+    }
 }
 
 dependencies {
