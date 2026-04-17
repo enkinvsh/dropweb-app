@@ -14,7 +14,13 @@ const coreName = "clashx.meta";
 const browserUa =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const packageName = "app.dropweb";
-final unixSocketPath = "/tmp/dropwebSocket_${Random().nextInt(10000)}.sock";
+// SECURITY: Random.secure() uses the OS CSPRNG; plain Random() is a
+// seeded Mersenne Twister that is both predictable and limited to 10K
+// variants here. A local attacker on the same box could pre-create the
+// socket path and intercept IPC. 1 << 48 gives ~2.8e14 variants, which
+// is beyond brute-force for a socket that only lives while the app runs.
+final unixSocketPath =
+    "/tmp/dropwebSocket_${Random.secure().nextInt(1 << 32).toRadixString(16)}${Random.secure().nextInt(1 << 16).toRadixString(16)}.sock";
 const helperPort = 47890;
 const maxTextScale = 1.4;
 const minTextScale = 0.8;

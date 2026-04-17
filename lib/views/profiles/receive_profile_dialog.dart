@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -47,7 +48,8 @@ class _ReceiveProfileDialogState extends State<ReceiveProfileDialog> {
       });
 
       _server = await shelf_io.serve(router.call, ip!, port);
-      print('Server started at http://${_server?.address.host}:${_server?.port}');
+      print(
+          'Server started at http://${_server?.address.host}:${_server?.port}');
 
       setState(() {
         _qrData = jsonEncode({
@@ -58,7 +60,9 @@ class _ReceiveProfileDialogState extends State<ReceiveProfileDialog> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error starting server: $e');
+      if (kDebugMode) {
+        debugPrint('ReceiveProfile server failed to start: $e');
+      }
       if (mounted) Navigator.of(context).pop();
     }
   }
@@ -66,7 +70,9 @@ class _ReceiveProfileDialogState extends State<ReceiveProfileDialog> {
   @override
   void dispose() {
     _server?.close(force: true);
-    print('Server stopped');
+    if (kDebugMode) {
+      debugPrint('ReceiveProfile server stopped');
+    }
     super.dispose();
   }
 

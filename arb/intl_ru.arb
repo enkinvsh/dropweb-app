@@ -1,4 +1,7 @@
 {
+  "invalidProfileUrl": "Некорректная ссылка на подписку. Используйте http:// или https://",
+  "connectTv": "Подключить ТВ",
+  "connectTvDesc": "Отправить профиль на Android TV через QR-код",
   "rule": "По правилам",
   "global": "Глобальный",
   "direct": "Прямой",

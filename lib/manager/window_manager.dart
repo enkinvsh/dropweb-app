@@ -51,8 +51,11 @@ class _WindowContainerState extends ConsumerState<WindowManager>
     }
   }
 
+  // ROBUSTNESS: Returning Future<void> instead of `async void` ensures the
+  // framework actually sees the pending futures — errors can propagate and
+  // window_manager's own listener bookkeeping works correctly.
   @override
-  void onWindowClose() async {
+  Future<void> onWindowClose() async {
     final minimizeOnExit = ref.read(appSettingProvider).minimizeOnExit;
     if (minimizeOnExit) {
       // Hide to tray instead of closing
@@ -103,7 +106,7 @@ class _WindowContainerState extends ConsumerState<WindowManager>
   }
 
   @override
-  void onWindowMinimize() async {
+  Future<void> onWindowMinimize() async {
     globalState.appController.savePreferencesDebounce();
     commonPrint.log("minimize");
     render?.pause();

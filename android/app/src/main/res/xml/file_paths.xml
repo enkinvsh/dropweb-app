@@ -1,6 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SECURITY: FileProvider used to expose the entire `files/` directory
+  (path="."), which let any app that received a shared URI potentially
+  walk the whole app sandbox. We now expose only the two subdirectories
+  that actually need to be shared: `configs/` (profile YAMLs for
+  import/export) and `logs/` (for attach-to-email / share-log flows).
+-->
 <paths>
     <files-path
-        name="files"
-        path="."/>
+        name="configs"
+        path="configs/" />
+    <files-path
+        name="logs"
+        path="logs/" />
+    <cache-path
+        name="cache"
+        path="shared/" />
 </paths>
-

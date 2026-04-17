@@ -46,6 +46,10 @@ dependencies:
   re_editor:
     git:
       url: https://github.com/enkinvsh/re-editor.git
+      # SECURITY: pin to a specific ref instead of tracking `main`, so
+      # `pub get` produces reproducible builds and an upstream force-push
+      # cannot silently pull new code into our release.
+      # TODO(dropweb): bump to a tag when the fork publishes one.
       ref: main
   re_highlight: ^0.0.3
   archive: ^4.0.7
@@ -62,6 +66,8 @@ dependencies:
   flutter_js:
     git:
       url: https://github.com/enkinvsh/flutter_js.git
+      # SECURITY: see note on re_editor above — pin to an immutable ref.
+      # TODO(dropweb): replace with a commit hash or tag when one is published.
       ref: master
   flutter_svg: ^2.2.3
   flutter_cache_manager: ^3.4.1
@@ -104,6 +110,9 @@ flutter:
         - asset: assets/fonts/Icons.ttf
     - family: Unbounded
       fonts:
+        # Only the variable font is shipped — a single 334 KB file covers
+        # every weight we need, so the 760 KB Unbounded-Regular.ttf is
+        # redundant and has been removed from the APK.
         - asset: assets/fonts/Unbounded-Variable.ttf
     - family: Onest
       fonts:

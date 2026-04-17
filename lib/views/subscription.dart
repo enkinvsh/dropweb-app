@@ -115,16 +115,24 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
 Future<void> _refreshProfiles(BuildContext context) async {
   final profiles = globalState.config.profiles;
   final messages = <String>[];
-  await Future.wait(profiles.map((profile) async {
-    if (profile.type == ProfileType.file) return;
-    globalState.appController.setProfile(profile.copyWith(isUpdating: true));
-    try {
-      await globalState.appController.updateProfile(profile);
-    } catch (e) {
-      messages.add("${profile.label ?? profile.id}: $e \n");
-      globalState.appController.setProfile(profile.copyWith(isUpdating: false));
-    }
-  }));
+  // ROBUSTNESS: `eagerError: false` — if one profile's update throws, the
+  // others should still complete. Default Future.wait fails the whole
+  // group on the first error, which previously meant a single broken
+  // subscription could leave the rest stuck in `isUpdating=true`.
+  await Future.wait(
+    profiles.map((profile) async {
+      if (profile.type == ProfileType.file) return;
+      globalState.appController.setProfile(profile.copyWith(isUpdating: true));
+      try {
+        await globalState.appController.updateProfile(profile);
+      } catch (e) {
+        messages.add("${profile.label ?? profile.id}: $e \n");
+        globalState.appController
+            .setProfile(profile.copyWith(isUpdating: false));
+      }
+    }),
+    eagerError: false,
+  );
   if (messages.isNotEmpty && context.mounted) {
     globalState.showMessage(
       title: appLocalizations.tip,

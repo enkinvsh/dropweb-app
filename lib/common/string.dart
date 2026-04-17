@@ -16,8 +16,8 @@ extension StringExtension on String {
   }
 
   int compareToLower(String other) => toLowerCase().compareTo(
-      other.toLowerCase(),
-    );
+        other.toLowerCase(),
+      );
 
   List<int> get encodeUtf16LeWithBom {
     final byteData = ByteData(length * 2);
@@ -55,9 +55,25 @@ extension StringExtension on String {
     }
   }
 
+  /// Stable digest of the string — used for cache-key / filename derivation
+  /// from URLs. NOT used for authentication.
+  ///
+  /// Switched from MD5 to SHA-256 (truncated): MD5 is cryptographically
+  /// broken and flagged by most static analyzers / security audits. Even
+  /// though this is non-auth, avoiding it sidesteps the question in Google
+  /// Play and store reviews. The returned string is the first 32 hex chars
+  /// of the SHA-256 digest so existing callers that expect a 32-char MD5-
+  /// style key still get a fixed-width value. NOTE: this invalidates cache
+  /// files keyed by the old MD5 hash exactly once, on first upgrade.
   String toMd5() {
     final bytes = utf8.encode(this);
-    return md5.convert(bytes).toString();
+    return sha256.convert(bytes).toString().substring(0, 32);
+  }
+
+  /// Full SHA-256 hex digest, preferred for any new code.
+  String toSha256() {
+    final bytes = utf8.encode(this);
+    return sha256.convert(bytes).toString();
   }
 
 // bool containsToLower(String target) {

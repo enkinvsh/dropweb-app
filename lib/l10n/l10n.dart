@@ -54,6 +54,31 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
+  /// `Invalid subscription URL. Use http:// or https://`
+  String get invalidProfileUrl {
+    return Intl.message(
+      'Invalid subscription URL. Use http:// or https://',
+      name: 'invalidProfileUrl',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connect TV`
+  String get connectTv {
+    return Intl.message('Connect TV', name: 'connectTv', desc: '', args: []);
+  }
+
+  /// `Send profile to Android TV via QR code`
+  String get connectTvDesc {
+    return Intl.message(
+      'Send profile to Android TV via QR code',
+      name: 'connectTvDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `By rule`
   String get rule {
     return Intl.message('By rule', name: 'rule', desc: '', args: []);
@@ -101,8 +126,12 @@ class AppLocalizations {
 
   /// `Subscription`
   String get subscription {
-    return Intl.message('Subscription',
-        name: 'subscription', desc: '', args: []);
+    return Intl.message(
+      'Subscription',
+      name: 'subscription',
+      desc: '',
+      args: [],
+    );
   }
 
   /// `Settings`
@@ -3485,17 +3514,6 @@ class AppLocalizations {
     return Intl.message('Send to TV', name: 'sendToTv', desc: '', args: []);
   }
 
-  /// `Connect TV`
-  String get connectTv {
-    return Intl.message('Connect TV', name: 'connectTv', desc: '', args: []);
-  }
-
-  /// `Transfer subscription`
-  String get connectTvDesc {
-    return Intl.message('Transfer subscription',
-        name: 'connectTvDesc', desc: '', args: []);
-  }
-
   /// `Support`
   String get support {
     return Intl.message('Support', name: 'support', desc: '', args: []);
@@ -3577,7 +3595,7 @@ class AppLocalizations {
   }
 
   /// `Your subscription expires in {days} day(s)`
-  String subscriptionExpiresInDays(String days) {
+  String subscriptionExpiresInDays(Object days) {
     return Intl.message(
       'Your subscription expires in $days day(s)',
       name: 'subscriptionExpiresInDays',
@@ -3608,14 +3626,10 @@ class AppLocalizations {
 
   /// `Renew`
   String get renew {
-    return Intl.message(
-      'Renew',
-      name: 'renew',
-      desc: '',
-      args: [],
-    );
+    return Intl.message('Renew', name: 'renew', desc: '', args: []);
   }
 
+  /// `Announcement`
   String get announcement {
     return Intl.message(
       'Announcement',

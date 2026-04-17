@@ -93,8 +93,11 @@ class _ClashContainerState extends ConsumerState<ClashManager>
     super.onLog(log);
   }
 
+  // ROBUSTNESS: Changed from `async void` so that if addRequest ever
+  // throws (state notifier disposed, etc.) the error surfaces instead of
+  // being silently swallowed by the unowned future.
   @override
-  void onRequest(Connection connection) async {
+  Future<void> onRequest(Connection connection) async {
     ref.read(requestsProvider.notifier).addRequest(connection);
     super.onRequest(connection);
   }

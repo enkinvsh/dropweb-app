@@ -9,7 +9,6 @@ import 'package:dropweb/widgets/input.dart';
 import 'package:flutter/services.dart';
 
 class System {
-
   factory System() {
     _instance ??= System._internal();
     return _instance!;
@@ -84,7 +83,7 @@ class System {
       if (startedWithoutUac == true) {
         return AuthorizeCode.success;
       }
-      
+
       // Service not installed or couldn't start - need to install with UAC
       final result = await windows?.installService();
       if (result == true) {
@@ -92,21 +91,42 @@ class System {
       }
       return AuthorizeCode.error;
     } else if (Platform.isLinux) {
-      final shell = Platform.environment['SHELL'] ?? 'bash';
       final password = await globalState.showCommonDialog<String>(
         child: InputDialog(
           title: appLocalizations.pleaseInputAdminPassword,
           value: '',
         ),
       );
-      final arguments = [
-        "-c",
-        'echo "$password" | sudo -S chown root:root "$corePath" && echo "$password" | sudo -S chmod +sx "$corePath"'
-      ];
-      final result = await Process.run(shell, arguments);
-      if (result.exitCode != 0) {
+      if (password == null || password.isEmpty) {
         return AuthorizeCode.error;
       }
+
+      // SECURITY: Never interpolate user input (password) into a shell command
+      // string. Previously we did `echo "$password" | sudo -S chown ...` inside
+      // `sh -c '...'`, which allowed shell injection if the password contained
+      // `"`, `$`, `` ` ``, etc. Now we spawn sudo directly and pipe the
+      // password via stdin with --prompt='' so sudo won't echo any prompt.
+      // The absolute core path (not escaped) is passed as a SEPARATE argv
+      // element — Process.start does NOT go through a shell, so spaces and
+      // special characters in the path are safe without manual escaping.
+      final corePathRaw = appPath.corePath;
+
+      Future<int> runSudo(List<String> cmd) async {
+        final process = await Process.start(
+          'sudo',
+          ['-S', '--prompt=', ...cmd],
+          runInShell: false,
+        );
+        process.stdin.writeln(password);
+        await process.stdin.flush();
+        await process.stdin.close();
+        return process.exitCode;
+      }
+
+      final chownCode = await runSudo(['chown', 'root:root', corePathRaw]);
+      if (chownCode != 0) return AuthorizeCode.error;
+      final chmodCode = await runSudo(['chmod', '+sx', corePathRaw]);
+      if (chmodCode != 0) return AuthorizeCode.error;
       return AuthorizeCode.success;
     }
     return AuthorizeCode.error;

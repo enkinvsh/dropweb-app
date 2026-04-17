@@ -63,7 +63,11 @@ app.*.map.json
 
 # Signing keys (sensitive data)
 /android/app/keystore.jks
+/android/app/key.properties
+/android/local.properties
 *.jks
+*.keystore
+signing.properties
 
 # Environment variables (contains sensitive data)
 .env

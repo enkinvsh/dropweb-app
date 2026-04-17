@@ -1172,8 +1172,19 @@ class AppController {
   }
 
   Future<void> init() async {
+    // ROBUSTNESS: catch errors from BOTH the Flutter framework AND the
+    // underlying platform dispatcher. `FlutterError.onError` only covers
+    // framework errors — anything thrown from an isolate, a native-channel
+    // callback, or a raw Future ran by Zone.current goes to
+    // `PlatformDispatcher.instance.onError` instead. Previously only the
+    // first channel was hooked, so isolate errors vanished silently.
     FlutterError.onError = (details) {
       commonPrint.log(details.stack.toString());
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      commonPrint.log('[PlatformDispatcher] $error\n$stack');
+      return true; // mark as handled — we do not want the app to die on
+      // isolated async errors we've already logged.
     };
     updateTray(true);
     await _initCore();
@@ -1293,6 +1304,24 @@ class AppController {
   }
 
   Future<void> addProfileFormURL(String url) async {
+    // SECURITY: validate the URL before fetching it. Previously an arbitrary
+    // string was passed straight into the HTTP layer, allowing `file://`,
+    // `data:`, `javascript:` and malformed URLs to reach Dio / YAML parser.
+    final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null ||
+        !uri.hasScheme ||
+        !(uri.scheme == 'http' || uri.scheme == 'https') ||
+        uri.host.isEmpty) {
+      unawaited(
+        globalState.showMessage(
+          message: TextSpan(text: appLocalizations.invalidProfileUrl),
+        ),
+      );
+      return;
+    }
+    final normalizedUrl = uri.toString();
+
     if (globalState.navigatorKey.currentState?.canPop() ?? false) {
       globalState.navigatorKey.currentState?.popUntil((route) => route.isFirst);
     }
@@ -1305,7 +1334,8 @@ class AppController {
         () async {
           final prefs = await SharedPreferences.getInstance();
           final shouldSend = prefs.getBool('sendDeviceHeaders') ?? true;
-          return Profile.normal(url: url).update(shouldSendHeaders: shouldSend);
+          return Profile.normal(url: normalizedUrl)
+              .update(shouldSendHeaders: shouldSend);
         },
         title: "${appLocalizations.add}${appLocalizations.profile}",
       );

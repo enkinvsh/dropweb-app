@@ -66,8 +66,15 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
   }
 
   @override
-  void dispose() async {
-    await system.setMacOSDns(true);
+  void dispose() {
+    // ROBUSTNESS: dispose() must be synchronous. Previously it was marked
+    // `async void`, which meant `await system.setMacOSDns(true)` was never
+    // actually awaited by Flutter — DNS was NOT guaranteed to be reset
+    // before the widget got torn down. We now fire-and-forget the reset
+    // while keeping the observer removal synchronous so lifecycle contracts
+    // aren't violated. `unawaited()` is the right primitive here: the error
+    // path is just a log and we don't block dispose on networksetup I/O.
+    unawaited(system.setMacOSDns(true));
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

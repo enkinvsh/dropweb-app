@@ -184,28 +184,64 @@ class GlobalState {
     timer = null;
   }
 
+  // SECURITY/ROBUSTNESS: Guard against concurrent start/stop calls.
+  // Previously a rapid double-tap on "Connect" would invoke handleStart()
+  // twice. startTime was set-once (`??=`), but clashCore.startListener()
+  // and service?.startVpn() would still run a second time, creating
+  // duplicate native listeners and potential memory / IPC leaks. Same for
+  // stop. A single in-flight flag serializes the transitions.
+  bool _vpnTransitionInFlight = false;
+
   Future<bool> handleStart([UpdateTasks? tasks]) async {
-    startTime ??= DateTime.now();
-    await clashCore.startListener();
-    final started = await service?.startVpn();
-    if (started == false) {
-      startTime = null;
-      await clashCore.stopListener();
-      return false;
+    if (_vpnTransitionInFlight) {
+      commonPrint.log('handleStart ignored: transition already in flight');
+      return startTime != null;
     }
-    startUpdateTasks(tasks);
-    return true;
+    _vpnTransitionInFlight = true;
+    try {
+      startTime ??= DateTime.now();
+      await clashCore.startListener();
+      final started = await service?.startVpn();
+      if (started == false) {
+        startTime = null;
+        await clashCore.stopListener();
+        return false;
+      }
+      startUpdateTasks(tasks);
+      return true;
+    } finally {
+      _vpnTransitionInFlight = false;
+    }
   }
 
   Future updateStartTime() async {
     startTime = await clashLib?.getRunTime();
   }
 
-  Future handleStop() async {
-    startTime = null;
-    await clashCore.stopListener();
-    await service?.stopVpn();
-    stopUpdateTasks();
+  Future<void> handleStop() async {
+    if (_vpnTransitionInFlight) {
+      commonPrint.log('handleStop ignored: transition already in flight');
+      return;
+    }
+    _vpnTransitionInFlight = true;
+    try {
+      startTime = null;
+      await clashCore.stopListener();
+      // ROBUSTNESS: cap native stop call so a hung VPN service can never
+      // freeze the UI. If the native side didn't ack in 5s we proceed with
+      // local cleanup; the process is either gone or will be reaped when
+      // the user taps again.
+      try {
+        await service?.stopVpn().timeout(const Duration(seconds: 5));
+      } on TimeoutException {
+        commonPrint.log('service.stopVpn() timed out — forcing local stop');
+      } catch (e) {
+        commonPrint.log('service.stopVpn() failed: $e');
+      }
+      stopUpdateTasks();
+    } finally {
+      _vpnTransitionInFlight = false;
+    }
   }
 
   Future<bool?> showMessage({

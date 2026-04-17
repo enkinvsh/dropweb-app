@@ -13,7 +13,6 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 
 class ClashCore {
-
   factory ClashCore() {
     _instance ??= ClashCore._internal();
     return _instance!;
@@ -53,6 +52,12 @@ class ClashCore {
         if (isExists) {
           continue;
         }
+        // Bundled geodata is a BOOTSTRAP SEED, kept in the APK so the app
+        // starts on a device with no internet — which is the whole point
+        // in RU, where the user installs us precisely because they can't
+        // reach the internet without a working VPN. mihomo refreshes these
+        // files from the URLs in the profile config once the tunnel is up.
+        // So the ~43 MB cost in APK size is load-bearing, not dead weight.
         final data = await rootBundle.load('assets/data/$geoFileName');
         final List<int> bytes = data.buffer.asUint8List();
         await geoFile.writeAsBytes(bytes, flush: true);
@@ -86,11 +91,14 @@ class ClashCore {
 
   FutureOr<bool> get isInit => clashInterface.isInit;
 
-  FutureOr<String> validateConfig(String data) => clashInterface.validateConfig(data);
+  FutureOr<String> validateConfig(String data) =>
+      clashInterface.validateConfig(data);
 
-  Future<String> updateConfig(UpdateParams updateParams) => clashInterface.updateConfig(updateParams);
+  Future<String> updateConfig(UpdateParams updateParams) =>
+      clashInterface.updateConfig(updateParams);
 
-  Future<String> setupConfig(SetupParams setupParams) => clashInterface.setupConfig(setupParams);
+  Future<String> setupConfig(SetupParams setupParams) =>
+      clashInterface.setupConfig(setupParams);
 
   Future<List<Group>> getProxiesGroups() async {
     final proxies = await clashInterface.getProxies();
@@ -119,7 +127,8 @@ class ClashCore {
         .toList();
   }
 
-  FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) async => await clashInterface.changeProxy(changeProxyParams);
+  FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) async =>
+      await clashInterface.changeProxy(changeProxyParams);
 
   Future<List<Connection>> getConnections() async {
     final res = await clashInterface.getConnections();
@@ -172,17 +181,20 @@ class ClashCore {
     return ExternalProvider.fromJson(json.decode(externalProvidersRawString));
   }
 
-  Future<String> updateGeoData(UpdateGeoDataParams params) => clashInterface.updateGeoData(params);
+  Future<String> updateGeoData(UpdateGeoDataParams params) =>
+      clashInterface.updateGeoData(params);
 
   Future<String> sideLoadExternalProvider({
     required String providerName,
     required String data,
-  }) => clashInterface.sideLoadExternalProvider(
-        providerName: providerName, data: data);
+  }) =>
+      clashInterface.sideLoadExternalProvider(
+          providerName: providerName, data: data);
 
   Future<String> updateExternalProvider({
     required String providerName,
-  }) async => clashInterface.updateExternalProvider(providerName);
+  }) async =>
+      clashInterface.updateExternalProvider(providerName);
 
   Future<void> startListener() async {
     await clashInterface.startListener();

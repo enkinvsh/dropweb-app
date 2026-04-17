@@ -1,4 +1,7 @@
 {
+  "invalidProfileUrl": "Invalid subscription URL. Use http:// or https://",
+  "connectTv": "Connect TV",
+  "connectTvDesc": "Send profile to Android TV via QR code",
   "rule": "By rule",
   "global": "Global",
   "direct": "Direct",

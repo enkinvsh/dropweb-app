@@ -1,4 +1,7 @@
 {
+  "invalidProfileUrl": "サブスクリプションのURLが無効です。http:// または https:// を使用してください",
+  "connectTv": "TVに接続",
+  "connectTvDesc": "QRコードでAndroid TVにプロファイルを送信",
   "rule": "ルールに従って",
   "global": "グローバル",
   "direct": "ダイレクト",

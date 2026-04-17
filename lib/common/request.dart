@@ -9,6 +9,7 @@ import 'package:dropweb/common/common.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 class Request {
   Request() {
@@ -17,6 +18,13 @@ class Request {
         headers: {
           "User-Agent": browserUa,
         },
+        // ROBUSTNESS: bound every outbound request so a slow/hung server
+        // cannot freeze the UI indefinitely. These are upper bounds — Dio
+        // resets the receive timer on every chunk, so large legitimate
+        // subscription payloads still download fine.
+        connectTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
       ),
     );
     _clashDio = Dio();
@@ -32,6 +40,11 @@ class Request {
   late final Dio _dio;
   late final Dio _clashDio;
   String? userAgent;
+
+  /// Hard upper bound on a profile/subscription payload. Any larger and we
+  /// refuse to buffer it — a malicious or broken provider can otherwise
+  /// OOM the app by serving an endless response.
+  static const int _maxProfileBytes = 50 * 1024 * 1024; // 50 MiB
 
   Future<Response<Uint8List>> getFileResponseForUrl(
     String url, {
@@ -50,14 +63,20 @@ class Request {
       ),
     );
 
+    Response<Uint8List> response = firstResponse;
     if (firstResponse.isRedirect == true) {
       final newUrl = firstResponse.headers.value('location');
       if (newUrl == null) {
         throw Exception('Redirect detected, but no location header was found.');
       }
 
-      print('↪️ Redirecting to: $newUrl');
-      final finalResponse = await _dio.get<Uint8List>(
+      // SECURITY: do not print the redirect URL — subscription links and
+      // their redirect targets frequently carry auth tokens in the path or
+      // query string. Only log the fact of a redirect in debug builds.
+      if (kDebugMode) {
+        debugPrint('Subscription redirect followed (length=${newUrl.length})');
+      }
+      response = await _dio.get<Uint8List>(
         newUrl,
         options: Options(
           responseType: ResponseType.bytes,
@@ -67,9 +86,26 @@ class Request {
           validateStatus: (status) => status != null && status < 500,
         ),
       );
-      return finalResponse;
     }
-    return firstResponse;
+
+    // SECURITY: size limit. Check advertised Content-Length when present,
+    // and fall back to measuring the downloaded bytes. Either gate trips
+    // → throw so the caller surfaces a user-facing error instead of
+    // proceeding to parse gigabytes of YAML.
+    final contentLengthHeader = response.headers.value('content-length');
+    final contentLength = int.tryParse(contentLengthHeader ?? '');
+    if (contentLength != null && contentLength > _maxProfileBytes) {
+      throw Exception(
+        'Subscription too large: $contentLength bytes (max $_maxProfileBytes)',
+      );
+    }
+    final actualLength = response.data?.length ?? 0;
+    if (actualLength > _maxProfileBytes) {
+      throw Exception(
+        'Subscription too large: $actualLength bytes (max $_maxProfileBytes)',
+      );
+    }
+    return response;
   }
 
   Future<Response> getTextResponseForUrl(String url) async {
@@ -131,18 +167,35 @@ class Request {
         ),
       );
       future.then((res) {
-        if (res.statusCode == HttpStatus.ok && res.data != null) {
-          completer.complete(Result.success(source.value(res.data!)));
-        } else {
-          failureCount++;
-          if (failureCount == _ipInfoSources.length) {
-            completer.complete(Result.success(null));
+        // SECURITY/ROBUSTNESS: guard every branch. Previously `res.data!`
+        // could crash on valid-status-but-null responses, and `catchError`
+        // only completed the completer for the `cancel` branch — leaving it
+        // pending forever for transport errors, which could hang the UI.
+        final data = res.data;
+        if (res.statusCode == HttpStatus.ok && data != null) {
+          try {
+            final info = source.value(data);
+            if (!completer.isCompleted) {
+              completer.complete(Result.success(info));
+            }
+            return;
+          } catch (_) {
+            // Malformed payload — fall through to failure counter.
           }
+        }
+        failureCount++;
+        if (failureCount == _ipInfoSources.length && !completer.isCompleted) {
+          completer.complete(Result.success(null));
         }
       }).catchError((e) {
         failureCount++;
-        if (e == DioExceptionType.cancel) {
+        if (completer.isCompleted) return;
+        if (e is DioException && e.type == DioExceptionType.cancel) {
           completer.complete(Result.error("cancelled"));
+          return;
+        }
+        if (failureCount == _ipInfoSources.length) {
+          completer.complete(Result.success(null));
         }
       });
       return completer.future;

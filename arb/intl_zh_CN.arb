@@ -1,4 +1,7 @@
 {
+  "invalidProfileUrl": "订阅链接无效,请使用 http:// 或 https://",
+  "connectTv": "连接电视",
+  "connectTvDesc": "通过二维码将配置发送到 Android TV",
   "rule": "按规则",
   "global": "全局",
   "direct": "直连",
