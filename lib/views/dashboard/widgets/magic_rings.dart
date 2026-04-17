@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/pages/home.dart' show connectButtonCenter;
 import 'package:dropweb/providers/providers.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +39,9 @@ class _MagicRingsOverlayState extends ConsumerState<MagicRingsOverlay>
   Widget build(BuildContext context) {
     final isConnected = ref.watch(runTimeProvider) != null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final visible = isConnected && isDark;
+    // Only show on dashboard — rings must not leak into Settings/other pages.
+    final isOnDashboard = ref.watch(isCurrentPageProvider(PageLabel.dashboard));
+    final visible = isConnected && isDark && isOnDashboard;
 
     if (visible && !_controller.isAnimating) _controller.repeat();
 

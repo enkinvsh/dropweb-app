@@ -219,7 +219,7 @@ class _AccessItem extends StatelessWidget {
       title: Text(appLocale.accessControl),
       subtitle: Text(appLocale.accessControlDesc),
       delegate: OpenDelegate(
-        title: appLocale.appAccessControl,
+        title: appLocale.accessControl,
         widget: const AccessView(),
       ),
     );

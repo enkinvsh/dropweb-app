@@ -40,7 +40,9 @@ class _StartButtonState extends ConsumerState<StartButton>
       vsync: this,
       duration: const Duration(seconds: 4),
     );
-    _breatheAnimation = Tween<double>(begin: 0.15, end: 0.3).animate(
+    // Breathing alpha restored to be visible on OLED while still gentler than
+    // pre-Tier-1 values (was 0.2-0.5, Tier-1 dropped to 0.15-0.3 → invisible).
+    _breatheAnimation = Tween<double>(begin: 0.25, end: 0.45).animate(
       CurvedAnimation(parent: _breatheController, curve: Lumina.luminaCurve),
     );
 
