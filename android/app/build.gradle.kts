@@ -39,7 +39,11 @@ android {
 
     defaultConfig {
         applicationId = "app.dropweb"
-        minSdk = 23  // hardcoded — core module requires ≥23, older Flutter SDKs in CI default to 21
+        // hardcoded — flutter_secure_storage 10.x requires minSdk=24 (Android 7.0+),
+        // and the core module already required ≥23. Bumped from 23 to 24 together
+        // with the secure-storage migration in 2712935. Older Flutter SDKs in CI
+        // default to 21; leaving this as `flutter.minSdkVersion` is NOT safe here.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
