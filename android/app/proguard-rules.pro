@@ -70,3 +70,16 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+
+# --- Flutter Play Core (deferred components) -------------------------------
+# Flutter's embedding references com.google.android.play.core.* even when
+# we don't use Play deferred components. R8 fails the build with
+# "Missing class ..." unless we tell it to ignore the references. The code
+# paths are gated at runtime and never executed without the Play Core
+# dependency, so stripping them is safe.
+-dontwarn com.google.android.play.core.**
+-dontwarn com.google.android.play.**
+
+# --- Apache Tika / javax.xml.stream (pulled by transitive deps) ------------
+-dontwarn javax.xml.stream.**
+-dontwarn org.apache.tika.**
