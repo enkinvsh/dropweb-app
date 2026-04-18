@@ -1,3 +1,42 @@
+## v0.4.14
+
+- fix(android): defer initServiceEngine when main engine is alive
+
+- Root cause of post-reboot/cold-start splash hang found via live logcat on
+- v0.4.13 (Pixel 10): something triggers GlobalState.initServiceEngine() on
+- the platform thread during MainActivity.onCreate, BEFORE FlutterActivity
+- schedules main FlutterEngine's default Dart entrypoint. The synchronous
+- serviceEngine.dartExecutor.executeDartEntrypoint(_service) call under
+- runLock starves the platform thread, main engine's Dart main() never
+- starts, and the splash screen sits with mDrawState=DRAW_PENDING forever.
+
+- Symptoms in logcat (v0.4.13, fresh cold start, no VPN active):
+- - TilePlugin.onAttachedToEngine fires twice (main + service)
+- - 16x "plugin already registered" warnings
+- - ConnectivityManager: NetworkCallback was already registered (ERROR)
+- - _service entrypoint runs to completion
+- - NOT a single log line from lib/main.dart's main() entrypoint
+- - splash window HAS_DRAWN, MainActivity surface DRAW_PENDING for minutes
+
+- Fix: when MainActivity's flutterEngine is already alive, post the service
+- engine init onto the next main looper cycle instead of running it
+- synchronously. This lets FlutterActivity's pending runnables (including
+- main engine's executeDartEntrypoint) drain first. Service engine still
+- gets created — VPN connect path (AppPlugin.onActivityResult RESULT_OK,
+- DropwebVpnService.onCreate, GlobalState.handleStart with no TilePlugin)
+- keeps working, just one looper tick later.
+
+- Also adds a Throwable to the deferred-path log so the next reproduction
+- will tell us WHICH callsite is firing initServiceEngine on cold-start —
+- the four known callers (handleStart, AppPlugin.onActivityResult,
+- ServicePlugin.onMethodCall("init"), DropwebVpnService.onCreate) all
+- showed no preceding log line in the captured trace, so the trigger
+- remains to be confirmed.
+
+- Bumps version to 0.4.14.
+
+- Update changelog
+
 ## v0.4.13
 
 - fix(android): re-enable Impeller — disabling it broke post-reboot launch
