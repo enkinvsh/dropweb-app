@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  SECURITY: Production network security policy.
-    - Base config: trust system + user CAs. User CAs are required because
-      the VPN user base frequently installs custom CAs for HTTPS filtering
-      (documented trade-off; the VPN itself terminates the connection).
-    - Cleartext is DISABLED by default. Only the local mihomo control
-      interface on 127.0.0.1 / localhost is allowed to use HTTP, because
-      it binds to loopback only and has no TLS — an external attacker
-      cannot reach loopback on a modern Android.
--->
+<!-- SECURITY: cleartext only for loopback (mihomo control API has no TLS). -->
 <network-security-config xmlns:tools="http://schemas.android.com/tools"
     tools:ignore="AcceptsUserCertificates">
     <base-config cleartextTrafficPermitted="false">

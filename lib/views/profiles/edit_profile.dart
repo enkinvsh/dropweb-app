@@ -37,9 +37,7 @@ class _EditProfileViewState extends State<EditProfileView> {
 
   Profile get profile => widget.profile;
 
-  // Real subscription URL for the currently-edited profile. Populated
-  // asynchronously in initState via the secure store so that opening this
-  // form triggers a keystore read only here, not on app launch.
+  /// Resolved from secure store on form open (not on app launch).
   String? _originalUrl;
 
   @override
@@ -62,8 +60,7 @@ class _EditProfileViewState extends State<EditProfileView> {
     if (!mounted) return;
     final value = resolved ?? '';
     _originalUrl = value;
-    // Preserve whatever the user has already typed — only overwrite if
-    // the field still matches the placeholder we put in initState().
+    // Don't clobber user input — only overwrite the initState placeholder.
     if (urlController.text == widget.profile.url) {
       urlController.text = value;
     }

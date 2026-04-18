@@ -66,13 +66,7 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
 
   @override
   void dispose() {
-    // ROBUSTNESS: dispose() must be synchronous. Previously it was marked
-    // `async void`, which meant `await system.setMacOSDns(true)` was never
-    // actually awaited by Flutter — DNS was NOT guaranteed to be reset
-    // before the widget got torn down. We now fire-and-forget the reset
-    // while keeping the observer removal synchronous so lifecycle contracts
-    // aren't violated. `unawaited()` is the right primitive here: the error
-    // path is just a log and we don't block dispose on networksetup I/O.
+    // dispose() is sync; DNS reset is fire-and-forget, error path is just a log.
     unawaited(system.setMacOSDns(true));
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -86,11 +80,7 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
       globalState.appController.savePreferencesDebounce();
     } else if (state == AppLifecycleState.resumed) {
       render?.resume();
-      // BUGFIX: when the user toggled the VPN from the QS tile or the
-      // foreground notification while this Flutter isolate was backgrounded,
-      // the connect button stayed in its old state because we never pulled
-      // the native runtime back. Sync on every resume so the FAB matches
-      // reality.
+      // Reconcile FAB with native state — QS tile / notification STOP don't notify us.
       unawaited(globalState.appController.syncRunStateFromNative());
     } else {
       render?.resume();

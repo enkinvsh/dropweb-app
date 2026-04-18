@@ -140,15 +140,7 @@ class AppController {
     }
   }
 
-  /// Reconcile Dart-side VPN state with the actual native runtime.
-  ///
-  /// Called from the app lifecycle observer on AppLifecycleState.resumed so
-  /// that if the user toggled the QS tile / clicked STOP on the foreground
-  /// notification / revoked the tunnel from system settings while the UI
-  /// was backgrounded, the connect button snaps to the correct state as
-  /// soon as the user returns to the app. This is a read-only sync — it
-  /// NEVER calls handleStart/handleStop on its own, so it can't accidentally
-  /// toggle the VPN just because the lifecycle fired.
+  /// Read-only reconcile of Dart VPN state with native runtime. Never toggles VPN.
   Future<void> syncRunStateFromNative() async {
     if (!Platform.isAndroid) return;
     final prevStartTime = globalState.startTime;
@@ -165,9 +157,7 @@ class AppController {
     if (nativeIsRunning) {
       updateRunTime();
     } else {
-      // Native tunnel is already gone — just tear down Dart-side bookkeeping
-      // without re-entering handleStop(), which would try to stop something
-      // that's already stopped and log spurious errors.
+      // Native already stopped — tear down Dart bookkeeping without re-calling handleStop.
       clashCore.resetTraffic();
       _ref.read(trafficsProvider.notifier).clear();
       _ref.read(totalTrafficProvider.notifier).value = Traffic();
@@ -1210,19 +1200,13 @@ class AppController {
   }
 
   Future<void> init() async {
-    // ROBUSTNESS: catch errors from BOTH the Flutter framework AND the
-    // underlying platform dispatcher. `FlutterError.onError` only covers
-    // framework errors — anything thrown from an isolate, a native-channel
-    // callback, or a raw Future ran by Zone.current goes to
-    // `PlatformDispatcher.instance.onError` instead. Previously only the
-    // first channel was hooked, so isolate errors vanished silently.
     FlutterError.onError = (details) {
       commonPrint.log(details.stack.toString());
     };
+    // PlatformDispatcher catches isolate/native-channel errors FlutterError misses.
     PlatformDispatcher.instance.onError = (error, stack) {
       commonPrint.log('[PlatformDispatcher] $error\n$stack');
-      return true; // mark as handled — we do not want the app to die on
-      // isolated async errors we've already logged.
+      return true;
     };
     updateTray(true);
     await _initCore();
@@ -1246,14 +1230,7 @@ class AppController {
     await _handlerDisclaimer();
     _ref.read(initProvider.notifier).value = true;
 
-    // Kick the Phase-9 URL migration AFTER the UI has rendered. We can't
-    // do it inside preferences.getConfig() — on Pixel 10 after a cold
-    // boot the Android Keystore IPC may block for tens of seconds while
-    // Gatekeeper settles, which would freeze the app on the native
-    // splash. Running it post-frame means the worst case is that the
-    // scrubbed-URL persistence completes a few seconds into the user
-    // session instead of before first frame; the secure values were
-    // already there since saveConfig() on any previous launch.
+    // Post-frame so a slow keystore can't freeze the splash.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(
         preferences.migrateProfileUrlsIfNeeded().catchError(
@@ -1360,9 +1337,7 @@ class AppController {
   }
 
   Future<void> addProfileFormURL(String url) async {
-    // SECURITY: validate the URL before fetching it. Previously an arbitrary
-    // string was passed straight into the HTTP layer, allowing `file://`,
-    // `data:`, `javascript:` and malformed URLs to reach Dio / YAML parser.
+    // SECURITY: restrict schemes — no file://, data:, javascript: reaching HTTP/YAML parser.
     final trimmed = url.trim();
     final uri = Uri.tryParse(trimmed);
     if (uri == null ||

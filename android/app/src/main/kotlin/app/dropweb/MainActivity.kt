@@ -71,10 +71,7 @@ class MainActivity : FlutterActivity() {
         GlobalState.flutterEngine = flutterEngine
 
         // Sync VPN status when app opens - this ensures UI reflects actual VPN state
-        // especially important when VPN was started via Tile while app was not in memory.
-        // Matches upstream pluralplay/FlClashX — removing this was one of my wrong
-        // turns debugging the splash hang; the real root cause is Phase-9 secure
-        // storage blocking getConfig().
+        // especially important when VPN was started via Tile while app was not in memory
         GlobalState.syncStatus()
     }
 

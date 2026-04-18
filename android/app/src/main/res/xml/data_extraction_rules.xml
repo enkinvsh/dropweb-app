@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  SECURITY: Exclude ALL app data from cloud backup and device-to-device
-  transfer. VPN subscription URLs frequently contain auth tokens, and
-  local profile YAMLs may embed proxy credentials. Users must log in
-  fresh on a new device rather than have secrets silently migrated via
-  Google's backup service.
--->
+<!-- SECURITY: exclude all app data from cloud backup + device transfer (VPN tokens). -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />

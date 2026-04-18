@@ -183,11 +183,7 @@ extension ProfileExtension on Profile {
       if (details.model != null) headers['x-device-model'] = details.model;
     }
 
-    // URLs live in encrypted storage; the one carried on `this` is usually
-    // empty because getConfig() intentionally does not rehydrate (would
-    // block on Keystore IPC after boot). Prefer the secure value, fall
-    // back to whatever's on `this` for pre-migration state or freshly
-    // imported profiles that haven't hit saveConfig yet.
+    // Resolve URL on demand — `this.url` is empty post-migration.
     final primaryUrl = await preferences.getProfileUrl(this);
     if (primaryUrl == null || primaryUrl.isEmpty) {
       throw Exception(

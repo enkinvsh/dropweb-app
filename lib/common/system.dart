@@ -101,14 +101,7 @@ class System {
         return AuthorizeCode.error;
       }
 
-      // SECURITY: Never interpolate user input (password) into a shell command
-      // string. Previously we did `echo "$password" | sudo -S chown ...` inside
-      // `sh -c '...'`, which allowed shell injection if the password contained
-      // `"`, `$`, `` ` ``, etc. Now we spawn sudo directly and pipe the
-      // password via stdin with --prompt='' so sudo won't echo any prompt.
-      // The absolute core path (not escaped) is passed as a SEPARATE argv
-      // element — Process.start does NOT go through a shell, so spaces and
-      // special characters in the path are safe without manual escaping.
+      // SECURITY: password via stdin, not shell interpolation (injection risk).
       final corePathRaw = appPath.corePath;
 
       Future<int> runSudo(List<String> cmd) async {

@@ -18,10 +18,6 @@ class Request {
         headers: {
           "User-Agent": browserUa,
         },
-        // ROBUSTNESS: bound every outbound request so a slow/hung server
-        // cannot freeze the UI indefinitely. These are upper bounds — Dio
-        // resets the receive timer on every chunk, so large legitimate
-        // subscription payloads still download fine.
         connectTimeout: const Duration(seconds: 15),
         sendTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
@@ -41,9 +37,7 @@ class Request {
   late final Dio _clashDio;
   String? userAgent;
 
-  /// Hard upper bound on a profile/subscription payload. Any larger and we
-  /// refuse to buffer it — a malicious or broken provider can otherwise
-  /// OOM the app by serving an endless response.
+  /// SECURITY: cap on subscription payload size — prevents OOM from rogue providers.
   static const int _maxProfileBytes = 50 * 1024 * 1024; // 50 MiB
 
   Future<Response<Uint8List>> getFileResponseForUrl(
@@ -70,9 +64,7 @@ class Request {
         throw Exception('Redirect detected, but no location header was found.');
       }
 
-      // SECURITY: do not print the redirect URL — subscription links and
-      // their redirect targets frequently carry auth tokens in the path or
-      // query string. Only log the fact of a redirect in debug builds.
+      // SECURITY: don't log redirect URLs — subscription tokens leak through them.
       if (kDebugMode) {
         debugPrint('Subscription redirect followed (length=${newUrl.length})');
       }
@@ -88,10 +80,6 @@ class Request {
       );
     }
 
-    // SECURITY: size limit. Check advertised Content-Length when present,
-    // and fall back to measuring the downloaded bytes. Either gate trips
-    // → throw so the caller surfaces a user-facing error instead of
-    // proceeding to parse gigabytes of YAML.
     final contentLengthHeader = response.headers.value('content-length');
     final contentLength = int.tryParse(contentLengthHeader ?? '');
     if (contentLength != null && contentLength > _maxProfileBytes) {
@@ -167,10 +155,6 @@ class Request {
         ),
       );
       future.then((res) {
-        // SECURITY/ROBUSTNESS: guard every branch. Previously `res.data!`
-        // could crash on valid-status-but-null responses, and `catchError`
-        // only completed the completer for the `cancel` branch — leaving it
-        // pending forever for transport errors, which could hang the UI.
         final data = res.data;
         if (res.statusCode == HttpStatus.ok && data != null) {
           try {

@@ -1,7 +1,7 @@
 name: dropweb
 description: Multi-platform VPN client based on mihomo core. Open-source and ad-free.
 publish_to: "none"
-version: 0.4.9+2026041705
+version: 0.4.10+2026041706
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -111,9 +111,7 @@ flutter:
         - asset: assets/fonts/Icons.ttf
     - family: Unbounded
       fonts:
-        # Only the variable font is shipped — a single 334 KB file covers
-        # every weight we need, so the 760 KB Unbounded-Regular.ttf is
-        # redundant and has been removed from the APK.
+        # Variable covers every weight — don't add Unbounded-Regular.ttf back.
         - asset: assets/fonts/Unbounded-Variable.ttf
     - family: Onest
       fonts:

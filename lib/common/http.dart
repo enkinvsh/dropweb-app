@@ -31,10 +31,7 @@ class DropwebHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     final client = super.createHttpClient(context);
-    // SECURITY: Previously we accepted ANY certificate globally. That
-    // exposed every subscription / API / update fetch to MITM.
-    // Now we only accept bad certs for localhost (where the helper service
-    // uses a self-signed cert, or plain cleartext for the mihomo control port).
+    // SECURITY: never trust bad certs globally — MITM risk on subscription/API fetches.
     client.badCertificateCallback = (cert, host, port) {
       return _localhostHosts.contains(host);
     };

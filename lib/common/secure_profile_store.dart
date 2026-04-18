@@ -1,22 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Encrypted storage for subscription URLs, keyed by profile id.
-///
-/// Subscription URLs almost always carry an auth token in the path or query
-/// (`https://example.com/sub/<token>`, `https://api/?uuid=...`). Keeping them
-/// in SharedPreferences means another app with root on the device — or any
-/// tooling that can read `/data/data/<pkg>/shared_prefs/*.xml` during a
-/// support session or debug dump — can harvest live VPN credentials.
-///
-/// Android backs `flutter_secure_storage` with EncryptedSharedPreferences
-/// (AES-256/Keystore-wrapped key). iOS uses the Keychain. Desktop platforms
-/// use the OS credential store.
-///
-/// Non-sensitive Profile fields (labels, flags, update schedule, selected
-/// proxies map, override rules) continue to live in the main Config blob in
-/// SharedPreferences — moving them here would cost IPC round-trips on every
-/// scroll of the Proxies page.
+/// Encrypted store for subscription URLs (tokens embedded) — SharedPreferences
+/// is readable via ADB backup and by rooted companions. Only URLs live here;
+/// the rest of Profile stays in the plaintext Config blob for fast access.
 class SecureProfileUrlStore {
   SecureProfileUrlStore._();
 
@@ -24,17 +11,10 @@ class SecureProfileUrlStore {
 
   static const _urlKeyPrefix = 'profile_url:';
   static const _fallbackKeyPrefix = 'profile_fallback_url:';
-  // Flips to 1 after the first successful migration run so we don't re-scan
-  // SharedPreferences on every launch.
   static const _migrationKey = 'profile_url_migrated_v1';
 
-  // AndroidOptions intentionally left default. In flutter_secure_storage
-  // v10 the `encryptedSharedPreferences` flag is a no-op (Jetpack Security
-  // was deprecated by Google); the plugin auto-migrates to its own AES-GCM
-  // ciphers on first access. KeychainAccessibility.first_unlock on iOS
-  // means the Keychain item is readable after the user unlocks the device
-  // once per boot, then stays readable — appropriate for a VPN client that
-  // may need to reconnect in the background.
+  // first_unlock — readable once the device is unlocked, stays readable after
+  // (VPN may need to reconnect in background).
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock,

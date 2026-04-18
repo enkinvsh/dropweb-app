@@ -18,22 +18,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <!--
-      SECURITY: QUERY_ALL_PACKAGES is restricted by Google Play and should be
-      justified in the submission form. It is used by the VPN plugin to build
-      the per-app exclusion list ("apps that bypass the tunnel"). Keeping the
-      permission so that UX doesn't break, but narrowing the tools:ignore so
-      the lint check still runs. If Google Play rejects this, the exclusion
-      list can fall back to the intents below via <queries>.
-    -->
+    <!-- VPN per-app exclusion list — justify in Play submission. -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
-    <!--
-      Minimum <queries> visibility so we can still list common app categories
-      even if QUERY_ALL_PACKAGES has to be removed during Play review.
-    -->
+    <!-- Fallback visibility if Play strips QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -77,14 +67,7 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
-            <!--
-              Deep links for subscription installation.
-              NOTE: `android:autoVerify` cannot be set on custom schemes
-              (it only works for http/https with a valid assetlinks.json).
-              The `flclash://` scheme was removed as legacy cruft from the
-              upstream fork; we keep `clash://` for ecosystem compatibility
-              and `dropweb://` as our own.
-            -->
+            <!-- clash:// for ecosystem bots, dropweb:// for our own deep links. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -104,14 +87,7 @@
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="false" />
 
-        <!--
-          SECURITY: TempActivity is a transparent activity used by our own
-          home-screen widget and Quick Settings tile to relay start/stop
-          intents into the VPN service. It MUST NOT be exported — otherwise
-          any app on the device could toggle the VPN without user consent.
-          Widgets and tile services in the SAME application (same UID) can
-          still launch it via explicit ComponentName, which is what they do.
-        -->
+        <!-- SECURITY: exported=false — only same-UID widgets/tile launch via explicit ComponentName. -->
         <activity
             android:name=".TempActivity"
             android:exported="false"
@@ -145,12 +121,7 @@
             android:value="false" />
         </service>
 
-        <!--
-          SECURITY: BIND_APPWIDGET is a system-signature permission, which
-          means only the Android AppWidget service can deliver broadcasts
-          to this receiver. Without the permission, any app could spam
-          APPWIDGET_UPDATE and force widget work.
-        -->
+        <!-- SECURITY: BIND_APPWIDGET — only system AppWidget service can deliver updates. -->
         <receiver
             android:name=".widgets.DropwebWidgetProvider"
             android:exported="true"

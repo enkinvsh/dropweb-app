@@ -326,9 +326,6 @@ class _TvItem extends ConsumerStatefulWidget {
 }
 
 class _TvItemState extends ConsumerState<_TvItem> {
-  // Cached subscription URL for the current profile. Read from the
-  // encrypted store because the URL on the Profile model is stripped
-  // after Phase-9 migration (see Preferences.getConfig docstring).
   String? _profileUrl;
   String? _lastLoadedProfileId;
 
@@ -347,7 +344,6 @@ class _TvItemState extends ConsumerState<_TvItem> {
     final appLocale = AppLocalizations.of(context);
     final profile = ref.watch(currentProfileProvider);
     if (profile != null) {
-      // Fire-and-forget — result is applied via setState when it lands.
       unawaited(_ensureUrl(profile));
     }
     final url = _profileUrl;

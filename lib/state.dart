@@ -184,12 +184,7 @@ class GlobalState {
     timer = null;
   }
 
-  // SECURITY/ROBUSTNESS: Guard against concurrent start/stop calls.
-  // Previously a rapid double-tap on "Connect" would invoke handleStart()
-  // twice. startTime was set-once (`??=`), but clashCore.startListener()
-  // and service?.startVpn() would still run a second time, creating
-  // duplicate native listeners and potential memory / IPC leaks. Same for
-  // stop. A single in-flight flag serializes the transitions.
+  /// Serialises VPN start/stop so a double-tap can't spawn duplicate listeners.
   bool _vpnTransitionInFlight = false;
 
   Future<bool> handleStart([UpdateTasks? tasks]) async {
@@ -227,11 +222,8 @@ class GlobalState {
     try {
       startTime = null;
       await clashCore.stopListener();
-      // ROBUSTNESS: cap native stop call so a hung VPN service can never
-      // freeze the UI. If the native side didn't ack in 5s we proceed with
-      // local cleanup; the process is either gone or will be reaped when
-      // the user taps again.
       try {
+        // 5s cap — a hung native service mustn't freeze the UI.
         await service?.stopVpn().timeout(const Duration(seconds: 5));
       } on TimeoutException {
         commonPrint.log('service.stopVpn() timed out — forcing local stop');

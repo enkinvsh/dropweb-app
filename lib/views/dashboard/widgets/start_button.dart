@@ -50,12 +50,6 @@ class _StartButtonState extends ConsumerState<StartButton>
     }
   }
 
-  /// Drive the breathing halo off whatever the current VPN state is.
-  /// Called from build() so it stays in sync with runTimeProvider — the
-  /// previous implementation listened on startButtonSelectorStateProvider,
-  /// whose dependencies (init/profiles/proxies) don't change when the VPN
-  /// toggles, so external stops (QS tile, notification STOP, system revoke)
-  /// left the icon stuck in its old state.
   void _syncBreathe({required bool running, required bool hasProfile}) {
     final shouldAnimate = running || !hasProfile;
     if (shouldAnimate && !_breatheController.isAnimating) {
@@ -75,8 +69,6 @@ class _StartButtonState extends ConsumerState<StartButton>
 
   void handleSwitchStart() {
     HapticFeedback.mediumImpact();
-    // Derive target state from the canonical source (runTimeProvider),
-    // not from a local mirror that could drift after background toggles.
     final currentlyRunning = ref.read(runTimeProvider) != null;
     final next = !currentlyRunning;
     debouncer.call(
@@ -108,18 +100,13 @@ class _StartButtonState extends ConsumerState<StartButton>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(startButtonSelectorStateProvider);
-    // Watch runTimeProvider directly so the icon updates immediately when
-    // the VPN is toggled by the QS tile, the foreground-notification STOP,
-    // or a system revoke — none of those go through startButtonSelector.
+    // Watch runTimeProvider so external VPN stops (QS tile, notification, revoke) flip the icon.
     final isStart = ref.watch(runTimeProvider) != null;
     if (!state.isInit) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
     final hasProfile = state.hasProfile;
-    // Defer AnimationController state changes out of the build phase —
-    // starting/stopping a ticker inside build is a framework no-op that
-    // also kicks off another build, causing a busy loop under fast
-    // provider transitions.
+    // AnimationController mutations must be post-frame — running them in build = ANR loop.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _syncBreathe(running: isStart, hasProfile: hasProfile);
