@@ -65,9 +65,9 @@ class MainActivity : FlutterActivity() {
             }
         
         flutterEngine.plugins.add(AppPlugin())
-        flutterEngine.plugins.add(ServicePlugin)
+        flutterEngine.plugins.add(ServicePlugin())
         flutterEngine.plugins.add(TilePlugin())
-        flutterEngine.plugins.add(VpnPlugin)
+        flutterEngine.plugins.add(VpnPlugin())
         GlobalState.flutterEngine = flutterEngine
 
         // IMPORTANT: DO NOT call GlobalState.syncStatus() here. It eventually

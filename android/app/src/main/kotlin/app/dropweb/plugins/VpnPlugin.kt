@@ -45,15 +45,21 @@ import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import kotlin.concurrent.withLock
 
-data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
+class VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var flutterMethodChannel: MethodChannel
-    private var dropwebService: BaseServiceInterface? = null
-    private var options: VpnOptions? = null
-    private var isBind: Boolean = false
     private lateinit var scope: CoroutineScope
-    private var lastStartForegroundParams: StartForegroundParams? = null
-    private var timerJob: Job? = null
-    private val uidPageNameMap = mutableMapOf<Int, String>()
+
+    companion object {
+        private var dropwebService: BaseServiceInterface? = null
+        private var options: VpnOptions? = null
+        private var isBind: Boolean = false
+        private var lastStartForegroundParams: StartForegroundParams? = null
+        private var timerJob: Job? = null
+        private val uidPageNameMap = mutableMapOf<Int, String>()
+        internal val networks = mutableSetOf<Network>()
+        @Volatile
+        private var screenReceiverRegistered: Boolean = false
+    }
 
     private val connectivity by lazy {
         DropwebApplication.getAppContext().getSystemService<ConnectivityManager>()
@@ -117,13 +123,13 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
-    fun handleStart(options: VpnOptions): Boolean {
+    fun handleStart(newOptions: VpnOptions): Boolean {
         onUpdateNetwork();
-        if (options.enable != this.options?.enable) {
-            this.dropwebService = null
+        if (newOptions.enable != options?.enable) {
+            dropwebService = null
         }
-        this.options = options
-        when (options.enable) {
+        options = newOptions
+        when (newOptions.enable) {
             true -> handleStartVpn()
             false -> handleStartService()
         }
@@ -139,8 +145,6 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     fun requestGc() {
         flutterMethodChannel.invokeMethod("gc", null)
     }
-
-    val networks = mutableSetOf<Network>()
 
     fun onUpdateNetwork() {
         val dns = networks.flatMap { network ->
@@ -188,8 +192,6 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             if (networks.isEmpty()) null else networks.toTypedArray()
         )
     }
-
-    private var screenReceiverRegistered = false
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {

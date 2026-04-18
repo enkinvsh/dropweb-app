@@ -8,7 +8,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 
-data object ServicePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
+class ServicePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private lateinit var flutterMethodChannel: MethodChannel
 
