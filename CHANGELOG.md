@@ -1,3 +1,56 @@
+## v0.5.0
+
+- perf: fix Dashboard → Settings transition stutter
+
+  Root cause: `_TvItem` in `lib/views/tools.dart` triggered a Keystore
+  IPC call (`preferences.getProfileUrl`) via `unawaited()` on every
+  ToolsView `build()`. During a page transition the home state cascade
+  rebuilt ToolsView several times back-to-back, blocking the UI thread
+  on repeated Keystore reads.
+
+  Fix: move the profile-URL fetch from `build()` into `initState()`
+  via `ref.listenManual(currentProfileProvider, ...)`, so the IPC
+  fires only when the profile actually changes.
+
+  Measured on Pixel 10 (SurfaceFlinger --latency, debug build):
+
+  |          | before | after |
+  |----------|--------|-------|
+  | p50      |   9 ms |  8 ms |
+  | p95      |  55 ms | 11 ms |
+  | p99      | 335 ms | 15 ms |
+  | slow (>12ms) | 19% |  6%  |
+
+  The 335ms single-frame spike on first transition is gone.
+
+- refactor(about): clean up the About page
+
+  Dropped the three separate "contributors / thanks / gratitude"
+  sections inherited from upstream forks. Public About now shows only
+  logo, version, core version, description, `Based on FlClashX` line,
+  and links (Project / FlClashX / mihomo core).
+
+  Removed in-app "Check for updates" on Android (Play Store policy
+  forbids it — updates go through the store channel). Retained for
+  desktop builds.
+
+  Dropped stale repo links: original FlClash chen08209 link replaced
+  by pluralplay/FlClashX (our direct upstream), core link now points
+  to MetaCubeX/mihomo (the actual VPN engine).
+
+- feat(about): hidden credits via File Transfer Manager easter egg
+
+  Ten taps on the About logo open a fake "File Transfer Manager" that
+  transfers nine "files" — each file is actually a contributor, shown
+  with avatar and role. Order is the credits roll:
+  chen08209 → pluralplay → kastov → x_kit_ → katsukibtw →
+  cool_coala → arpic → legiz → enkinvsh.
+
+  The transfer never finishes on the last one — progress hangs
+  forever at ~87%. The joke is the punchline.
+
+  Added avatars: `chen08209.jpg`, `enkinvsh.jpg` (from GitHub).
+
 ## v0.4.5
 
 - fix(fatal): resolve splash hang on cold start / post-reboot

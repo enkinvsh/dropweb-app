@@ -329,6 +329,20 @@ class _TvItemState extends ConsumerState<_TvItem> {
   String? _profileUrl;
   String? _lastLoadedProfileId;
 
+  @override
+  void initState() {
+    super.initState();
+    // Listen for profile changes outside build() to avoid triggering
+    // Keystore IPC on every ToolsView rebuild during page transitions.
+    ref.listenManual<Profile?>(
+      currentProfileProvider,
+      (prev, next) {
+        if (next != null) _ensureUrl(next);
+      },
+      fireImmediately: true,
+    );
+  }
+
   Future<void> _ensureUrl(Profile profile) async {
     if (_lastLoadedProfileId == profile.id) return;
     _lastLoadedProfileId = profile.id;
@@ -343,9 +357,6 @@ class _TvItemState extends ConsumerState<_TvItem> {
   Widget build(BuildContext context) {
     final appLocale = AppLocalizations.of(context);
     final profile = ref.watch(currentProfileProvider);
-    if (profile != null) {
-      unawaited(_ensureUrl(profile));
-    }
     final url = _profileUrl;
     final hasUrl = profile != null && url != null && url.isNotEmpty;
     return ListItem(

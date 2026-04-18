@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/state.dart';
@@ -9,26 +11,67 @@ import 'package:hugeicons/hugeicons.dart';
 @immutable
 class Contributor {
   const Contributor({
-    this.avatar,
     required this.name,
-    required this.link,
-    this.clickable = true,
+    required this.avatar,
+    required this.role,
   });
-  final String? avatar;
   final String name;
-  final String link;
-  final bool clickable;
+  final String avatar;
+  final String role;
 }
 
-@immutable
-class ThanksPerson {
-  const ThanksPerson({
-    this.avatar,
-    required this.name,
-  });
-  final String? avatar;
-  final String name;
-}
+// -----------------------------------------------------------------------
+// Credits roll — order matters. Files transfer through these people in
+// sequence, and the last one (enkinvsh) never completes: the transfer
+// hangs forever on him. That's the punchline.
+// -----------------------------------------------------------------------
+const _credits = <Contributor>[
+  Contributor(
+    name: 'chen08209',
+    avatar: 'assets/images/avatars/chen08209.jpg',
+    role: 'Original FlClash author',
+  ),
+  Contributor(
+    name: 'pluralplay',
+    avatar: 'assets/images/avatars/pluralplay.jpg',
+    role: 'FlClashX maintainer',
+  ),
+  Contributor(
+    name: 'kastov',
+    avatar: 'assets/images/avatars/kastov.jpg',
+    role: 'contributor',
+  ),
+  Contributor(
+    name: 'x_kit_',
+    avatar: 'assets/images/avatars/x_kit_.jpg',
+    role: 'contributor',
+  ),
+  Contributor(
+    name: 'katsukibtw',
+    avatar: 'assets/images/avatars/katsukibtw.jpg',
+    role: 'contributor',
+  ),
+  Contributor(
+    name: 'cool_coala',
+    avatar: 'assets/images/avatars/cool_coala.jpg',
+    role: 'contributor',
+  ),
+  Contributor(
+    name: 'arpic',
+    avatar: 'assets/images/avatars/arpic.jpg',
+    role: 'contributor',
+  ),
+  Contributor(
+    name: 'legiz',
+    avatar: 'assets/images/avatars/legiz.jpg',
+    role: 'contributor',
+  ),
+  Contributor(
+    name: 'enkinvsh',
+    avatar: 'assets/images/avatars/enkinvsh.jpg',
+    role: 'dropweb',
+  ),
+];
 
 class AboutView extends StatelessWidget {
   const AboutView({super.key});
@@ -46,148 +89,40 @@ class AboutView extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildThanksForContributionSection(BuildContext context) {
-    const contributors = [
-      Contributor(
-        avatar: "assets/images/avatars/x_kit_.jpg",
-        name: "x_kit_",
-        link: "https://github.com/this-xkit",
+  List<Widget> _buildMoreSection(BuildContext context) {
+    final items = <Widget>[
+      // Play Store policy forbids in-app update checks on Android —
+      // store channel is the source of truth. Keep for desktop builds.
+      if (!Platform.isAndroid)
+        ListItem(
+          title: Text(appLocalizations.checkUpdate),
+          onTap: () => _checkUpdate(context),
+          trailing: HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 24),
+        ),
+      ListItem(
+        title: Text(appLocalizations.project),
+        onTap: () => globalState.openUrl("https://github.com/$repository"),
+        trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
       ),
-      Contributor(
-        avatar: "assets/images/avatars/katsukibtw.jpg",
-        name: "katsukibtw",
-        link: "https://github.com/katsukibtw",
+      ListItem(
+        title: Text(appLocalizations.originalRepository),
+        onTap: () => globalState.openUrl(
+          "https://github.com/pluralplay/FlClashX",
+        ),
+        trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
+      ),
+      ListItem(
+        title: Text(appLocalizations.core),
+        onTap: () => globalState.openUrl(
+          "https://github.com/MetaCubeX/mihomo",
+        ),
+        trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
       ),
     ];
     return generateSection(
       separated: false,
-      title: appLocalizations.thanks,
-      items: [
-        ListItem(
-          title: Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final contributor in contributors)
-                Avatar(
-                  contributor: contributor,
-                  size: 48.0,
-                ),
-            ],
-          ),
-        )
-      ],
-    );
-  }
-
-  List<Widget> _buildGratitudeSection(BuildContext context) {
-    const gratitude = [
-      ThanksPerson(
-        name: "cool_coala",
-        avatar: "assets/images/avatars/cool_coala.jpg",
-      ),
-      ThanksPerson(
-        name: "arpic",
-        avatar: "assets/images/avatars/arpic.jpg",
-      ),
-      ThanksPerson(
-        name: "legiz",
-        avatar: "assets/images/avatars/legiz.jpg",
-      ),
-    ];
-    return generateSection(
-      separated: false,
-      title: appLocalizations.gratitude,
-      items: [
-        ListItem(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              for (final person in gratitude)
-                SizedBox(
-                  width: 70,
-                  child: ThanksAvatar(
-                    person: person,
-                  ),
-                ),
-            ],
-          ),
-        )
-      ],
-    );
-  }
-
-  List<Widget> _buildMoreSection(BuildContext context) => generateSection(
-        separated: false,
-        title: appLocalizations.more,
-        items: [
-          ListItem(
-            title: Text(appLocalizations.checkUpdate),
-            onTap: () {
-              _checkUpdate(context);
-            },
-            trailing: HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 24),
-          ),
-          ListItem(
-            title: Text(appLocalizations.project),
-            onTap: () {
-              globalState.openUrl(
-                "https://github.com/$repository",
-              );
-            },
-            trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
-          ),
-          ListItem(
-            title: Text(appLocalizations.originalRepository),
-            onTap: () {
-              globalState.openUrl(
-                "https://github.com/chen08209/FlClash",
-              );
-            },
-            trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
-          ),
-          ListItem(
-            title: Text(appLocalizations.core),
-            onTap: () {
-              globalState.openUrl(
-                "https://github.com/enkinvsh/xhomo",
-              );
-            },
-            trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
-          ),
-        ],
-      );
-
-  List<Widget> _buildContributorsSection() {
-    const contributors = [
-      Contributor(
-        avatar: "assets/images/avatars/pluralplay.jpg",
-        name: "pluralplay",
-        link: "https://github.com/pluralplay",
-      ),
-      Contributor(
-        avatar: "assets/images/avatars/kastov.jpg",
-        name: "kastov",
-        link: "https://github.com/kastov",
-      ),
-    ];
-    return generateSection(
-      separated: false,
-      title: appLocalizations.otherContributors,
-      items: [
-        ListItem(
-          title: Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              for (final contributor in contributors)
-                Avatar(
-                  contributor: contributor,
-                ),
-            ],
-          ),
-        )
-      ],
+      title: appLocalizations.more,
+      items: items,
     );
   }
 
@@ -228,65 +163,14 @@ class AboutView extends StatelessWidget {
                   )
                 ],
               ),
-              onEasterEgg: () {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (dialogContext) => AlertDialog(
-                    title: const Text(
-                      'REMNAFAMILY ONE LOVE',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Onest',
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          '❤️',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 48),
-                        ),
-                        const SizedBox(height: 16),
-                        InkWell(
-                          onTap: () {
-                            globalState.openUrl('https://docs.rw');
-                          },
-                          child: const Text(
-                            'TRY REMNAWAVE',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontFamily: 'Onest',
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    actionsAlignment: MainAxisAlignment.center,
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              onEasterEgg: () => _showFileTransferGame(context),
             ),
-            const SizedBox(
-              height: 24,
-            ),
+            const SizedBox(height: 24),
             Text(
               appLocalizations.desc,
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Text(
               "Based on FlClashX, licensed under GPL-3.0",
               style: Theme.of(context).textTheme.bodySmall,
@@ -294,145 +178,12 @@ class AboutView extends StatelessWidget {
           ],
         ),
       ),
-      const SizedBox(
-        height: 12,
-      ),
-      ..._buildContributorsSection(),
-      ..._buildThanksForContributionSection(context),
-      ..._buildGratitudeSection(context),
+      const SizedBox(height: 12),
       ..._buildMoreSection(context),
     ];
     return Padding(
-      padding: kMaterialListPadding.copyWith(
-        top: 16,
-        bottom: 16,
-      ),
+      padding: kMaterialListPadding.copyWith(top: 16, bottom: 16),
       child: generateListView(items),
-    );
-  }
-}
-
-class Avatar extends StatelessWidget {
-  const Avatar({
-    super.key,
-    required this.contributor,
-    this.size = 56.0,
-  });
-  final Contributor contributor;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final avatarSize = size;
-    final fontSize = size * 0.25; // 14.0 for 56px
-    final avatarFontSize = size * 0.46; // 26.0 for 56px
-
-    final avatarWidget = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: avatarSize,
-          height: avatarSize,
-          child: CircleAvatar(
-            foregroundImage: contributor.avatar != null
-                ? AssetImage(contributor.avatar!) as ImageProvider
-                : null,
-            backgroundColor: contributor.avatar == null
-                ? Theme.of(context).colorScheme.primaryContainer
-                : null,
-            child: contributor.avatar == null
-                ? Text(
-                    contributor.name[0].toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Onest',
-                      fontSize: avatarFontSize,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : null,
-          ),
-        ),
-        const SizedBox(
-          height: 4,
-        ),
-        Text(
-          contributor.name,
-          style: TextStyle(
-            fontFamily: 'Onest',
-            fontSize: fontSize,
-          ),
-        )
-      ],
-    );
-
-    if (contributor.clickable) {
-      return GestureDetector(
-        onTap: () {
-          globalState.openUrl(contributor.link);
-        },
-        child: avatarWidget,
-      );
-    }
-
-    return avatarWidget;
-  }
-}
-
-class ThanksAvatar extends StatelessWidget {
-  const ThanksAvatar({
-    super.key,
-    required this.person,
-  });
-  final ThanksPerson person;
-
-  @override
-  Widget build(BuildContext context) {
-    const avatarSize = 36.0;
-    const fontSize = 9.0;
-    const avatarFontSize = 16.0;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: avatarSize,
-          height: avatarSize,
-          child: CircleAvatar(
-            foregroundImage: person.avatar != null
-                ? AssetImage(person.avatar!) as ImageProvider
-                : null,
-            backgroundColor: person.avatar == null
-                ? Theme.of(context).colorScheme.primaryContainer
-                : null,
-            child: person.avatar == null
-                ? Text(
-                    person.name[0].toUpperCase(),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontFamily: 'Onest',
-                      fontSize: avatarFontSize,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : null,
-          ),
-        ),
-        const SizedBox(
-          height: 4,
-        ),
-        Text(
-          person.name,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontFamily: 'Onest',
-            fontSize: fontSize,
-          ),
-        )
-      ],
     );
   }
 }
@@ -499,4 +250,195 @@ class _EasterEggDetectorState extends State<_EasterEggDetector> {
         onTap: _handleTap,
         child: widget.child,
       );
+}
+
+// -----------------------------------------------------------------------
+// Easter egg: File Transfer Manager = hidden credits
+//
+// Each "file" being transferred is actually a contributor. Starts from
+// chen08209 (upstream FlClash author), then pluralplay (FlClashX), then
+// all contributors, ending on enkinvsh — where the transfer hangs forever.
+//
+// The list IS the credits roll. No separate "reveal" screen needed.
+// -----------------------------------------------------------------------
+
+void _showFileTransferGame(BuildContext context) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const _FileTransferDialog(),
+  );
+}
+
+class _FileTransferDialog extends StatefulWidget {
+  const _FileTransferDialog();
+
+  @override
+  State<_FileTransferDialog> createState() => _FileTransferDialogState();
+}
+
+class _FileTransferDialogState extends State<_FileTransferDialog> {
+  // Transfer "files" = contributors, in credits order.
+  static final _items = _credits;
+  static final _lastIndex = _items.length - 1;
+
+  int _current = 0;
+  double _fileProgress = 0.0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  bool get _isHangingOnMe => _current == _lastIndex;
+
+  void _tick() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 60), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        if (_isHangingOnMe) {
+          // Forever hang on enkinvsh. Slow stuttering progress that never
+          // reaches 1.0 — the joke is the transfer literally cannot finish.
+          if (_fileProgress < 0.87) {
+            _fileProgress += 0.0015 + math.Random().nextDouble() * 0.001;
+          } else {
+            // Asymptote — tiny jitter, never completes.
+            _fileProgress += (math.Random().nextDouble() - 0.5) * 0.0008;
+            _fileProgress = _fileProgress.clamp(0.83, 0.88);
+          }
+        } else {
+          _fileProgress += 0.035 + math.Random().nextDouble() * 0.025;
+          if (_fileProgress >= 1.0) {
+            _fileProgress = 0.0;
+            _current++;
+            if (_current > _lastIndex) _current = _lastIndex;
+          }
+        }
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final person = _items[_current];
+    final overall = (_current + _fileProgress.clamp(0.0, 1.0)) / _items.length;
+
+    return AlertDialog(
+      title: const Text(
+        'File Transfer Manager',
+        style: TextStyle(
+          fontFamily: 'Onest',
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Передача файла ${_current + 1} из ${_items.length}',
+            style: textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                foregroundImage: AssetImage(person.avatar),
+                backgroundColor: colorScheme.primaryContainer,
+                child: Text(
+                  person.name[0].toUpperCase(),
+                  style: TextStyle(
+                    fontFamily: 'Onest',
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      person.name,
+                      style: textTheme.bodyLarge?.copyWith(
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      person.role,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: _fileProgress.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(
+                _isHangingOnMe ? colorScheme.error : colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Всего', style: textTheme.labelSmall),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: overall.clamp(0.0, 1.0),
+              minHeight: 4,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(colorScheme.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_isHangingOnMe)
+            Text(
+              'Ожидание ответа сервера…',
+              style: textTheme.labelSmall?.copyWith(color: colorScheme.error),
+            )
+          else
+            Text(
+              'Подключено. Передача идёт.',
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отменить'),
+        ),
+      ],
+    );
+  }
 }
