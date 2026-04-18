@@ -23,26 +23,36 @@ import 'models/models.dart';
 Future<void> main() async {
   globalState.isService = false;
   WidgetsFlutterBinding.ensureInitialized();
+  commonPrint.log('[MAIN] start');
 
   // Enable Skia graphics for better performance on desktop
   if (Platform.isWindows || Platform.isLinux) {
     DartPluginRegistrant.ensureInitialized();
   }
 
+  commonPrint.log('[MAIN] awaiting system.version');
   final version = await system.version;
+  commonPrint.log('[MAIN] version=$version, preload()');
   await clashCore.preload();
+  commonPrint.log('[MAIN] preload() done, initApp()');
   await globalState.initApp(version);
+  commonPrint.log('[MAIN] initApp() done, android.init()');
   await android?.init();
+  commonPrint.log('[MAIN] android.init() done, window.init()');
   await window?.init(version);
+  commonPrint.log('[MAIN] window.init() done');
 
   // Initialize VPN plugin on Android to handle method channel calls from VPN service
   if (Platform.isAndroid) {
+    commonPrint.log('[MAIN] vpn singleton');
     vpn; // Accessing the getter initializes the singleton
   }
+  commonPrint.log('[MAIN] runApp');
   HttpOverrides.global = DropwebHttpOverrides();
   runApp(const ProviderScope(
     child: Application(),
   ));
+  commonPrint.log('[MAIN] runApp returned');
 }
 
 @pragma('vm:entry-point')

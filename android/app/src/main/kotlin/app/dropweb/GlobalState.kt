@@ -145,7 +145,7 @@ object GlobalState {
     }
 
     fun initServiceEngine() {
-        Log.d("GlobalState", "initServiceEngine called, serviceEngine: $serviceEngine")
+        Log.d("GlobalState", "initServiceEngine called, serviceEngine: $serviceEngine", Throwable("initServiceEngine call site"))
         if (serviceEngine != null) {
             Log.d("GlobalState", "serviceEngine already exists, returning")
             return
