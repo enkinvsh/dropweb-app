@@ -1,3 +1,39 @@
+## v0.4.13
+
+- fix(android): re-enable Impeller — disabling it broke post-reboot launch
+
+- Diff against last-known-working v0.4.4 showed I'd flipped
+- EnableImpeller from \"true\" to \"false\" with a comment claiming
+- two FlutterEngine instances couldn't share Vulkan. That comment
+- was wrong: upstream FlClashX has been on Impeller=true since
+- 2025-09-11 with no issue.
+
+- On Pixel 10 with an active VPN profile, the Skia GLES backend
+- fails Surface init after a cold device boot. UI never renders,
+- which is exactly the splash hang every CI 0.4.7→0.4.12 build
+- reproduced. Local builds happened to work because Gradle still
+- had warm OpenGL ES context state from prior `flutter run` debug
+- sessions; they reproduced reliably only after a real reboot.
+
+- Reverting to Impeller=true matches upstream and resolves the
+- hang. The trade-off (custom shaders silently fail on Impeller's
+- GLES backend) is documented in the dropweb skill and not in play
+- for our current asset set.
+
+- fix(ci): bump Flutter to 3.41.6 — 3.32.8 causes post-reboot splash hang
+
+- CI was pinned to Flutter 3.32.8 (Dec 2024). Local builds against
+- 3.41.6 do not reproduce the post-reboot splash hang with an active
+- VPN profile; CI-built 0.4.11 APKs hang consistently. Diff was
+- traced to this single line after confirming Go 1.24 produces an
+- identical-size libclash.so either way.
+
+- Bump to 3.41.6 (3 weeks old stable) to match the local toolchain
+- and unblock release. Also drop the diagnostic `[MAIN]` traces from
+- main.dart now that the splash-hang path has been isolated.
+
+- Update changelog
+
 ## v0.4.11
 
 - chore: bump version to 0.4.11
