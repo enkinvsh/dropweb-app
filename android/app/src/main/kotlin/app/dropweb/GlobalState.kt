@@ -1,5 +1,7 @@
 package app.dropweb
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import app.dropweb.plugins.AppPlugin
@@ -145,9 +147,34 @@ object GlobalState {
     }
 
     fun initServiceEngine() {
-        Log.d("GlobalState", "initServiceEngine called, serviceEngine: $serviceEngine")
+        Log.d(
+            "GlobalState",
+            "initServiceEngine called, serviceEngine=$serviceEngine, mainEngine=$flutterEngine"
+        )
         if (serviceEngine != null) {
             Log.d("GlobalState", "serviceEngine already exists, returning")
+            return
+        }
+        // Defer to next main looper cycle: executeDartEntrypoint runs synchronously
+        // on the platform thread, and if called during MainActivity.onCreate it can
+        // starve main FlutterEngine's own Dart main() bootstrap — root cause of the
+        // cold-start splash hang. Posting lets MainActivity finish onCreate and
+        // FlutterActivity schedule its default entrypoint first.
+        if (flutterEngine != null) {
+            Log.w(
+                "GlobalState",
+                "initServiceEngine deferred (main engine alive). Caller:",
+                Throwable()
+            )
+            Handler(Looper.getMainLooper()).post { initServiceEngineNow() }
+            return
+        }
+        initServiceEngineNow()
+    }
+
+    private fun initServiceEngineNow() {
+        if (serviceEngine != null) {
+            Log.d("GlobalState", "initServiceEngineNow: already created, skipping")
             return
         }
         destroyServiceEngine()
