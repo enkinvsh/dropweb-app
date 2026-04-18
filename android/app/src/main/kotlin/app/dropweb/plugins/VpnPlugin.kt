@@ -45,21 +45,17 @@ import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import kotlin.concurrent.withLock
 
-class VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
+data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var flutterMethodChannel: MethodChannel
+    private var dropwebService: BaseServiceInterface? = null
+    private var options: VpnOptions? = null
+    private var isBind: Boolean = false
     private lateinit var scope: CoroutineScope
-
-    companion object {
-        private var dropwebService: BaseServiceInterface? = null
-        private var options: VpnOptions? = null
-        private var isBind: Boolean = false
-        private var lastStartForegroundParams: StartForegroundParams? = null
-        private var timerJob: Job? = null
-        private val uidPageNameMap = mutableMapOf<Int, String>()
-        internal val networks = mutableSetOf<Network>()
-        @Volatile
-        private var screenReceiverRegistered: Boolean = false
-    }
+    private var lastStartForegroundParams: StartForegroundParams? = null
+    private var timerJob: Job? = null
+    private val uidPageNameMap = mutableMapOf<Int, String>()
+    private val networks = mutableSetOf<Network>()
+    private var screenReceiverRegistered: Boolean = false
 
     private val connectivity by lazy {
         DropwebApplication.getAppContext().getSystemService<ConnectivityManager>()
@@ -123,13 +119,13 @@ class VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
-    fun handleStart(newOptions: VpnOptions): Boolean {
+    fun handleStart(options: VpnOptions): Boolean {
         onUpdateNetwork();
-        if (newOptions.enable != options?.enable) {
-            dropwebService = null
+        if (options.enable != this.options?.enable) {
+            this.dropwebService = null
         }
-        options = newOptions
-        when (newOptions.enable) {
+        this.options = options
+        when (options.enable) {
             true -> handleStartVpn()
             false -> handleStartService()
         }

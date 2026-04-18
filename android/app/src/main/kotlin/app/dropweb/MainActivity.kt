@@ -65,25 +65,17 @@ class MainActivity : FlutterActivity() {
             }
         
         flutterEngine.plugins.add(AppPlugin())
-        flutterEngine.plugins.add(ServicePlugin())
+        flutterEngine.plugins.add(ServicePlugin)
         flutterEngine.plugins.add(TilePlugin())
-        flutterEngine.plugins.add(VpnPlugin())
+        flutterEngine.plugins.add(VpnPlugin)
         GlobalState.flutterEngine = flutterEngine
 
-        // IMPORTANT: DO NOT call GlobalState.syncStatus() here. It eventually
-        // invokes `flutterMethodChannel.awaitResult("status")` on the singleton
-        // VpnPlugin whose channel has, at this point in startup, just been
-        // rebound to THIS engine's binaryMessenger by onAttachedToEngine.
-        // If the service engine created the plugin first (e.g. post-reboot
-        // via DropwebVpnService START_STICKY), its Dart isolate is waiting
-        // on the old channel for a reply that will never come, and the
-        // status call blocks waiting for the UI isolate whose `main()` entry
-        // has not even started yet. Net effect: deadlocked splash.
-        //
-        // The UI isolate reconciles its run state from the native side in
-        // `AppController.syncRunStateFromNative()` on AppLifecycleState.resumed,
-        // which is the correct hook — it runs after runApp and after the
-        // first frame, when all channels are properly wired.
+        // Sync VPN status when app opens - this ensures UI reflects actual VPN state
+        // especially important when VPN was started via Tile while app was not in memory.
+        // Matches upstream pluralplay/FlClashX — removing this was one of my wrong
+        // turns debugging the splash hang; the real root cause is Phase-9 secure
+        // storage blocking getConfig().
+        GlobalState.syncStatus()
     }
 
     override fun onDestroy() {

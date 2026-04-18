@@ -11,7 +11,6 @@ import android.os.Parcel
 import android.os.RemoteException
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import android.app.Service
 import app.dropweb.GlobalState
 import app.dropweb.extensions.getIpv4RouteAddress
 import app.dropweb.extensions.getIpv6RouteAddress
@@ -27,10 +26,6 @@ class DropwebVpnService : VpnService(), BaseServiceInterface {
     override fun onCreate() {
         super.onCreate()
         GlobalState.initServiceEngine()
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return Service.START_STICKY
     }
 
     override fun start(options: VpnOptions): Int {

@@ -156,7 +156,7 @@ object GlobalState {
             serviceEngine = FlutterEngine(DropwebApplication.getAppContext())
             Log.d("GlobalState", "Registering plugins")
             io.flutter.plugins.GeneratedPluginRegistrant.registerWith(serviceEngine!!)
-            serviceEngine?.plugins?.add(VpnPlugin())
+            serviceEngine?.plugins?.add(VpnPlugin)
             serviceEngine?.plugins?.add(AppPlugin())
             serviceEngine?.plugins?.add(TilePlugin())
             val vpnService = DartExecutor.DartEntrypoint(
