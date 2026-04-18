@@ -1,3 +1,73 @@
+## v0.4.18
+
+- fix(fatal): splash hang — file_logger infinite microtask loop
+
+- ROOT CAUSE FOUND via Dart VM service getStack on a live hung debug build:
+
+-     0  verifiedLocale @ intl_helpers.dart
+-     1  verifiedLocale @ intl_helpers.dart
+-     2  DateFormat @ date_format.dart
+-     3  _getTodayDate @ file_logger.dart:52
+-     4  _getCurrentLogFile @ file_logger.dart
+-     5  _ensureSink @ file_logger.dart
+-     6  _processQueue @ file_logger.dart:170
+-     7  _processQueue @ file_logger.dart:188   <-- recursive retry
+-     ... runBinary / handleError / _propagateToListeners / _completeErrorObject
+-     ... runBinary / handleError / _propagateToListeners / _completeErrorObject
+-     _microtaskLoop
+-     _startMicrotaskLoop
+
+- DateFormat('yyyy-MM-dd') with no explicit locale falls through to
+- Intl.systemLocale, and during early cold start (before locale data is
+- loaded) it throws in intl_helpers.verifiedLocale.
+
+- _processQueue catches this silently and then checks if queue is non-empty
+- and recursively schedules itself via unawaited(_processQueue()). Since
+- every log message entering the queue re-triggers the same throw, the
+- microtask loop runs forever. Microtasks have higher priority than event
+- loop tasks, so runApp's scheduleAttachRootWidget never fires, and the
+- splash screen sits on DRAW_PENDING indefinitely.
+
+- Why post-reboot specifically: on warm start _service logs less and the
+- race loses, but on cold start after reboot the service isolate floods
+- commonPrint.log() calls (dns handshake, socks port init, service ready
+- signaling) before the main isolate has a chance to schedule its first
+- runApp frame. The queue saturates, the recursive retry wedges main.
+
+- Explains every symptom seen across v0.4.5 → v0.4.17:
+- - Post-reboot / cold-start specific (locale data not yet loaded)
+- - All devices (Pixel 5, 10) — not a hardware issue
+- - Impeller/Flutter-bump 'fixes' worked by accident (changed timing
+-   enough that locale loaded before first log)
+- - 10 previous tags churning around plugin lifecycle were all red herrings
+
+- Fix:
+- 1. Replace DateFormat with manual ISO string formatting for both date
+-    and timestamp. No locale dependency.
+- 2. On sink failure, drop the queue instead of retrying the same broken
+-    sink — infinite retry on persistent errors is never correct anyway.
+
+- Verified fix on live debug build via flutter run + Dart VM service:
+- after hot-restart with these changes, Application.initState fires,
+- UI renders, subscription card visible, VPN toggle button present.
+
+- Bumps version to 0.4.18.
+
+- diag: add granular [MAIN] and [APP] tracing around runApp
+
+- Live logcat from v0.4.16 after force-stop+relaunch under memory pressure
+- shows main isolate reaches '[MAIN] globalState.initApp done' and then
+- goes silent — splash still hangs. The remaining code before runApp and
+- inside Application.initState was untraced.
+
+- This release adds debugPrint at every step from globalState.initApp
+- completion through runApp return, and at every step of Application.initState
+- including the postFrameCallback. Next repro will pinpoint exact line.
+
+- Not a fix, just instrumentation. Bumps version to 0.4.17.
+
+- Update changelog
+
 ## v0.4.16
 
 - fix(android): discard stale savedInstanceState post-reboot
