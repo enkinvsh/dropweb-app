@@ -21,16 +21,22 @@ import 'common/common.dart';
 import 'models/models.dart';
 
 Future<void> main() async {
+  debugPrint("[dropweb] [MAIN] entrypoint started");
   globalState.isService = false;
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint("[dropweb] [MAIN] WidgetsFlutterBinding initialized");
 
   if (Platform.isWindows || Platform.isLinux) {
     DartPluginRegistrant.ensureInitialized();
   }
 
   final version = await system.version;
+  debugPrint("[dropweb] [MAIN] got version, calling clashCore.preload");
   await clashCore.preload();
+  debugPrint(
+      "[dropweb] [MAIN] clashCore.preload done, calling globalState.initApp");
   await globalState.initApp(version);
+  debugPrint("[dropweb] [MAIN] globalState.initApp done");
   await android?.init();
   await window?.init(version);
 

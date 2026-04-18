@@ -1,5 +1,7 @@
 package app.dropweb.plugins
 
+import android.os.Handler
+import android.os.Looper
 import app.dropweb.GlobalState
 import app.dropweb.models.VpnOptions
 import com.google.gson.Gson
@@ -37,7 +39,9 @@ data object ServicePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         "init" -> {
             GlobalState.getCurrentAppPlugin()
                 ?.requestNotificationsPermission()
-            GlobalState.initServiceEngine()
+            Handler(Looper.getMainLooper()).post {
+                GlobalState.initServiceEngine()
+            }
             result.success(true)
         }
 
