@@ -1,3 +1,31 @@
+## v0.4.16
+
+- fix(android): discard stale savedInstanceState post-reboot
+
+- Actual root cause of post-reboot splash hang (reproducible on Pixel 5 and
+- Pixel 10, not device-specific):
+
+- Android keeps our Task persistent across reboots (isPersistable=true,
+- mNeverRelinquishIdentity=true by default for singleTop launcher Activity).
+- After reboot, launcher does LAUNCH_SINGLE_TOP on the saved Task, and Android
+- passes a savedInstanceState Bundle from the pre-reboot process into the
+- freshly-forked MainActivity.onCreate. FlutterActivity.onCreate then tries
+- to restore FlutterEngine state from that Bundle — but the engine it
+- references no longer exists (process was killed). Restoration path
+- blocks in native code indefinitely.
+
+- Logcat evidence: wm_on_create_called/wm_on_resume_called fire normally,
+- but no Impeller/flutter/Dart logs ever appear. Main thread sits at R(running)
+- in userspace, CPU burned but no forward progress for minutes.
+
+- Fix: pass null to super.onCreate. We don't use Flutter's restoration API
+- (no RestorationScope / restorationId anywhere), so there's nothing to
+- recover. Fresh engine boot every cold-start is what we want anyway.
+
+- Bumps version to 0.4.16.
+
+- Update changelog
+
 ## v0.4.15
 
 - fix(android): ServicePlugin.init — post initServiceEngine, don't block channel call
