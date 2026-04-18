@@ -6,22 +6,22 @@
 
 # dropweb
 
-<a href="https://github.com/enkinvsh/dropweb-app/releases">
-  <img src="https://img.shields.io/github/v/release/enkinvsh/dropweb-app?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release" alt="Latest Release">
+<a href="https://github.com/enkinvsh/dropweb/releases">
+  <img src="https://img.shields.io/github/v/release/enkinvsh/dropweb?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release" alt="Latest Release">
 </a>
-<a href="https://github.com/enkinvsh/dropweb-app/stargazers">
-  <img src="https://img.shields.io/github/stars/enkinvsh/dropweb-app?style=for-the-badge&color=15803D&labelColor=0D1117" alt="GitHub Stars">
+<a href="https://github.com/enkinvsh/dropweb/stargazers">
+  <img src="https://img.shields.io/github/stars/enkinvsh/dropweb?style=for-the-badge&color=15803D&labelColor=0D1117" alt="GitHub Stars">
 </a>
 
 <br>
 
-<a href="https://github.com/enkinvsh/dropweb-app/releases">
+<a href="https://github.com/enkinvsh/dropweb/releases">
   <img src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Скачать для Android">
 </a>
-<a href="https://github.com/enkinvsh/dropweb-app/releases">
+<a href="https://github.com/enkinvsh/dropweb/releases">
   <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать для Windows">
 </a>
-<a href="https://github.com/enkinvsh/dropweb-app/releases">
+<a href="https://github.com/enkinvsh/dropweb/releases">
   <img src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать для macOS">
 </a>
 
@@ -33,9 +33,9 @@
 
 ## Загрузка
 
-- [Android](https://github.com/enkinvsh/dropweb-app/releases) — APK, 6.0+
-- [Windows](https://github.com/enkinvsh/dropweb-app/releases) — Portable/Setup, 10+
-- [macOS](https://github.com/enkinvsh/dropweb-app/releases) — DMG, 11+ (Intel и Apple Silicon)
+- [Android](https://github.com/enkinvsh/dropweb/releases) — APK, 6.0+
+- [Windows](https://github.com/enkinvsh/dropweb/releases) — Portable/Setup, 10+
+- [macOS](https://github.com/enkinvsh/dropweb/releases) — DMG, 11+ (Intel и Apple Silicon)
 
 ## Фичи
 
@@ -61,8 +61,8 @@ FlClashX — отличный клиент, но большинство попу
 ## Сборка из исходников
 
 ```bash
-git clone https://github.com/enkinvsh/dropweb-app.git
-cd dropweb-app
+git clone https://github.com/enkinvsh/dropweb.git
+cd dropweb
 flutter pub get
 
 # Android
