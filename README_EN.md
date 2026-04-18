@@ -27,7 +27,7 @@
 
 ---
 
-Cross-platform proxy client powered by [mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta) core. Fork of [FlClashX](https://github.com/chen08209/FlClash) focused on local scanning protection, DPI bypass and utilitarian interface.
+Cross-platform proxy client powered by [mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta) core. Fork of [FlClashX](https://github.com/pluralplay/FlClashX) focused on local scanning protection, DPI bypass and utilitarian interface.
 
 Built for a specific task: give engineers a tool they can deploy to non-technical users (or use themselves) for stable access to international services, without detection risks or broken configs.
 
@@ -91,7 +91,7 @@ Requires Flutter SDK 3.24+. Mihomo binaries are downloaded automatically.
 
 GPL-3.0 — see [LICENSE](LICENSE).
 
-**Links:** [FlClash — original project](https://github.com/chen08209/FlClash)
+**Links:** [FlClashX — parent fork](https://github.com/pluralplay/FlClashX) · [FlClash — original](https://github.com/chen08209/FlClash)
 
 ---
 

@@ -27,7 +27,7 @@
 
 ---
 
-Кроссплатформенный прокси-клиент на базе ядра [mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta). Форк [FlClashX](https://github.com/chen08209/FlClash) с фокусом на защиту от локального сканирования, обход DPI и утилитарный интерфейс.
+Кроссплатформенный прокси-клиент на базе ядра [mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta). Форк [FlClashX](https://github.com/pluralplay/FlClashX) с фокусом на защиту от локального сканирования, обход DPI и утилитарный интерфейс.
 
 Создавался для конкретной задачи: дать инженеру инструмент, который можно поставить нетехническим пользователям (или использовать самому) для стабильной работы с зарубежными сервисами, без риска детекции и сломанных руками конфигов.
 
@@ -91,7 +91,7 @@ dart run setup.dart macos
 
 GPL-3.0 — см. [LICENSE](LICENSE).
 
-**Ссылки:** [FlClash — оригинальный проект](https://github.com/chen08209/FlClash)
+**Ссылки:** [FlClashX — родительский форк](https://github.com/pluralplay/FlClashX) · [FlClash — оригинал](https://github.com/chen08209/FlClash)
 
 ---
 
