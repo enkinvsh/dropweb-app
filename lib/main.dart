@@ -24,7 +24,6 @@ Future<void> main() async {
   globalState.isService = false;
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Enable Skia graphics for better performance on desktop
   if (Platform.isWindows || Platform.isLinux) {
     DartPluginRegistrant.ensureInitialized();
   }
@@ -35,9 +34,8 @@ Future<void> main() async {
   await android?.init();
   await window?.init(version);
 
-  // Initialize VPN plugin on Android to handle method channel calls from VPN service
   if (Platform.isAndroid) {
-    vpn; // Accessing the getter initializes the singleton
+    vpn;
   }
   HttpOverrides.global = DropwebHttpOverrides();
   runApp(const ProviderScope(
