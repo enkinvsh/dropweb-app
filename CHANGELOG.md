@@ -23,33 +23,42 @@
 
   The 335ms single-frame spike on first transition is gone.
 
+- fix(about): restore missing icon.png
+
+  The logo asset was accidentally removed in `61fe7c0` ("remove unused
+  legacy brand assets") but still referenced by the About page,
+  sidebar, and launcher icon config. Restored from git history.
+
 - refactor(about): clean up the About page
 
   Dropped the three separate "contributors / thanks / gratitude"
-  sections inherited from upstream forks. Public About now shows only
-  logo, version, core version, description, `Based on FlClashX` line,
-  and links (Project / FlClashX / mihomo core).
+  sections inherited from upstream forks. Public About is now lean:
+  logo + name + version + core + description + `Based on FlClashX` +
+  a single "Благодарность" menu entry that opens a credits sheet.
 
   Removed in-app "Check for updates" on Android (Play Store policy
   forbids it — updates go through the store channel). Retained for
   desktop builds.
 
-  Dropped stale repo links: original FlClash chen08209 link replaced
-  by pluralplay/FlClashX (our direct upstream), core link now points
-  to MetaCubeX/mihomo (the actual VPN engine).
+  Fixed stale repo links: `Оригинальный репозиторий` now points to
+  pluralplay/FlClashX (our direct upstream, not chen08209/FlClash),
+  `Ядро` points to MetaCubeX/mihomo (the actual VPN engine).
 
-- feat(about): hidden credits via File Transfer Manager easter egg
+- feat(about): 3D flip on dropweb header
 
-  Ten taps on the About logo open a fake "File Transfer Manager" that
-  transfers nine "files" — each file is actually a contributor, shown
-  with avatar and role. Order is the credits roll:
-  chen08209 → pluralplay → kastov → x_kit_ → katsukibtw →
-  cool_coala → arpic → legiz → enkinvsh.
+  Tap the logo + name block to flip it 180° — the front shows the
+  dropweb icon and name/version, the back shows the author's avatar
+  and `kinvsh`. Tap again to flip back. Subtle vanity, nothing more.
 
-  The transfer never finishes on the last one — progress hangs
-  forever at ~87%. The joke is the punchline.
+- feat(about): File Transfer drag-and-drop easter egg
 
-  Added avatars: `chen08209.jpg`, `enkinvsh.jpg` (from GitHub).
+  Ten taps on the header open a game: drag each contributor card from
+  `contributors/` into `shipped/`, in credits order (chen08209 →
+  pluralplay → ... → kinvsh). The last card (kinvsh) closes the app
+  on drop via `appController.handleExit()`. You literally can't finish
+  shipping yourself.
+
+  Added avatars: `chen08209.jpg`, `enkinvsh.jpg` (GitHub).
 
 ## v0.4.5
 

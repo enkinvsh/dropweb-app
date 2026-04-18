@@ -6,6 +6,7 @@ import 'package:dropweb/common/common.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 @immutable
@@ -14,42 +15,46 @@ class Contributor {
     required this.name,
     required this.avatar,
     required this.role,
+    this.link,
   });
   final String name;
   final String avatar;
   final String role;
+  final String? link;
 }
 
-// -----------------------------------------------------------------------
-// Credits roll — order matters. Files transfer through these people in
-// sequence, and the last one (enkinvsh) never completes: the transfer
-// hangs forever on him. That's the punchline.
-// -----------------------------------------------------------------------
+// Order = credits roll. kinvsh must stay last: the easter-egg game
+// exits the app on his file.
 const _credits = <Contributor>[
   Contributor(
     name: 'chen08209',
     avatar: 'assets/images/avatars/chen08209.jpg',
     role: 'Original FlClash author',
+    link: 'https://github.com/chen08209',
   ),
   Contributor(
     name: 'pluralplay',
     avatar: 'assets/images/avatars/pluralplay.jpg',
     role: 'FlClashX maintainer',
+    link: 'https://github.com/pluralplay',
   ),
   Contributor(
     name: 'kastov',
     avatar: 'assets/images/avatars/kastov.jpg',
     role: 'contributor',
+    link: 'https://github.com/kastov',
   ),
   Contributor(
     name: 'x_kit_',
     avatar: 'assets/images/avatars/x_kit_.jpg',
     role: 'contributor',
+    link: 'https://github.com/this-xkit',
   ),
   Contributor(
     name: 'katsukibtw',
     avatar: 'assets/images/avatars/katsukibtw.jpg',
     role: 'contributor',
+    link: 'https://github.com/katsukibtw',
   ),
   Contributor(
     name: 'cool_coala',
@@ -67,9 +72,10 @@ const _credits = <Contributor>[
     role: 'contributor',
   ),
   Contributor(
-    name: 'enkinvsh',
+    name: 'kinvsh',
     avatar: 'assets/images/avatars/enkinvsh.jpg',
     role: 'dropweb',
+    link: 'https://github.com/enkinvsh',
   ),
 ];
 
@@ -91,8 +97,15 @@ class AboutView extends StatelessWidget {
 
   List<Widget> _buildMoreSection(BuildContext context) {
     final items = <Widget>[
-      // Play Store policy forbids in-app update checks on Android —
-      // store channel is the source of truth. Keep for desktop builds.
+      // "Thanks" is now a single tappable entry that opens a full credits
+      // sheet — no parade of avatars on the main About page.
+      ListItem(
+        leading: HugeIcon(icon: HugeIcons.strokeRoundedFavourite, size: 24),
+        title: Text(appLocalizations.gratitude),
+        onTap: () => _showCreditsSheet(context),
+        trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
+      ),
+      // Play Store forbids in-app update checks on Android. Keep for desktop.
       if (!Platform.isAndroid)
         ListItem(
           title: Text(appLocalizations.checkUpdate),
@@ -134,36 +147,8 @@ class AboutView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _EasterEggDetector(
-              child: Wrap(
-                spacing: 16,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Image.asset(
-                      'assets/images/icon.png',
-                      width: 64,
-                      height: 64,
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appName,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      Text(
-                        globalState.packageInfo.version,
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: 4),
-                      const _CoreVersionWidget(),
-                    ],
-                  )
-                ],
-              ),
-              onEasterEgg: () => _showFileTransferGame(context),
+              onEasterEgg: () => _startFileTransferGame(context),
+              child: const _AppHeader(),
             ),
             const SizedBox(height: 24),
             Text(
@@ -188,20 +173,123 @@ class AboutView extends StatelessWidget {
   }
 }
 
-class _CoreVersionWidget extends StatelessWidget {
-  const _CoreVersionWidget();
+// -----------------------------------------------------------------------
+// App header: tap anywhere on the logo + name block to flip 3D and swap
+// between dropweb icon / name and the author's avatar / handle "kinvsh".
+// -----------------------------------------------------------------------
+
+class _AppHeader extends StatefulWidget {
+  const _AppHeader();
+
+  @override
+  State<_AppHeader> createState() => _AppHeaderState();
+}
+
+class _AppHeaderState extends State<_AppHeader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _flip;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _flip = CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    if (_controller.isAnimating) return;
+    if (_controller.value >= 0.5) {
+      _controller.reverse();
+    } else {
+      _controller.forward();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final coreVersion = globalState.coreVersion;
-    if (coreVersion == null || coreVersion.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Text(
-      'Core: $coreVersion',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+    final textTheme = Theme.of(context).textTheme;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggle,
+      child: AnimatedBuilder(
+        animation: _flip,
+        builder: (_, __) {
+          final t = _flip.value;
+          final angle = t * math.pi;
+          final showFront = t < 0.5;
+
+          Widget face = Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: showFront
+                    ? Image.asset(
+                        'assets/images/icon.png',
+                        width: 64,
+                        height: 64,
+                      )
+                    : ClipOval(
+                        child: Image.asset(
+                          'assets/images/avatars/enkinvsh.jpg',
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 4),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    showFront ? appName : 'kinvsh',
+                    style: textTheme.headlineSmall,
+                  ),
+                  Text(
+                    showFront ? globalState.packageInfo.version : 'dropweb',
+                    style: textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  if (showFront) const _CoreVersionWidget(),
+                ],
+              ),
+            ],
+          );
+
+          // Back face is counter-rotated so its content isn't mirrored.
+          if (!showFront) {
+            face = Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()..rotateY(math.pi),
+              child: face,
+            );
+          }
+
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateY(angle),
+              child: face,
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -245,200 +333,402 @@ class _EasterEggDetectorState extends State<_EasterEggDetector> {
     super.dispose();
   }
 
+  // Absorb the tap so the wrapped child's own GestureDetector still handles
+  // the flip animation — but we also count taps for the easter egg. Listener
+  // at capture phase: both flip + counter fire on each tap.
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: _handleTap,
+  Widget build(BuildContext context) => Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => _handleTap(),
         child: widget.child,
       );
 }
 
+class _CoreVersionWidget extends StatelessWidget {
+  const _CoreVersionWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    final coreVersion = globalState.coreVersion;
+    if (coreVersion == null || coreVersion.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Text(
+      'Core: $coreVersion',
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+    );
+  }
+}
+
 // -----------------------------------------------------------------------
-// Easter egg: File Transfer Manager = hidden credits
-//
-// Each "file" being transferred is actually a contributor. Starts from
-// chen08209 (upstream FlClash author), then pluralplay (FlClashX), then
-// all contributors, ending on enkinvsh — where the transfer hangs forever.
-//
-// The list IS the credits roll. No separate "reveal" screen needed.
+// Credits sheet — full list with avatars + roles + links, opened only
+// when the user explicitly taps "Благодарность" in the About menu.
 // -----------------------------------------------------------------------
 
-void _showFileTransferGame(BuildContext context) {
-  showDialog(
+void _showCreditsSheet(BuildContext context) {
+  showSheet(
     context: context,
-    barrierDismissible: false,
-    builder: (_) => const _FileTransferDialog(),
+    builder: (_, type) => AdaptiveSheetScaffold(
+      type: type,
+      title: appLocalizations.gratitude,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              // kinvsh is the flip-side of the dropweb logo, not a credit entry.
+              for (final c in _credits.where((c) => c.name != 'kinvsh'))
+                SizedBox(
+                  width: 80,
+                  child: _CreditAvatar(person: c),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 
-class _FileTransferDialog extends StatefulWidget {
-  const _FileTransferDialog();
+class _CreditAvatar extends StatelessWidget {
+  const _CreditAvatar({required this.person});
+  final Contributor person;
 
   @override
-  State<_FileTransferDialog> createState() => _FileTransferDialogState();
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: () {
+        if (person.link != null) globalState.openUrl(person.link!);
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 26,
+            foregroundImage: AssetImage(person.avatar),
+            backgroundColor: colorScheme.primaryContainer,
+            child: Text(
+              person.name[0].toUpperCase(),
+              style: TextStyle(
+                fontFamily: 'Onest',
+                color: colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            person.name,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Onest',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            person.role,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'Onest',
+              fontSize: 9,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _FileTransferDialogState extends State<_FileTransferDialog> {
-  // Transfer "files" = contributors, in credits order.
-  static final _items = _credits;
-  static final _lastIndex = _items.length - 1;
+// -----------------------------------------------------------------------
+// Game: drag contributor cards from SOURCE → TARGET folder, one by one,
+// in credits order. Last card (kinvsh) closes the app on drop.
+// -----------------------------------------------------------------------
 
-  int _current = 0;
-  double _fileProgress = 0.0;
-  Timer? _timer;
+void _startFileTransferGame(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => const _FileTransferGame(),
+      fullscreenDialog: true,
+    ),
+  );
+}
+
+class _FileTransferGame extends StatefulWidget {
+  const _FileTransferGame();
 
   @override
-  void initState() {
-    super.initState();
-    _tick();
-  }
+  State<_FileTransferGame> createState() => _FileTransferGameState();
+}
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
+class _FileTransferGameState extends State<_FileTransferGame> {
+  int _currentIndex = 0;
+  bool _closing = false;
 
-  bool get _isHangingOnMe => _current == _lastIndex;
+  Contributor get _current => _credits[_currentIndex];
+  bool get _isLast => _currentIndex == _credits.length - 1;
 
-  void _tick() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 60), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      setState(() {
-        if (_isHangingOnMe) {
-          // Forever hang on enkinvsh. Slow stuttering progress that never
-          // reaches 1.0 — the joke is the transfer literally cannot finish.
-          if (_fileProgress < 0.87) {
-            _fileProgress += 0.0015 + math.Random().nextDouble() * 0.001;
-          } else {
-            // Asymptote — tiny jitter, never completes.
-            _fileProgress += (math.Random().nextDouble() - 0.5) * 0.0008;
-            _fileProgress = _fileProgress.clamp(0.83, 0.88);
-          }
-        } else {
-          _fileProgress += 0.035 + math.Random().nextDouble() * 0.025;
-          if (_fileProgress >= 1.0) {
-            _fileProgress = 0.0;
-            _current++;
-            if (_current > _lastIndex) _current = _lastIndex;
-          }
-        }
-      });
-    });
+  Future<void> _handleAccepted(Contributor dropped) async {
+    if (dropped.name != _current.name) return;
+
+    if (_isLast) {
+      // The joke: transferring kinvsh kills the process.
+      setState(() => _closing = true);
+      HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 650));
+      await globalState.appController.handleExit();
+      return;
+    }
+
+    HapticFeedback.selectionClick();
+    setState(() => _currentIndex++);
   }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final person = _items[_current];
-    final overall = (_current + _fileProgress.clamp(0.0, 1.0)) / _items.length;
+    final total = _credits.length;
 
-    return AlertDialog(
-      title: const Text(
-        'File Transfer Manager',
-        style: TextStyle(
-          fontFamily: 'Onest',
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Передача файла ${_current + 1} из ${_items.length}',
-            style: textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          Row(
+    if (_closing) {
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 22,
-                foregroundImage: AssetImage(person.avatar),
-                backgroundColor: colorScheme.primaryContainer,
-                child: Text(
-                  person.name[0].toUpperCase(),
-                  style: TextStyle(
-                    fontFamily: 'Onest',
-                    color: colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              Icon(
+                Icons.power_settings_new_rounded,
+                size: 64,
+                color: colorScheme.error,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      person.name,
-                      style: textTheme.bodyLarge?.copyWith(
-                        fontFamily: 'Onest',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      person.role,
-                      style: textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 16),
+              Text(
+                'Передача kinvsh…',
+                style: textTheme.titleMedium?.copyWith(fontFamily: 'Onest'),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Соединение потеряно.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: _fileProgress.clamp(0.0, 1.0),
-              minHeight: 6,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(
-                _isHangingOnMe ? colorScheme.error : colorScheme.primary,
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('File Transfer'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Перенеси ${_currentIndex + 1} из $total',
+                style: textTheme.titleMedium?.copyWith(fontFamily: 'Onest'),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('Всего', style: textTheme.labelSmall),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: overall.clamp(0.0, 1.0),
-              minHeight: 4,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(colorScheme.primary),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (_isHangingOnMe)
-            Text(
-              'Ожидание ответа сервера…',
-              style: textTheme.labelSmall?.copyWith(color: colorScheme.error),
-            )
-          else
-            Text(
-              'Подключено. Передача идёт.',
-              style: textTheme.labelSmall?.copyWith(
+              const SizedBox(height: 4),
+              Text(
+                'Тащи карточку из «contributors/» в «shipped/».',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _currentIndex / total,
+                  minHeight: 4,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _FolderHeader(
+                label: 'contributors/',
+                icon: Icons.folder_outlined,
                 color: colorScheme.onSurfaceVariant,
               ),
-            ),
-        ],
+              const SizedBox(height: 12),
+              _ContributorCard(person: _current),
+              const SizedBox(height: 28),
+              _FolderHeader(
+                label: 'shipped/',
+                icon: Icons.folder_rounded,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: DragTarget<Contributor>(
+                  onWillAcceptWithDetails: (d) => d.data.name == _current.name,
+                  onAcceptWithDetails: (d) => _handleAccepted(d.data),
+                  builder: (_, candidate, __) {
+                    final hovering = candidate.isNotEmpty;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      decoration: BoxDecoration(
+                        color: hovering
+                            ? colorScheme.primaryContainer.withValues(
+                                alpha: 0.5,
+                              )
+                            : colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: hovering
+                              ? colorScheme.primary
+                              : colorScheme.outlineVariant,
+                          width: hovering ? 2 : 1,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          hovering ? 'Отпусти.' : 'Сюда.',
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontFamily: 'Onest',
+                            color: hovering
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отменить'),
+    );
+  }
+}
+
+class _FolderHeader extends StatelessWidget {
+  const _FolderHeader({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontFamily: 'Onest',
+                color: color,
+              ),
         ),
       ],
+    );
+  }
+}
+
+class _ContributorCard extends StatelessWidget {
+  const _ContributorCard({required this.person});
+  final Contributor person;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final card = Material(
+      color: colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              foregroundImage: AssetImage(person.avatar),
+              backgroundColor: colorScheme.primaryContainer,
+              child: Text(
+                person.name[0].toUpperCase(),
+                style: TextStyle(
+                  fontFamily: 'Onest',
+                  color: colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    person.name,
+                    style: textTheme.bodyLarge?.copyWith(
+                      fontFamily: 'Onest',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    person.role,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.drag_indicator_rounded,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return Draggable<Contributor>(
+      data: person,
+      feedback: Material(
+        color: Colors.transparent,
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width - 32,
+          child: Transform.rotate(angle: -0.03, child: card),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.25, child: card),
+      child: card,
     );
   }
 }
