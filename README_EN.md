@@ -91,6 +91,8 @@ Requires Flutter SDK 3.24+. Mihomo binaries are downloaded automatically.
 
 GPL-3.0 — see [LICENSE](LICENSE).
 
+**Community:** [Telegram discussion forum](https://t.me/+gnnahAxAtisxZmVi)
+
 **Links:** [FlClashX — parent fork](https://github.com/pluralplay/FlClashX) · [FlClash — original](https://github.com/chen08209/FlClash)
 
 ---

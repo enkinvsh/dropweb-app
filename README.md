@@ -91,6 +91,8 @@ dart run setup.dart macos
 
 GPL-3.0 — см. [LICENSE](LICENSE).
 
+**Сообщество:** [Telegram-форум для обсуждений](https://t.me/+gnnahAxAtisxZmVi)
+
 **Ссылки:** [FlClashX — родительский форк](https://github.com/pluralplay/FlClashX) · [FlClash — оригинал](https://github.com/chen08209/FlClash)
 
 ---
