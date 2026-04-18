@@ -47,7 +47,9 @@ class ApplicationState extends ConsumerState<Application> {
 
   @override
   void initState() {
+    debugPrint("[dropweb] [APP] Application.initState enter");
     super.initState();
+    debugPrint("[dropweb] [APP] super.initState done");
 
     if (Platform.isWindows) {
       windows?.enableDarkModeForApp();
@@ -55,16 +57,23 @@ class ApplicationState extends ConsumerState<Application> {
 
     _autoUpdateGroupTask();
     _autoUpdateProfilesTask();
+    debugPrint("[dropweb] [APP] creating AppController");
     globalState.appController = AppController(context, ref);
+    debugPrint("[dropweb] [APP] AppController created, registering postFrame");
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+      debugPrint("[dropweb] [APP] postFrameCallback fired");
       final currentContext = globalState.navigatorKey.currentContext;
       if (currentContext != null) {
         globalState.appController = AppController(currentContext, ref);
       }
+      debugPrint("[dropweb] [APP] calling appController.init()");
       await globalState.appController.init();
+      debugPrint("[dropweb] [APP] appController.init() done");
       globalState.appController.initLink();
       app?.initShortcuts();
+      debugPrint("[dropweb] [APP] postFrameCallback complete");
     });
+    debugPrint("[dropweb] [APP] initState complete");
   }
 
   void _autoUpdateGroupTask() {

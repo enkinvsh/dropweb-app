@@ -36,17 +36,24 @@ Future<void> main() async {
   debugPrint(
       "[dropweb] [MAIN] clashCore.preload done, calling globalState.initApp");
   await globalState.initApp(version);
-  debugPrint("[dropweb] [MAIN] globalState.initApp done");
+  debugPrint("[dropweb] [MAIN] globalState.initApp done, calling android.init");
   await android?.init();
+  debugPrint("[dropweb] [MAIN] android.init done, calling window.init");
   await window?.init(version);
+  debugPrint("[dropweb] [MAIN] window.init done");
 
   if (Platform.isAndroid) {
+    debugPrint("[dropweb] [MAIN] instantiating vpn");
     vpn;
+    debugPrint("[dropweb] [MAIN] vpn instantiated");
   }
+  debugPrint("[dropweb] [MAIN] setting HttpOverrides");
   HttpOverrides.global = DropwebHttpOverrides();
+  debugPrint("[dropweb] [MAIN] calling runApp");
   runApp(const ProviderScope(
     child: Application(),
   ));
+  debugPrint("[dropweb] [MAIN] runApp returned");
 }
 
 @pragma('vm:entry-point')
