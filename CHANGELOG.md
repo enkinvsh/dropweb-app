@@ -1,3 +1,283 @@
+## v0.4.11
+
+- chore: bump version to 0.4.11
+
+- chore: drop diagnostic [MAIN] tracing + bump 0.4.11
+
+- Splash hang confirmed fixed on-device (double reboot + active profile +
+- active VPN → clean UI render). Ship a clean 0.4.11 without the debug
+- logging that helped locate the issue.
+
+- docs: add Telegram discussion forum link
+
+- docs: fix FlClashX link — point to pluralplay/FlClashX, not chen08209/FlClash
+
+- Description said "Fork of FlClashX" but linked to chen08209/FlClash,
+- which is FlClash (no X). Our real parent is pluralplay/FlClashX.
+- Link both: FlClashX as the parent fork we sync from, FlClash as the
+- original project the whole chain descends from.
+
+- chore: trim verbose comments + bump 0.4.10
+
+- Strip narrative comments from this session's commits — keep only those
+- explaining non-obvious security/perf decisions or upstream-inherited
+- rationale. Drop the diagnostic [MAIN] tracing now that the splash hang
+- is fixed and the logging served its purpose.
+
+- diag: add startup tracing to track post-reboot splash hang
+
+- main.dart: log every step of main() so we can see exactly where the
+- main isolate stops in the (still-occurring) post-reboot splash hang.
+- Logs fire for: start, system.version, preload(), initApp, android.init,
+- window.init, vpn singleton, runApp.
+
+- GlobalState.initServiceEngine: log a Throwable to capture the call
+- site. This already proved the service engine is born from
+- ServicePlugin.onMethodCall (Dart main isolate calling service.init()
+- inside ClashLib._initService) — not from VpnService restoration.
+
+- These print through commonPrint.log → debugPrint, which keeps showing
+- up in release logcat as I/flutter, so they are visible without a debug
+- build.
+
+- Verified on Pixel 10: fresh install of the release APK now traces
+- all main-isolate steps and renders the UI (Surface HAS_DRAWN).
+- Awaiting on-device reboot test with an active profile to capture the
+- hang scenario.
+
+- fix(android): revert proguard-rules.pro to upstream (1 line)
+
+- ROOT CAUSE of the post-reboot splash hang, found after running
+- flutter run on debug and seeing main isolate log everything it's
+- supposed to. Debug build works fine. Release build hangs. The only
+- release-specific thing I'd touched was ProGuard / R8.
+
+- My previous 85-line proguard-rules.pro (commit dbdd8b6 as part of
+- "security harden") stripped logs in release:
+
+-   -assumenosideeffects class android.util.Log {
+-       public static int v(...);
+-       public static int d(...);
+-   }
+
+- That tells R8 "Log.v and Log.d are pure, their arguments don't need
+- to be evaluated". In practice it deletes ANY code passed as an
+- argument. Flutter's embedding has Log.d calls where the argument
+- is an expression with side effects during engine startup — R8
+- drops the side effect, engine init is now skipped, and the Dart
+- main() never fires. Splash stays forever.
+
+- Upstream pluralplay/FlClashX ships a one-line proguard-rules.pro:
+
+-   -keep class com.follow.clashx.models.**{ *; }
+
+- Everything else is left to Flutter's default rules which Flutter
+- Gradle plugin merges in automatically. That's it. No hardening
+- needed at this layer — AAB signing and Play Store obfuscation
+- already give us the defense-in-depth the custom rules were meant
+- to provide.
+
+- Fix: replace the full 85-line file with the upstream one-liner
+- (adjusted to `app.dropweb.models`).
+
+- Verified on Pixel 10: release APK (95MB, 275KB smaller than the
+- previous broken build) installs and launches cleanly to the
+- disclaimer screen. Debug build also works as it did before.
+- Awaiting on-device reboot test with an active profile.
+
+- fix(android): revert all my splash-hang "fixes" back to upstream baseline
+
+- After four failed attempts at debugging the post-reboot splash hang,
+- I pulled upstream pluralplay/FlClashX at 0a5afe9 and diffed. All my
+- "fixes" were regressions against a baseline that works. The real
+- culprit was a change I'd made but never attributed to: forcing
+- START_STICKY on the VPN service.
+
+- Changes reverted to upstream form:
+
+- 1. DropwebVpnService: drop `onStartCommand { return START_STICKY }`.
+-    Upstream FlClashXVpnService has no onStartCommand override — it
+-    inherits the default (START_STICKY_COMPATIBILITY, treated as
+-    START_NOT_STICKY on modern Android). My override forced the
+-    service to be revived by Android after any process death,
+-    including post-boot. That revival triggered GlobalState
+-    .initServiceEngine() BEFORE MainActivity.onCreate ran, which
+-    left the service FlutterEngine first-in-line for singleton
+-    plugin attachment and broke the main engine's handshake.
+
+- 2. VpnPlugin: `class` → `data object` (my 2bbe737 was a wrong turn).
+-    ServicePlugin: same. Upstream uses singletons and the main/
+-    service engine share them by design — re-attaching rebinds the
+-    MethodChannel to the currently-active engine, which is correct.
+
+- 3. MainActivity.configureFlutterEngine: restore
+-    `GlobalState.syncStatus()` call (reverting cf9f2a2). Upstream
+-    has this exact call and their app boots fine post-reboot; the
+-    "deadlock" I theorized wasn't real.
+
+- 4. DropwebApplication: drop the FlutterLoader.startInitialization
+-    pre-warm (reverting 59c3add). Upstream doesn't do this, so it
+-    was never the actual race condition fix I thought it was.
+
+- Net diff is small: -12 lines. All that debugging, just to delete
+- code I never should have written.
+
+- Verified: release APK built, installed, launches on fresh install.
+- Awaiting on-device reboot test with an active profile — the scenario
+- that originally reproduced the hang.
+
+- fix(android): pre-warm FlutterLoader in Application.onCreate
+
+- Third attempt at the post-reboot splash hang. Logs on a hung release
+- process showed:
+
+-   - main engine created (Impeller opt-out @ T+0.45s)
+-   - MainActivity window ready (VRI, T+0.54s)
+-   - second engine created (Impeller opt-out @ T+0.56s) = service engine
+-   - 15× FlutterEngineCxnRegstry warnings "already registered" on the
+-     service engine for every pub plugin (PathProvider, SharedPrefs,
+-     URL launcher, etc.)
+-   - service isolate Dart reaches `[DART] Not quickStart, calling
+-     _handleMainIpc` and goes idle waiting for the main isolate
+-   - main isolate NEVER produces a single log line — no system.version,
+-     no clashCore.preload, nothing; main() never starts
+
+- The race: FlutterLoader.startInitialization loads libflutter.so and
+- the AOT snapshot once per process. On a fresh boot that first load
+- takes hundreds of ms and is traditionally done during
+- FlutterActivity.onCreate on the Android UI thread. Meanwhile the
+- service engine creation path (triggered from Dart IPC) calls
+- FlutterLoader.startInitialization on a background thread. Both paths
+- racing on the same native initializers leaves the main engine in a
+- half-initialized state where its DartExecutor never fires the Dart
+- entrypoint.
+
+- Fix: call startInitialization exactly once, from Application.onCreate,
+- before any engine is created. Android guarantees Application.onCreate
+- runs on the UI thread before any component (Activity, Service,
+- ContentProvider) sees `onCreate`. Subsequent startInitialization calls
+- short-circuit because it caches state in a FlutterLoader singleton.
+- This removes the race entirely.
+
+- Still needs real post-reboot testing on a device with an active
+- profile — that's the only scenario where the race reproduced.
+
+- fix(android): convert VpnPlugin/ServicePlugin from data object to class
+
+- REAL root cause of the post-reboot splash hang (previous attempts
+- targeted symptoms, not this). Logs from a hung release build showed:
+
+-   - Only the service engine FlutterEngine@f20dfb6 is created
+-   - Main engine Dart main() never runs
+-   - FlutterEngineCxnRegstry warnings: "plugin (X) already registered
+-     with this FlutterEngine" — for every VpnPlugin/ServicePlugin
+-     attempt on the second engine
+
+- Flutter's plugin registry deduplicates by class instance. Attaching
+- the same Kotlin `data object` (singleton) to a second engine is a
+- no-op: onAttachedToEngine is NEVER called for the second engine. So:
+
+-   1. VpnService revives post-boot (START_STICKY) → initServiceEngine
+-      creates service FlutterEngine → VpnPlugin singleton attaches →
+-      flutterMethodChannel bound to service engine's binaryMessenger.
+-   2. User taps icon → MainActivity creates main FlutterEngine →
+-      tries to register the SAME VpnPlugin singleton → registry
+-      silently ignores → main engine has no `vpn` channel handler.
+-   3. Dart main() runs `vpn; // init singleton` → method channel
+-      call into native → no handler on main engine → suspends
+-      forever. Main UI isolate never gets past that line, never
+-      renders first frame, splash stays on screen.
+
+- Fix: convert VpnPlugin and ServicePlugin to regular classes, add
+- new instances per engine. Persistent state that must be shared
+- across engines (bound service, vpn options, foreground-params
+- cache, network subscription, timer job) moved into the Companion
+- object of VpnPlugin. ServicePlugin holds no state so it was a
+- straight `data object` → `class`. TilePlugin and AppPlugin were
+- already classes, no changes needed.
+
+- MainActivity.configureFlutterEngine and GlobalState.initServiceEngine
+- updated to instantiate (`VpnPlugin()` / `ServicePlugin()`).
+
+- Verified: release APK built locally, installed on Pixel 10, launches
+- cleanly to the disclaimer screen on first run. Needs on-device
+- reboot test with an active profile to close the loop — that's the
+- scenario that originally reproduced the hang.
+
+- fix(android): remove syncStatus deadlock from MainActivity startup
+
+- Second splash-hang regression on post-boot with an active profile.
+- `DropwebVpnService` is marked START_STICKY, so Android revives it on
+- boot before the user even taps the icon. `onCreate` calls
+- `GlobalState.initServiceEngine()` which attaches the singleton
+- `VpnPlugin` to the service engine — binding its MethodChannel to the
+- service engine's binaryMessenger.
+
+- When the user then launches the app, `MainActivity.configureFlutterEngine`
+- adds the same `VpnPlugin` data-object to the main engine. Kotlin's plugin
+- registry invokes `onAttachedToEngine` again, which rebinds
+- `flutterMethodChannel` to the main engine's messenger. The service
+- isolate is now holding references to an unwired channel.
+
+- Immediately after that rebind the old code called `syncStatus()` —
+- which routed `flutterMethodChannel.awaitResult("status")` across a
+- channel that could only be answered by the UI Dart isolate. But the UI
+- Dart `main()` had not even begun executing yet; it won't register
+- handlers until after `runApp`. `awaitResult` suspends forever. The
+- native splash stays on screen because the UI never renders its first
+- frame.
+
+- Fix: drop the synchronous sync. The UI side already reconciles run
+- state in `AppController.syncRunStateFromNative()` on
+- `AppLifecycleState.resumed`, which fires after runApp and the first
+- frame when all channels are properly wired.
+
+- A comment was added inline documenting exactly why this call is
+- forbidden here — this is the third time the bug has cycled through
+- (b438704 fix → c920cc2 revert → this), and I'd like to stop the cycle.
+
+- fix(android): don't block startup on Android Keystore IPC
+
+- Symptom: after a cold device reboot the release build stays on the
+- native splash forever. `dumpsys window` shows MainActivity
+- `Surface shown=false mDrawState=DRAW_PENDING`, i.e. Flutter never
+- produced the first frame. Debug build doesn't reproduce because its
+- Keystore IPC path warms up while Gradle is still pushing the APK.
+
+- Root cause: `preferences.getConfig()` — called synchronously on the
+- critical path of `globalState.init()` before `runApp` — was fetching
+- every profile's subscription URL from `flutter_secure_storage`. On
+- Pixel 10 after a cold boot the Gatekeeper/Keystore daemon can take
+- 10-30 s to answer the first IPC, and the call blocks the main
+- isolate. No UI, no splash handoff, no timeout.
+
+- Fix: URLs no longer live in the in-memory Config. getConfig() now
+- returns the Config straight from SharedPreferences (with empty URL
+- fields, which is the scrubbed-on-disk shape). Callers that actually
+- need the URL read it on demand through the two new accessors on
+- Preferences:
+-   - `preferences.getProfileUrl(profile)`
+-   - `preferences.getProfileFallbackUrl(profile)`
+
+- Updated call sites:
+-   - `Profile.update()` (subscription refresh)
+-   - `EditProfileView.initState()` (populates the URL field async)
+-   - `_TvItem` (Send-to-TV ListItem; now async-aware)
+
+- Phase-9 migration (move plaintext URLs out of the JSON blob into the
+- encrypted store) runs from a `WidgetsBinding.addPostFrameCallback`
+- inside `AppController.init()`, AFTER the first frame, so a slow
+- keystore can no longer freeze the splash. Idempotent:
+- `migrateProfileUrlsIfNeeded()` exits immediately if the marker is
+- already set.
+
+- Verified on Pixel 10 debug + release builds: UI renders immediately,
+- secure-storage reads happen only when the user opens a profile form
+- or fires a subscription refresh. `flutter_analyze` clean on the
+- touched files.
+
+- Update changelog
+
 ## v0.4.9
 
 - fix(android): suppress R8 warnings for unused Play Core / tika classes
