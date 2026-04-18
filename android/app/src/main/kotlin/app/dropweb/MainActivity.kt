@@ -16,11 +16,15 @@ import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Apply app theme before creating the activity to fix splash screen theme
         applyAppTheme()
-        
-        super.onCreate(savedInstanceState)
-        
+
+        // Post-reboot Android restores our Task from persistent state and passes
+        // a savedInstanceState pointing at the killed process's FlutterEngine.
+        // FlutterActivity.onCreate then blocks trying to restore engine state
+        // that doesn't exist — splash hangs forever. We don't use Flutter's
+        // restoration API, so always start fresh.
+        super.onCreate(null)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.attributes.preferredDisplayModeId = getHighestRefreshRateDisplayMode()
         }
