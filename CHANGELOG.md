@@ -1,3 +1,43 @@
+## v0.4.15
+
+- fix(android): ServicePlugin.init — post initServiceEngine, don't block channel call
+
+- v0.4.14 didn't fix splash hang. Stack trace from Log.w(Throwable) on live
+- device deobfuscated via R8 mapping:
+
+-     GlobalState.initServiceEngine() (from Throwable at line 156)
+-     ServicePlugin.onMethodCall("init") at ServicePlugin.kt:40
+-     (invoked via MethodChannel "service" from Dart main isolate)
+
+- Cold-start flow:
+
+- 1. lib/main.dart main() runs: await clashCore.preload()
+- 2. ClashCore._internal() instantiates clashLib (lazy) → ClashLib._internal()
+- 3. ClashLib._internal() synchronously calls _initService()
+- 4. _initService() calls await service?.init() → platform channel 'init'
+- 5. ServicePlugin.onMethodCall("init") calls GlobalState.initServiceEngine()
+-    synchronously, which runs runLock.withLock { executeDartEntrypoint(_service) }
+-    on the Android platform thread.
+- 6. While the platform thread is busy bootstrapping the service Dart VM,
+-    main engine never gets a chance to progress its own Dart isolate.
+-    MainActivity surface stays DRAW_PENDING, splash stuck with 'db' logo.
+
+- Fix: post initServiceEngine onto the next main looper tick so the
+- platform channel 'init' call returns immediately. result.success(true)
+- fires synchronously, Dart main isolate keeps running, clashCore.preload()
+- awaits its handshake, and on the next looper tick the service engine
+- bootstraps without starving the platform thread.
+
+- Also adds [MAIN] diagnostic logs to lib/main.dart so we can confirm where
+- main isolate is progressing (previously had ZERO logs from main() in
+- production logcat — impossible to tell if it was blocked or not running
+- at all). v0.4.14's GlobalState defer guard stays in place: it's a belt-
+- and-braces defense for any other caller that might hit the same path
+- (AppPlugin.onActivityResult on VPN_PERMISSION_REQUEST_CODE, tile quick-
+- start). Bumps version to 0.4.15.
+
+- Update changelog
+
 ## v0.4.14
 
 - fix(android): defer initServiceEngine when main engine is alive
