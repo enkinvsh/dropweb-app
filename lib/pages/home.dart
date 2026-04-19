@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/views/about.dart' show startFileTransferGame;
 import 'package:dropweb/views/dashboard/widgets/magic_rings.dart';
 import 'package:dropweb/views/dashboard/widgets/start_button.dart';
 import 'package:dropweb/enum/enum.dart';
@@ -204,7 +205,6 @@ final connectButtonCenter = ValueNotifier<Offset?>(null);
 
 class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
   final _key = GlobalKey();
-  bool _tracking = false;
 
   void _reportPosition() {
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
@@ -216,25 +216,32 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
     }
   }
 
-  void _scheduleTracking() {
-    if (!_tracking) return;
+  @override
+  void initState() {
+    super.initState();
+    // Report position once after first layout — the button's screen
+    // position does not change while the Dashboard page is alive, so we
+    // don't need a per-frame tracking loop (which was burning ~2-4 ms
+    // every frame on findRenderObject + localToGlobal + notifier writes).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_tracking) return;
+      if (!mounted) return;
       _reportPosition();
-      _scheduleTracking();
     });
   }
 
   @override
-  void initState() {
-    super.initState();
-    _tracking = true;
-    _scheduleTracking();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Orientation / system-bars change may shift the button. Re-report
+    // once after the resulting layout settles.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _reportPosition();
+    });
   }
 
   @override
   void dispose() {
-    _tracking = false;
     connectButtonCenter.value = null;
     super.dispose();
   }
@@ -292,11 +299,44 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
   }
 }
 
-/// Developer mode activation via 5 rapid taps on the Settings tab.
+/// Developer mode activation via 5 rapid CONSECUTIVE taps on the Settings
+/// tab. Any tap on another tab (or a pause >3s) resets the counter so
+/// users bouncing between Dashboard and Settings don't accidentally
+/// unlock dev mode.
 int _devTapCount = 0;
 DateTime _devTapLast = DateTime(0);
 const _devTapThreshold = 5;
 const _devTapWindow = Duration(seconds: 3);
+
+void _resetDevTapCount() {
+  _devTapCount = 0;
+  _devTapLast = DateTime(0);
+}
+
+/// Hidden File Transfer game — triggered by 10 rapid CONSECUTIVE taps on
+/// the Dashboard tab. Any tap on another tab (or >3s pause) resets.
+int _eggTapCount = 0;
+DateTime _eggTapLast = DateTime(0);
+const _eggTapThreshold = 10;
+const _eggTapWindow = Duration(seconds: 3);
+
+void _resetEasterEggTaps() {
+  _eggTapCount = 0;
+  _eggTapLast = DateTime(0);
+}
+
+void _handleDashboardTap(BuildContext context) {
+  final now = DateTime.now();
+  if (now.difference(_eggTapLast) > _eggTapWindow) {
+    _eggTapCount = 0;
+  }
+  _eggTapLast = now;
+  _eggTapCount++;
+  if (_eggTapCount >= _eggTapThreshold) {
+    _eggTapCount = 0;
+    startFileTransferGame(context);
+  }
+}
 
 void _handleDevTap(BuildContext context, WidgetRef ref) {
   final now = DateTime.now();
@@ -372,6 +412,13 @@ class CommonNavigationBar extends ConsumerWidget {
                   globalState.appController.toPage(item.label);
                   if (item.label == PageLabel.tools) {
                     _handleDevTap(context, ref);
+                    _resetEasterEggTaps();
+                  } else if (item.label == PageLabel.dashboard) {
+                    _handleDashboardTap(context);
+                    _resetDevTapCount();
+                  } else {
+                    _resetDevTapCount();
+                    _resetEasterEggTaps();
                   }
                 },
                 child: AnimatedContainer(

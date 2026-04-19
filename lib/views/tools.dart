@@ -111,10 +111,15 @@ class _ToolboxViewState extends ConsumerState<ToolsView> {
       ..._getSettingList(context, vm2.b),
       ..._getOtherList(context, vm2.b),
     ];
+    // Bottom nav-bar (64px) + its 16px outer margin + system gesture
+    // inset — leave enough space so the last list item doesn't sit
+    // under the floating nav bar (visible after dev-mode unlocks extra
+    // entries that push the list past the viewport).
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return ListView.builder(
       itemCount: items.length,
       itemBuilder: (_, index) => items[index],
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.only(bottom: 96 + bottomInset),
     );
   }
 }

@@ -146,10 +146,7 @@ class AboutView extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _EasterEggDetector(
-              onEasterEgg: () => _startFileTransferGame(context),
-              child: const _AppHeader(),
-            ),
+            const _AppHeader(),
             const SizedBox(height: 24),
             Text(
               appLocalizations.desc,
@@ -215,133 +212,112 @@ class _AppHeaderState extends State<_AppHeader>
     }
   }
 
+  // Open the front-face primary link: project repo.
+  void _openFrontPrimary() => globalState.openUrl(
+        'https://github.com/$repository',
+      );
+
+  // Open the back-face primary link: author's github.
+  void _openBackPrimary() => globalState.openUrl(
+        'https://github.com/enkinvsh',
+      );
+
+  // Open the back-face secondary link: project landing page.
+  void _openBackSecondary() => globalState.openUrl('https://dropweb.org');
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _toggle,
-      child: AnimatedBuilder(
-        animation: _flip,
-        builder: (_, __) {
-          final t = _flip.value;
-          final angle = t * math.pi;
-          final showFront = t < 0.5;
+    return AnimatedBuilder(
+      animation: _flip,
+      builder: (_, __) {
+        final t = _flip.value;
+        final angle = t * math.pi;
+        final showFront = t < 0.5;
 
-          Widget face = Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: showFront
-                    ? Image.asset(
-                        'assets/images/icon.png',
-                        width: 64,
-                        height: 64,
-                      )
-                    : ClipOval(
-                        child: Image.asset(
-                          'assets/images/avatars/enkinvsh.jpg',
-                          width: 64,
-                          height: 64,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 4),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    showFront ? appName : 'kinvsh',
-                    style: textTheme.headlineSmall,
+        // Avatar / logo column — tap toggles flip.
+        final avatar = GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggle,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: showFront
+                ? Image.asset(
+                    'assets/images/icon.png',
+                    width: 64,
+                    height: 64,
+                  )
+                : ClipOval(
+                    child: Image.asset(
+                      'assets/images/avatars/enkinvsh.jpg',
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  Text(
-                    showFront ? globalState.packageInfo.version : 'dropweb',
-                    style: textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  if (showFront) const _CoreVersionWidget(),
-                ],
+          ),
+        );
+
+        // Text column — each line is its own tap target opening a link.
+        final textColumn = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: showFront ? _openFrontPrimary : _openBackPrimary,
+              child: Text(
+                showFront ? appName : 'kinvsh',
+                style: textTheme.headlineSmall,
               ),
-            ],
-          );
-
-          // Back face is counter-rotated so its content isn't mirrored.
-          if (!showFront) {
-            face = Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()..rotateY(math.pi),
-              child: face,
-            );
-          }
-
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.001)
-                ..rotateY(angle),
-              child: face,
             ),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: showFront ? _openFrontPrimary : _openBackSecondary,
+              child: Text(
+                showFront ? globalState.packageInfo.version : 'dropweb',
+                style: textTheme.labelLarge?.copyWith(
+                  decoration: showFront ? null : TextDecoration.underline,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            if (showFront) const _CoreVersionWidget(),
+          ],
+        );
+
+        Widget face = Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            avatar,
+            const SizedBox(width: 4),
+            textColumn,
+          ],
+        );
+
+        // Back face is counter-rotated so its content isn't mirrored.
+        if (!showFront) {
+          face = Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()..rotateY(math.pi),
+            child: face,
           );
-        },
-      ),
+        }
+
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.001)
+              ..rotateY(angle),
+            child: face,
+          ),
+        );
+      },
     );
   }
-}
-
-class _EasterEggDetector extends StatefulWidget {
-  const _EasterEggDetector({
-    required this.child,
-    required this.onEasterEgg,
-  });
-  final Widget child;
-  final VoidCallback onEasterEgg;
-
-  @override
-  State<_EasterEggDetector> createState() => _EasterEggDetectorState();
-}
-
-class _EasterEggDetectorState extends State<_EasterEggDetector> {
-  int _counter = 0;
-  Timer? _timer;
-
-  void _handleTap() {
-    _counter++;
-    if (_counter >= 10) {
-      widget.onEasterEgg();
-      _resetCounter();
-    } else {
-      _timer?.cancel();
-      _timer = Timer(const Duration(seconds: 1), _resetCounter);
-    }
-  }
-
-  void _resetCounter() {
-    _counter = 0;
-    _timer?.cancel();
-    _timer = null;
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  // Absorb the tap so the wrapped child's own GestureDetector still handles
-  // the flip animation — but we also count taps for the easter egg. Listener
-  // at capture phase: both flip + counter fire on each tap.
-  @override
-  Widget build(BuildContext context) => Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: (_) => _handleTap(),
-        child: widget.child,
-      );
 }
 
 class _CoreVersionWidget extends StatelessWidget {
@@ -455,6 +431,11 @@ class _CreditAvatar extends StatelessWidget {
 // Game: drag contributor cards from SOURCE → TARGET folder, one by one,
 // in credits order. Last card (kinvsh) closes the app on drop.
 // -----------------------------------------------------------------------
+
+/// Entry point for the hidden File Transfer game. Exposed so the nav-bar
+/// easter egg (10 taps on Dashboard) can reuse it.
+void startFileTransferGame(BuildContext context) =>
+    _startFileTransferGame(context);
 
 void _startFileTransferGame(BuildContext context) {
   Navigator.of(context).push(
