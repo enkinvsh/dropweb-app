@@ -1,3 +1,46 @@
+## v0.5.1
+
+- feat(about): full game-feel pass on the File Transfer easter egg.
+
+  - Friction mechanic #1 — WANDERING TARGET: the `shipped/` drop zone
+    drifts in a Lissajous-like path with the amplitude (×1.6) and
+    frequency (×1.8) jumping the moment a card is picked up. The target
+    actively flees while you aim.
+  - Friction mechanic #2 — SHRINKING TARGET: when idle the drop zone
+    fills the available height (reads as "obvious target"), but the
+    moment a drag starts it animates down to a 220-dp square in the
+    centre (`AnimatedContainer`, 280 ms ease-out-cubic). The surrounding
+    empty space becomes a miss zone.
+  - Friction mechanic #3 — ANTI-DRAG PINGS: speech-bubble taunts cycle
+    every 1.1 s while dragging ("куда?", "не туда", "точно?", …). The
+    kinvsh card switches to an escalating dread set ("НЕТ", "умоляю",
+    "это конец").
+  - Success polish: animated progress bar (350 ms), 14-particle confetti
+    via `CustomPainter`, drop-zone pulse (1.0→1.08→1.0), "+1 shipped"
+    float-up, medium haptic.
+  - Failure polish: releasing outside the target triggers a heavy haptic
+    and a shard burst via the same painter with a muted grey palette +
+    slimmer rectangles, originating at the global drop point.
+  - Surprise A — CHEN BOOMERANG: chen08209's first "successful" drop is
+    a fakeout. The card pops back out with a red "не так быстро /
+    chen08209 вернулся" banner, progress rolls back to 0, you drop him
+    again. Triggers once. The joke is you think the game glitched.
+  - Surprise B — KINVSH GHOST COUNTER: while kinvsh is hovering the
+    drop zone, the "Перенеси 9 из 9" counter cycles through nonsense
+    frames ("9 из 13" → "9 из ∞" → "? из ?"). Pure typographic dread.
+  - Surprise C — KINVSH GLITCH EXIT: instead of a calm "connection lost"
+    screen, dropping kinvsh fires a 4-flash black/red sequence
+    (~120 ms each, heavy haptic on each) followed by a fake terminal
+    stack trace ("kernel panic: unexpected contributor") before the app
+    actually calls `handleExit()`. Total ~1.5 s of drama before exit.
+
+- fix(game): `AnimatedContainer` between `double.infinity` and a finite
+  number crashed with "Cannot interpolate between finite and unbounded
+  constraints" (box.dart:495). Wrapped the drop zone in `LayoutBuilder`
+  and animate between two resolved finite numbers instead. Added a
+  fallback (360/480) for the first layout pass when the parent can be
+  unbounded.
+
 ## v0.5.0
 
 - perf: fix Dashboard → Settings transition stutter
