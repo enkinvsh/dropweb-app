@@ -203,7 +203,8 @@ class _ConnectCircle extends ConsumerStatefulWidget {
 /// Written by [_ConnectCircle], read by [MagicRingsOverlay].
 final connectButtonCenter = ValueNotifier<Offset?>(null);
 
-class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
+class _ConnectCircleState extends ConsumerState<_ConnectCircle>
+    with WidgetsBindingObserver {
   final _key = GlobalKey();
 
   void _reportPosition() {
@@ -219,10 +220,11 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
   @override
   void initState() {
     super.initState();
-    // Report position once after first layout — the button's screen
-    // position does not change while the Dashboard page is alive, so we
-    // don't need a per-frame tracking loop (which was burning ~2-4 ms
-    // every frame on findRenderObject + localToGlobal + notifier writes).
+    WidgetsBinding.instance.addObserver(this);
+    // Report position once after first layout — the button doesn't move
+    // within a stable layout, so the old per-frame tracking loop was pure
+    // waste (it was burning 2-4 ms every frame on findRenderObject +
+    // localToGlobal + notifier writes).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _reportPosition();
@@ -232,8 +234,17 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Orientation / system-bars change may shift the button. Re-report
-    // once after the resulting layout settles.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _reportPosition();
+    });
+  }
+
+  /// Window resize on desktop / orientation change on mobile shifts the
+  /// button without touching inherited dependencies, so we need a metrics
+  /// callback to re-anchor the rings origin.
+  @override
+  void didChangeMetrics() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _reportPosition();
@@ -242,6 +253,7 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     connectButtonCenter.value = null;
     super.dispose();
   }

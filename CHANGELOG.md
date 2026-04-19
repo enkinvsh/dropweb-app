@@ -1,3 +1,16 @@
+## v0.5.2
+
+- fix(macos): tray popover was growing vertically past its configured
+  600 px height — on a narrow tray popover it stretched to ~1180 px
+  because the Flutter view pushed the NSPopover to fit content.
+  Pinning `preferredContentSize = 375×600` on `PopoverContainer-
+  ViewController` locks the popover to the intended size.
+
+- fix(home): MagicRings stayed anchored to a stale global offset when
+  the window resized (macOS desktop / orientation changes). Added
+  `WidgetsBindingObserver.didChangeMetrics` to `_ConnectCircle` so the
+  ring origin is re-reported after the layout settles post-resize.
+
 ## v0.5.1
 
 - feat(about): full game-feel pass on the File Transfer easter egg.

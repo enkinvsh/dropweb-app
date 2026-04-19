@@ -15,8 +15,13 @@ class PopoverContainerViewController: NSViewController {
     }
     
     override func loadView() {
-        self.view = NSView(frame: NSRect(x: 0, y: 0, width: 375, height: 600))
-                
+        let fixedSize = NSSize(width: 375, height: 600)
+        self.view = NSView(frame: NSRect(origin: .zero, size: fixedSize))
+        // Pin preferred size so NSPopover never rounds it up to fit content.
+        // Without this the Flutter view can push the popover to grow
+        // vertically (observed on tray popover: 375×1180).
+        self.preferredContentSize = fixedSize
+
         addChild(flutterViewController)
         flutterViewController.view.frame = self.view.bounds
         flutterViewController.view.autoresizingMask = [.width, .height]
