@@ -101,7 +101,7 @@ class AppController {
 
     // Decode service name from header
     String serviceName = "";
-    final svc = profile.providerHeaders['flclashx-servicename'];
+    final svc = profile.providerHeaders['dropweb-servicename'];
     if (svc != null && svc.isNotEmpty) {
       try {
         final normalized = base64.normalize(svc);
@@ -117,7 +117,7 @@ class AppController {
     );
 
     // Get current server name from selectedMap
-    String? groupName = profile.providerHeaders['flclashx-serverinfo'];
+    String? groupName = profile.providerHeaders['dropweb-serverinfo'];
     if (groupName != null && groupName.isNotEmpty) {
       String decodedGroupName;
       try {
@@ -289,7 +289,7 @@ class AppController {
     final headers = profile.providerHeaders;
     if (headers.isEmpty) return;
 
-    final customBehavior = headers['flclashx-custom'];
+    final customBehavior = headers['dropweb-custom'];
 
     final shouldApply = switch (customBehavior) {
       'add' => isNewProfile,
@@ -313,7 +313,7 @@ class AppController {
         return;
       }
 
-      final settingsHeader = headers['flclashx-settings'];
+      final settingsHeader = headers['dropweb-settings'];
       if (settingsHeader != null) {
         final settings = settingsHeader
             .split(',')
@@ -329,7 +329,7 @@ class AppController {
 
   void _applyThemeColor(Map<String, String> headers) {
     try {
-      final hexHeader = headers['flclashx-hex'];
+      final hexHeader = headers['dropweb-hex'];
       if (hexHeader != null && hexHeader.isNotEmpty) {
         _applyThemeColorFromHex(hexHeader);
       }
@@ -365,7 +365,7 @@ class AppController {
       );
 
       commonPrint
-          .log('Applying theme from flclashx-hex: #${hexString.toUpperCase()}'
+          .log('Applying theme from dropweb-hex: #${hexString.toUpperCase()}'
               '${variantName != null ? ', variant=$variantName' : ''}'
               '${enablePureBlack ? ', pureBlack=true' : ''}');
 
@@ -1511,7 +1511,7 @@ class AppController {
   void _applyCustomViewSettings(Profile profile) {
     final headers = profile.providerHeaders;
 
-    final dashboardLayout = headers['flclashx-widgets'];
+    final dashboardLayout = headers['dropweb-widgets'];
     if (dashboardLayout != null && dashboardLayout.isNotEmpty) {
       final newLayout = DashboardWidgetParser.parseLayout(dashboardLayout);
       if (newLayout.isNotEmpty) {
@@ -1521,7 +1521,7 @@ class AppController {
       }
     }
 
-    final proxiesView = headers['flclashx-view'];
+    final proxiesView = headers['dropweb-view'];
     if (proxiesView != null && proxiesView.isNotEmpty) {
       final proxiesStyleNotifier =
           _ref.read(proxiesStyleSettingProvider.notifier);

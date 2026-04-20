@@ -119,7 +119,7 @@ class Vpn {
       String? proxyName;
       try {
         final serverInfoGroupName = _decodeBase64IfNeeded(
-          profile?.providerHeaders['flclashx-serverinfo'],
+          profile?.providerHeaders['dropweb-serverinfo'],
         );
         if (serverInfoGroupName != null && serverInfoGroupName.isNotEmpty) {
           proxyName = globalState.appController

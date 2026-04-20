@@ -214,9 +214,13 @@ jobs:
           commits_escaped=$(echo "$commits" | jq -Rs .)
           echo "commits=$commits_escaped" >> $GITHUB_OUTPUT
 
+      # TG notifications disabled pending rebrand of notify_telegram.py
+      # (currently posts as "FlClashX Stable/PreRelease Version" — stale fork
+      # copy). Re-enable after script is rebranded + channel IDs audited.
+      # To re-enable: set `if: success()`.
       - name: Send Telegram notifications
         continue-on-error: true
-        if: success()
+        if: false
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID_1: ${{ secrets.TELEGRAM_CHANNEL_ID_1 }}

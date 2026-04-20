@@ -232,7 +232,7 @@ Future<void> _service(List<String> flags) async {
       };
 
       // Get server group name from header (may be base64-encoded)
-      String? groupName = profile?.providerHeaders['flclashx-serverinfo'];
+      String? groupName = profile?.providerHeaders['dropweb-serverinfo'];
       if (groupName != null && groupName.isNotEmpty) {
         try {
           final normalized = base64.normalize(groupName);

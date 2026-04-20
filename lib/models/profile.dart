@@ -234,8 +234,15 @@ extension ProfileExtension on Profile {
       }
     }
 
+    // Subscription providers (Remnawave panel templates) return dropweb-*
+    // HTTP headers to customize the dashboard layout, theme, service name,
+    // logo, and behavior. Legacy flclashx-* headers from FlClashX-targeted
+    // panels are intentionally NOT accepted — dropweb is a distinct product
+    // and must not share a customization protocol surface with FlClashX
+    // (see .sisyphus/plans/2026-04-20-flclashx-hard-decouple.md for the
+    // decision record).
     response.headers.forEach((name, values) {
-      if (name.toLowerCase().startsWith('flclashx-') && values.isNotEmpty) {
+      if (name.toLowerCase().startsWith('dropweb-') && values.isNotEmpty) {
         providerHeaders[name.toLowerCase()] = values.first;
       }
     });

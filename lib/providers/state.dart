@@ -466,7 +466,7 @@ Profile? currentProfile(Ref ref) {
 @riverpod
 bool globalModeEnabled(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['flclashx-globalmode'];
+  final value = profile?.providerHeaders['dropweb-globalmode'];
   return value?.toLowerCase() != 'false';
 }
 
@@ -480,21 +480,21 @@ bool hasAnnounceData(Ref ref) {
 @riverpod
 bool hasServiceInfoData(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['flclashx-servicename'];
+  final value = profile?.providerHeaders['dropweb-servicename'];
   return value != null && value.isNotEmpty;
 }
 
 @riverpod
 bool hasServerInfoData(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['flclashx-serverinfo'];
+  final value = profile?.providerHeaders['dropweb-serverinfo'];
   return value != null && value.isNotEmpty;
 }
 
 @riverpod
 String? backgroundUrl(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  return profile?.providerHeaders['flclashx-background'];
+  return profile?.providerHeaders['dropweb-background'];
 }
 
 @riverpod

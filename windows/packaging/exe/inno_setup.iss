@@ -165,6 +165,35 @@ begin
   end;
 end;
 
+function GetSchemeCommand(Scheme: String): String;
+var
+  CmdValue: String;
+  RegPath: String;
+begin
+  Result := '';
+  RegPath := 'Software\Classes\' + Scheme + '\shell\open\command';
+  if RegQueryStringValue(HKEY_CURRENT_USER, RegPath, '', CmdValue) then
+    Result := CmdValue;
+end;
+
+function IsSchemeOurs(Scheme: String): Boolean;
+var
+  Cmd: String;
+  OurExe: String;
+begin
+  Cmd := GetSchemeCommand(Scheme);
+  OurExe := ExpandConstant('{app}\dropweb.exe');
+  // Case-insensitive substring check — Inno's Pos is case-sensitive, so
+  // lowercase both sides first.
+  Result := (Cmd <> '') and (Pos(Lowercase(OurExe), Lowercase(Cmd)) > 0);
+end;
+
+procedure RemoveSchemeIfOurs(Scheme: String);
+begin
+  if IsSchemeOurs(Scheme) then
+    RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER, 'Software\Classes\' + Scheme);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   ResultCode: Integer;
@@ -186,6 +215,13 @@ begin
     
     usPostUninstall:
     begin
+      // Remove our own protocol handlers. For the shared schemes (flclash,
+      // clashx) only remove them if they still point to our exe — otherwise
+      // we'd accidentally kill FlClashX's legitimate handler.
+      RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER, 'Software\Classes\dropweb');
+      RemoveSchemeIfOurs('flclash');
+      RemoveSchemeIfOurs('clashx');
+
       if DirExists(ExpandConstant('{userappdata}\dropweb\dropweb')) then
       begin
         if MsgBox('Удалить пользовательские данные программы?', mbConfirmation, MB_YESNO) = IDYES then

@@ -192,8 +192,8 @@ class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
 
     final headers = currentProfile.providerHeaders;
     final supportUrl = headers['support-url'];
-    final serviceName = _decodeBase64IfNeeded(headers['flclashx-servicename']);
-    final logoUrl = _decodeBase64IfNeeded(headers['flclashx-servicelogo']);
+    final serviceName = _decodeBase64IfNeeded(headers['dropweb-servicename']);
+    final logoUrl = _decodeBase64IfNeeded(headers['dropweb-servicelogo']);
     final announceText = _decodeAnnounce(headers['announce']);
 
     final hasLogo = logoUrl != null && logoUrl.isNotEmpty;

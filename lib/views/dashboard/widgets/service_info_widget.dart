@@ -156,9 +156,9 @@ class _ServiceInfoWidgetState extends ConsumerState<ServiceInfoWidget> {
     }
 
     final headers = profile.providerHeaders;
-    final serviceName = _decodeBase64IfNeeded(headers['flclashx-servicename']);
+    final serviceName = _decodeBase64IfNeeded(headers['dropweb-servicename']);
     final supportUrl = headers['support-url'];
-    final logoUrl = _decodeBase64IfNeeded(headers['flclashx-servicelogo']);
+    final logoUrl = _decodeBase64IfNeeded(headers['dropweb-servicelogo']);
     final announceText = _decodeAnnounce(headers['announce']);
 
     if (serviceName == null || serviceName.isEmpty) {

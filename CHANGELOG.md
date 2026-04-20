@@ -1,3 +1,33 @@
+## Unreleased
+
+### Changed (breaking for closed test group)
+
+- Windows: dropweb no longer hijacks `flclash://` and `clashx://` deep-link
+  handlers. Users with FlClashX installed will see their FlClashX handler
+  restored on next launch of either app. One-time migration during first
+  launch (guarded by `windows_protocol_cleanup_v1` SharedPreferences flag)
+  removes our existing claims on those shared schemes so FlClashX reclaims
+  them.
+- Windows: window width is now capped at 600 px (portrait/compact layout
+  only). The connect button, navigation bar, and widget layout only exist
+  in the ≤600 px viewport — this is a design decision, not a regression.
+- Subscription protocol: Remnawave panels must now emit `dropweb-*` HTTP
+  response headers (`dropweb-widgets`, `dropweb-hex`, `dropweb-servicename`,
+  `dropweb-servicelogo`, `dropweb-serverinfo`, `dropweb-view`,
+  `dropweb-settings`, `dropweb-background`, `dropweb-globalmode`,
+  `dropweb-custom`) instead of `flclashx-*`. Legacy `flclashx-*` headers
+  are silently ignored.
+
+### Fixed
+
+- Windows: connect button disappearing when the window was dragged wider
+  than 600 px.
+- Windows: dropweb inadvertently loading FlClashX-targeted subscription
+  links via hijacked `flclash://` protocol handler — combined with
+  Remnawave panels serving `flclashx-widgets` headers, this caused dropweb
+  to silently render FlClashX's dashboard layout after a user clicked a
+  Telegram-bot `flclash://install-config?url=...` link.
+
 ## v0.5.2
 
 - fix(macos): tray popover was growing vertically past its configured
