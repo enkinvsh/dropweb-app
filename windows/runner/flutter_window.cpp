@@ -5,14 +5,20 @@
 #include "flutter/generated_plugin_registrant.h"
 
 // Window width is hard-capped at 600 logical px to keep the mobile-first
-// layout intact (lib/common/constant.dart maxMobileWidth=600). Flutter's
-// window_manager.setMaximumSize is unreliable on frameless windows
-// (TitleBarStyle.hidden + custom title bar) — Win32 message dispatch races
-// the plugin handler. Hooking WM_GETMINMAXINFO directly in the runner —
-// BEFORE flutter_controller_->HandleTopLevelWindowProc — is the canonical
-// fix and works regardless of plugin order.
+// layout intact (lib/common/constant.dart maxMobileWidth=600).
 //
-// WM_GETMINMAXINFO uses physical pixels — multiply logical by DPI scale.
+// Required because:
+//   1. window_manager.setMaximumSize() is unreliable on frameless windows
+//      (TitleBarStyle.hidden). The plugin's WM_SIZING handler ignores
+//      maximum_size_ entirely (only WM_GETMINMAXINFO sets it).
+//   2. WM_GETMINMAXINFO is skipped on some Windows 11 borderless windows
+//      when WS_CAPTION is cleared — so relying on it alone is flaky.
+//
+// Belt-and-suspenders approach: hook BOTH messages BEFORE Flutter's plugin
+// handler sees them. WM_SIZING is the load-bearing one — it fires on every
+// drag-resize tick and lets us mutate the RECT before the size applies.
+//
+// Both hooks convert logical px → physical px via GetDpiForWindow().
 namespace {
 constexpr int kMaxLogicalWidth = 600;
 constexpr int kMinLogicalWidth = 380;
@@ -67,8 +73,43 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
   // Hard width cap — handled BEFORE Flutter plugins so window_manager can't
-  // override our constraint. See file header comment for rationale.
+  // override our constraint. See file header for rationale.
+  if (message == WM_SIZING) {
+    // Load-bearing hook: fires during every drag-resize tick. Mutate the
+    // proposed RECT so the user can't physically drag the window wider
+    // than kMaxLogicalWidth. Which edge to move depends on which handle
+    // the user grabbed (wparam = WMSZ_*).
+    const UINT dpi = GetDpiForWindow(hwnd);
+    const double scale = dpi / 96.0;
+    const LONG max_width_physical =
+        static_cast<LONG>(kMaxLogicalWidth * scale);
+    RECT* rect = reinterpret_cast<RECT*>(lparam);
+    const LONG current_width = rect->right - rect->left;
+    if (current_width > max_width_physical) {
+      switch (wparam) {
+        case WMSZ_LEFT:
+        case WMSZ_TOPLEFT:
+        case WMSZ_BOTTOMLEFT:
+          // User dragging left edge — move left edge right.
+          rect->left = rect->right - max_width_physical;
+          break;
+        case WMSZ_RIGHT:
+        case WMSZ_TOPRIGHT:
+        case WMSZ_BOTTOMRIGHT:
+        case WMSZ_TOP:
+        case WMSZ_BOTTOM:
+        default:
+          // User dragging right edge (or top/bottom via corner) — move
+          // right edge left.
+          rect->right = rect->left + max_width_physical;
+          break;
+      }
+    }
+    return TRUE;
+  }
+
   if (message == WM_GETMINMAXINFO) {
+    // Fallback for fresh-start sizing + programmatic window moves.
     const UINT dpi = GetDpiForWindow(hwnd);
     const double scale = dpi / 96.0;
     MINMAXINFO* mmi = reinterpret_cast<MINMAXINFO*>(lparam);
