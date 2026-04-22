@@ -4,6 +4,21 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
+// Window width is hard-capped at 600 logical px to keep the mobile-first
+// layout intact (lib/common/constant.dart maxMobileWidth=600). Flutter's
+// window_manager.setMaximumSize is unreliable on frameless windows
+// (TitleBarStyle.hidden + custom title bar) — Win32 message dispatch races
+// the plugin handler. Hooking WM_GETMINMAXINFO directly in the runner —
+// BEFORE flutter_controller_->HandleTopLevelWindowProc — is the canonical
+// fix and works regardless of plugin order.
+//
+// WM_GETMINMAXINFO uses physical pixels — multiply logical by DPI scale.
+namespace {
+constexpr int kMaxLogicalWidth = 600;
+constexpr int kMinLogicalWidth = 380;
+constexpr int kMinLogicalHeight = 400;
+}  // namespace
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -51,6 +66,18 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Hard width cap — handled BEFORE Flutter plugins so window_manager can't
+  // override our constraint. See file header comment for rationale.
+  if (message == WM_GETMINMAXINFO) {
+    const UINT dpi = GetDpiForWindow(hwnd);
+    const double scale = dpi / 96.0;
+    MINMAXINFO* mmi = reinterpret_cast<MINMAXINFO*>(lparam);
+    mmi->ptMaxTrackSize.x = static_cast<LONG>(kMaxLogicalWidth * scale);
+    mmi->ptMinTrackSize.x = static_cast<LONG>(kMinLogicalWidth * scale);
+    mmi->ptMinTrackSize.y = static_cast<LONG>(kMinLogicalHeight * scale);
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

@@ -38,14 +38,11 @@ class Window {
     }
 
     await windowManager.ensureInitialized();
-    // Desktop UI is mobile-first: the connect button, navigation bar, and
-    // widget layout are only rendered in ViewMode.mobile (≤ 600px wide, see
-    // maxMobileWidth in lib/common/constant.dart). The laptop/desktop
-    // layouts in lib/pages/home.dart don't render a connect button, so we
-    // must prevent the window from crossing the mobile breakpoint.
-    //
-    // Width is clamped to 600 (the breakpoint); height is unconstrained so
-    // users can make the window as tall as they want.
+    // Width is clamped to 600px on Windows by a Win32 WM_GETMINMAXINFO hook
+    // in windows/runner/flutter_window.cpp (window_manager.setMaximumSize is
+    // unreliable on frameless windows). The Dart-side clamp here only
+    // protects against a stored windowProps.width > 600 from previous
+    // releases — fresh installs never hit it.
     final clampedWidth = props.width.clamp(380.0, 600.0);
     final windowOptions = WindowOptions(
       size: Size(clampedWidth, props.height),
@@ -86,10 +83,6 @@ class Window {
     }
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.setPreventClose(true);
-      // Enforce width cap at runtime (waitUntilReadyToShow doesn't always
-      // honor maximumSize on Windows if the saved window state is larger).
-      await windowManager.setMaximumSize(const Size(600, 99999));
-      await windowManager.setMinimumSize(const Size(380, 400));
     });
   }
 
