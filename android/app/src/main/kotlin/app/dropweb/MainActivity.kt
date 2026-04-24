@@ -9,8 +9,10 @@ import app.dropweb.plugins.AppPlugin
 import app.dropweb.plugins.ServicePlugin
 import app.dropweb.plugins.TilePlugin
 import app.dropweb.plugins.VpnPlugin
+import app.dropweb.services.ParazitXVpnController
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
 
@@ -68,7 +70,96 @@ class MainActivity : FlutterActivity() {
                 }
             }
         
-        flutterEngine.plugins.add(AppPlugin())
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "app.dropweb/vktunnel/status",
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                ParazitXRelayController.statusListener = { status ->
+                    uiHandler.post { events.success(status) }
+                }
+            }
+            override fun onCancel(arguments: Any?) {
+                ParazitXRelayController.statusListener = null
+            }
+        })
+
+        val appPlugin = AppPlugin()
+        flutterEngine.plugins.add(appPlugin)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/parazitx_vpn")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> {
+                        val args = call.arguments as? Map<String, Any?> ?: emptyMap()
+                        val port = (args["socksPort"] as? Number)?.toInt() ?: 1080
+                        val user = args["socksUser"] as? String ?: ""
+                        val pass = args["socksPass"] as? String ?: ""
+                        // Reuse AppPlugin's VPN consent flow — it registers its
+                        // activity-result listener through ActivityPluginBinding,
+                        // so the FlutterActivity keeps its EGL context across
+                        // the consent dialog round trip. Doing prepare+launch
+                        // directly from MainActivity.onActivityResult breaks
+                        // Impeller's EGL state on Pixel 10 (black screen).
+                        appPlugin.requestVpnPermission {
+                            val started = ParazitXVpnController.start(
+                                applicationContext, port, user, pass,
+                            )
+                            if (started) result.success(null)
+                            else result.error(
+                                "VPN_PREPARE_FAILED",
+                                "prepare returned non-null after consent",
+                                null,
+                            )
+                        }
+                    }
+                    "stop" -> {
+                        ParazitXVpnController.stop(applicationContext)
+                        result.success(null)
+                    }
+                    "isRunning" -> {
+                        result.success(ParazitXVpnController.isRunning)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/vktunnel")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "startTunnel" -> {
+                        val joinLink = call.argument<String>("joinLink") ?: ""
+                        val socksPortArg = call.argument<String>("socksPort")
+                            ?: call.argument<Int>("socksPort")?.toString()
+                            ?: "1080"
+                        val socksPort = socksPortArg.toIntOrNull() ?: 1080
+                        val error = VkTunnelManager.startTunnel(
+                            applicationContext,
+                            joinLink,
+                            socksPort,
+                        )
+                        if (error == null) {
+                            val (user, pass) = VkTunnelManager.getSocksCredentials()
+                            result.success(mapOf(
+                                "socksPort" to socksPort,
+                                "socksUser" to user,
+                                "socksPass" to pass,
+                            ))
+                        } else {
+                            result.error("TUNNEL_ERROR", error, null)
+                        }
+                    }
+                    "stopTunnel" -> {
+                        VkTunnelManager.stopTunnel()
+                        result.success(null)
+                    }
+                    "getStatus" -> {
+                        result.success(VkTunnelManager.getStatus())
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         flutterEngine.plugins.add(ServicePlugin)
         flutterEngine.plugins.add(TilePlugin())
         flutterEngine.plugins.add(VpnPlugin)

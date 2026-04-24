@@ -73,8 +73,10 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   cached_network_image: ^3.4.1
   crypto: ^3.0.7
+  cryptography: ^2.7.0
   hugeicons: ^1.1.6
   flutter_secure_storage: ^10.0.0
+  flutter_inappwebview: ^6.1.5
 
 dev_dependencies:
   flutter_test:
