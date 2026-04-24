@@ -36,16 +36,19 @@ class _ParazitXPageState extends State<ParazitXPage> {
   void _onStatus(String status) {
     if (!mounted) return;
 
+    if (TunnelStatus.captchaUrl(status) != null) {
+      if (_handoffStarted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        _handoffStarted = false;
+      }
+      return;
+    }
+
     if (!_handoffStarted) {
       final captureNow = status.startsWith('Captcha solved') ||
-          status == TunnelStatus.connecting ||
           TunnelStatus.isTunnelReady(status);
       if (captureNow) {
         _handoffStarted = true;
-        // Show on the next frame so the CaptchaScreen has time to actually
-        // pop. Both the captcha and us listen to "Captcha solved" — if we
-        // call showDialog in the same microtask, our dialog races with
-        // captcha's Navigator.pop and ends up dismissed alongside it.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _showHandoffModal();
         });
