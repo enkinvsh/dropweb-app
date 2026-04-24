@@ -4,30 +4,39 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidbind.Androidbind
 import app.dropweb.MainActivity
+import app.dropweb.ParazitXRelayController
 import app.dropweb.R
 
 /**
  * Standalone VpnService for ParazitX mode.
  *
- * Flow:
- *   1. [start] builds a tun with 0.0.0.0/0 route, excludes our own package
- *      so [app.dropweb.ParazitXRelayController]'s librelay process reaches
- *      VK SFU through the underlying network (not through tun -> self loop).
- *   2. [Androidbind.startTun2Socks] forwards all tun packets to
- *      127.0.0.1:{socksPort}, where librelay exposes a SOCKS5 listener that
- *      bridges into the VK WebRTC data channel.
+ * This service runs in a dedicated `:parazitx` process (see AndroidManifest)
+ * so Android's Foreground Service policy cannot freeze the librelay child.
+ * MainActivity lives in the main process — if the user backgrounds the app,
+ * Android's activity manager aggressively throttles main-process children,
+ * which killed relay's watchdog and silently tore down VK calls.
  *
- * Mutually exclusive with [DropwebVpnService] — Android allows only one
- * active VpnService at a time. [app.dropweb.ParazitXManager] is responsible
- * for stopping mihomo first.
+ * Ownership (critical):
+ *   1. [ParazitXRelayController.start] is invoked from THIS service, so the
+ *      spawned relay inherits the `:parazitx` cgroup and stays alive while
+ *      the FGS is alive.
+ *   2. tun2socks is started AFTER relay reports [TunnelStatus.TUNNEL_CONNECTED].
+ *   3. Statuses are broadcast via [BROADCAST_STATUS] to the main process so
+ *      MainActivity can pipe them to the Flutter EventChannel.
+ *
+ * tun config: 0.0.0.0/0 route, excludes our own package so relay's signaling
+ * WebSocket reaches VK SFU through the underlying network (not through tun
+ * -> self loop, which resets within seconds).
  */
 class ParazitXVpnService : VpnService() {
 
@@ -41,10 +50,14 @@ class ParazitXVpnService : VpnService() {
         private const val VPN_DNS = "1.1.1.1"
         private const val VPN_DNS_FALLBACK = "8.8.8.8"
 
+        const val EXTRA_JOIN_LINK = "join_link"
         const val EXTRA_SOCKS_PORT = "socks_port"
-        const val EXTRA_SOCKS_USER = "socks_user"
-        const val EXTRA_SOCKS_PASS = "socks_pass"
         const val ACTION_STOP = "app.dropweb.parazitx.STOP"
+        const val ACTION_QUERY_STATUS = "app.dropweb.parazitx.QUERY_STATUS"
+
+        /** Cross-process broadcast for status events. */
+        const val BROADCAST_STATUS = "app.dropweb.parazitx.STATUS_BROADCAST"
+        const val EXTRA_STATUS = "status"
 
         @Volatile
         var isRunning: Boolean = false
@@ -53,30 +66,111 @@ class ParazitXVpnService : VpnService() {
 
     private var tunFd: ParcelFileDescriptor? = null
     private var tun2socksThread: Thread? = null
+    @Volatile private var tun2socksStarted: Boolean = false
+    @Volatile private var currentSocksPort: Int = 1080
+    @Volatile private var currentStatus: String = "disconnected"
+    @Volatile private var currentJoinLink: String = ""
+
+    private var queryReceiver: BroadcastReceiver? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        // Listen for status re-query from main process (e.g. app reopened
+        // while VPN still running — UI needs to bootstrap its state).
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+                broadcastStatus(currentStatus)
+            }
+        }
+        val filter = IntentFilter(ACTION_QUERY_STATUS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(receiver, filter)
+        }
+        queryReceiver = receiver
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            stopSelfClean()
-            return START_NOT_STICKY
+        when (intent?.action) {
+            ACTION_STOP -> {
+                stopSelfClean()
+                return START_NOT_STICKY
+            }
         }
+
+        val joinLink = intent?.getStringExtra(EXTRA_JOIN_LINK).orEmpty()
         val port = intent?.getIntExtra(EXTRA_SOCKS_PORT, 1080) ?: 1080
-        val user = intent?.getStringExtra(EXTRA_SOCKS_USER).orEmpty()
-        val pass = intent?.getStringExtra(EXTRA_SOCKS_PASS).orEmpty()
-        if (user.isEmpty() || pass.isEmpty()) {
-            Log.e(TAG, "start: missing SOCKS credentials")
+
+        if (joinLink.isEmpty()) {
+            Log.e(TAG, "onStartCommand: missing joinLink")
             stopSelf()
             return START_NOT_STICKY
         }
-        return if (start(port, user, pass)) START_STICKY else START_NOT_STICKY
-    }
 
-    private fun start(socksPort: Int, socksUser: String, socksPass: String): Boolean {
+        currentSocksPort = port
+        currentJoinLink = joinLink
+
+        // Foreground notification MUST be posted before any long work,
+        // otherwise startForegroundService → no startForeground within 5s
+        // crashes the process.
+        startForegroundNotification()
+
         if (isRunning) {
-            Log.i(TAG, "start: already running")
-            return true
+            // Already running — this is a rotation: re-AUTH with new joinLink.
+            Log.i(TAG, "onStartCommand: already running, rotating joinLink")
+            ParazitXRelayController.start(this, port, joinLink)
+            return START_STICKY
         }
 
-        startForegroundNotification()
+        isRunning = true
+        updateStatus("CONNECTING")
+
+        // Wire status listener BEFORE starting relay so we don't miss
+        // early STATUS: lines.
+        ParazitXRelayController.statusListener = { status ->
+            onRelayStatus(status)
+        }
+
+        val err = ParazitXRelayController.start(this, port, joinLink)
+        if (err != null) {
+            Log.e(TAG, "relay start failed: $err")
+            updateStatus("ERROR:$err")
+            stopSelfClean()
+            return START_NOT_STICKY
+        }
+
+        return START_STICKY
+    }
+
+    private fun onRelayStatus(status: String) {
+        updateStatus(status)
+
+        // Bring up tun2socks once relay signals the VK tunnel is ready.
+        if ((status == "TUNNEL_CONNECTED" || status == "TUNNEL_ACTIVE") &&
+            !tun2socksStarted
+        ) {
+            val started = establishTunAndStartTun2Socks(currentSocksPort)
+            if (!started) {
+                updateStatus("ERROR:establish failed")
+                stopSelfClean()
+            }
+        }
+
+        // Relay lost the VK call → tear everything down. Dart-layer
+        // reconnect logic will re-activate.
+        if (status == "TUNNEL_LOST" || status.startsWith("ERROR:")) {
+            stopSelfClean()
+        }
+    }
+
+    private fun establishTunAndStartTun2Socks(socksPort: Int): Boolean {
+        val (user, pass) = ParazitXRelayController.getSocksCredentials()
+        if (user.isEmpty() || pass.isEmpty()) {
+            Log.e(TAG, "establish: missing SOCKS credentials")
+            return false
+        }
 
         val fd: Int
         try {
@@ -89,10 +183,9 @@ class ParazitXVpnService : VpnService() {
                 .addDnsServer(VPN_DNS_FALLBACK)
                 .setBlocking(false)
 
-            // CRITICAL self-exclusion: librelay's signaling WebSocket must
-            // escape tun via the underlying network. If tun swallows it, a
-            // self-loop forms through SOCKS5 and the VK SFU resets the
-            // connection within seconds.
+            // Self-exclusion: librelay's signaling WebSocket must escape
+            // tun via the underlying network. Without this, a self-loop
+            // forms through SOCKS5 and VK resets the peer within seconds.
             try {
                 builder.addDisallowedApplication(packageName)
             } catch (e: Exception) {
@@ -109,7 +202,6 @@ class ParazitXVpnService : VpnService() {
             fd = pfd.detachFd()
         } catch (e: Exception) {
             Log.e(TAG, "establish failed", e)
-            stopSelfClean()
             return false
         }
 
@@ -121,8 +213,8 @@ class ParazitXVpnService : VpnService() {
                     fd.toLong(),
                     VPN_MTU.toLong(),
                     socksPort.toLong(),
-                    socksUser,
-                    socksPass,
+                    user,
+                    pass,
                 )
                 Log.i(TAG, "tun2socks returned (goroutines keep running in background)")
             } catch (e: Exception) {
@@ -131,30 +223,58 @@ class ParazitXVpnService : VpnService() {
             }
         }, "parazitx-tun2socks").also { it.start() }
 
-        isRunning = true
+        tun2socksStarted = true
         return true
     }
 
+    private fun updateStatus(s: String) {
+        currentStatus = s
+        broadcastStatus(s)
+    }
+
+    private fun broadcastStatus(s: String) {
+        val i = Intent(BROADCAST_STATUS)
+            .setPackage(packageName)
+            .putExtra(EXTRA_STATUS, s)
+        sendBroadcast(i)
+    }
+
     private fun stopSelfClean() {
-        if (!isRunning && tunFd == null) {
+        if (!isRunning && tunFd == null && !tun2socksStarted) {
             stopForegroundCompat()
             stopSelf()
             return
         }
         isRunning = false
+
         try {
-            Androidbind.stopTun2Socks()
+            ParazitXRelayController.statusListener = null
+            ParazitXRelayController.stop()
         } catch (e: Exception) {
-            Log.e(TAG, "stopTun2Socks threw", e)
+            Log.e(TAG, "relay stop threw", e)
         }
-        tun2socksThread?.interrupt()
-        tun2socksThread = null
+
+        if (tun2socksStarted) {
+            try {
+                Androidbind.stopTun2Socks()
+            } catch (e: Exception) {
+                Log.e(TAG, "stopTun2Socks threw", e)
+            }
+            tun2socksThread?.interrupt()
+            tun2socksThread = null
+            tun2socksStarted = false
+        }
+
         try {
             tunFd?.close()
         } catch (e: Exception) {
             Log.e(TAG, "tunFd close threw", e)
         }
         tunFd = null
+
+        currentStatus = "disconnected"
+        broadcastStatus("disconnected")
+
         stopForegroundCompat()
         stopSelf()
     }
@@ -175,6 +295,10 @@ class ParazitXVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        try {
+            queryReceiver?.let { unregisterReceiver(it) }
+        } catch (_: Exception) {}
+        queryReceiver = null
         stopSelfClean()
         super.onDestroy()
     }
@@ -230,7 +354,11 @@ class ParazitXVpnService : VpnService() {
     }
 }
 
-/** Helpers for the rest of the app to talk to [ParazitXVpnService] cleanly. */
+/**
+ * Helpers for the main process to talk to [ParazitXVpnService] cleanly.
+ * All relay control lives inside the service now — callers only hand it
+ * a [joinLink] + SOCKS port.
+ */
 object ParazitXVpnController {
     private const val TAG = "ParazitXVpnCtl"
 
@@ -242,17 +370,15 @@ object ParazitXVpnController {
     fun start(
         ctx: Context,
         socksPort: Int,
-        socksUser: String,
-        socksPass: String,
+        joinLink: String,
     ): Boolean {
         if (VpnService.prepare(ctx) != null) {
             Log.w(TAG, "VPN not prepared — caller must show consent dialog")
             return false
         }
         val intent = Intent(ctx, ParazitXVpnService::class.java)
+            .putExtra(ParazitXVpnService.EXTRA_JOIN_LINK, joinLink)
             .putExtra(ParazitXVpnService.EXTRA_SOCKS_PORT, socksPort)
-            .putExtra(ParazitXVpnService.EXTRA_SOCKS_USER, socksUser)
-            .putExtra(ParazitXVpnService.EXTRA_SOCKS_PASS, socksPass)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ctx.startForegroundService(intent)
         } else {
@@ -265,6 +391,17 @@ object ParazitXVpnController {
         val intent = Intent(ctx, ParazitXVpnService::class.java)
             .setAction(ParazitXVpnService.ACTION_STOP)
         ctx.startService(intent)
+    }
+
+    /**
+     * Ask the service (in `:parazitx`) to rebroadcast its current status.
+     * Used by MainActivity after a cold start to bootstrap the UI when
+     * the VPN was already running.
+     */
+    fun queryStatus(ctx: Context) {
+        val intent = Intent(ParazitXVpnService.ACTION_QUERY_STATUS)
+            .setPackage(ctx.packageName)
+        ctx.sendBroadcast(intent)
     }
 
     val isRunning: Boolean get() = ParazitXVpnService.isRunning

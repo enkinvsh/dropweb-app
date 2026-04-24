@@ -2,29 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-class TunnelSession {
-  const TunnelSession({
-    required this.socksPort,
-    required this.socksUser,
-    required this.socksPass,
-  });
-
-  final int socksPort;
-  final String socksUser;
-  final String socksPass;
-}
-
-class TunnelStartResult {
-  const TunnelStartResult.success(this.session) : error = null;
-  const TunnelStartResult.failure(this.error) : session = null;
-
-  final TunnelSession? session;
-  final String? error;
-
-  bool get isSuccess => session != null;
-}
-
-/// Raw statuses emitted by librelay process on stdout STATUS: lines.
+/// Raw statuses emitted by librelay on stdout STATUS: lines.
 /// Mirrors bypass.whitelist.tunnel.VpnStatus from kulikov0.
 abstract class TunnelStatus {
   static const ready = 'READY';
@@ -46,15 +24,16 @@ abstract class TunnelStatus {
       s.startsWith('CAPTCHA:') ? s.substring('CAPTCHA:'.length) : null;
 }
 
+/// Status stream from ParazitXVpnService.
+///
+/// Statuses originate in the `:parazitx` process (librelay stdout). The
+/// service broadcasts them cross-process; MainActivity forwards to this
+/// EventChannel. Multiple listeners (manager + captcha + UI) fan out off
+/// a single broadcast controller because Flutter's EventChannel allows
+/// only one native-side StreamHandler.
 class VkTunnelPlugin {
-  static const _channel = MethodChannel('app.dropweb/vktunnel');
   static const _statusChannel = EventChannel('app.dropweb/vktunnel/status');
 
-  // The native EventChannel handler can hold only one StreamHandler at a
-  // time — every fresh receiveBroadcastStream().listen() causes onListen
-  // to overwrite the previous handler. We fan out a single underlying
-  // subscription into a process-wide broadcast controller so that
-  // ParazitXManager and CaptchaScreen can both observe the same statuses.
   static StreamController<String>? _bus;
 
   static Stream<String> get statusStream {
@@ -71,38 +50,5 @@ class VkTunnelPlugin {
         );
     _bus = bus;
     return bus.stream;
-  }
-
-  static Future<TunnelStartResult> startTunnel(
-    String joinLink, {
-    int port = 1080,
-  }) async {
-    try {
-      final res = await _channel.invokeMethod<dynamic>('startTunnel', {
-        'joinLink': joinLink,
-        'socksPort': port.toString(),
-      });
-      if (res is! Map) {
-        return const TunnelStartResult.failure('bad response from native');
-      }
-      return TunnelStartResult.success(
-        TunnelSession(
-          socksPort: (res['socksPort'] as num?)?.toInt() ?? port,
-          socksUser: res['socksUser'] as String? ?? '',
-          socksPass: res['socksPass'] as String? ?? '',
-        ),
-      );
-    } on PlatformException catch (e) {
-      return TunnelStartResult.failure(e.message ?? e.code);
-    }
-  }
-
-  static Future<void> stopTunnel() async {
-    await _channel.invokeMethod('stopTunnel');
-  }
-
-  static Future<String> getStatus() async {
-    final s = await _channel.invokeMethod<String>('getStatus');
-    return s ?? 'unknown';
   }
 }

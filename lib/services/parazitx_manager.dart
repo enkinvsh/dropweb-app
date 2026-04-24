@@ -27,17 +27,16 @@ enum ActivateError {
   /// "vk unauthorized" or "timeout waiting".
   vkUnauthorized,
 
-  /// VkTunnelPlugin.startTunnel() returned an error.
+  /// ParazitXVpnService.start() failed (VPN consent denied / prepare failed).
   tunnelError,
 }
 
 class ParazitXManager {
   static bool _isActive = false;
   static String? _currentJoinLink;
-  static TunnelSession? _currentSession;
   static Timer? _rotationTimer;
   static StreamSubscription<String>? _statusSub;
-  static bool _vpnStarted = false;
+  static const _socksPort = 1080;
   static const _rotationInterval = Duration(minutes: 10);
   static const _sessionRequestTimeout = Duration(seconds: 35);
 
@@ -120,43 +119,20 @@ class ParazitXManager {
     }
   }
 
-  /// Activate ParazitX mode:
-  /// 1. Load stored VK cookies
-  /// 2. Encrypt them with X25519+AES-GCM (forward secrecy)
-  /// 3. POST to callfactory → receive join_link (with 503/error fallback
-  ///    across the server pool from the subscription)
-  /// 4. Start VK SOCKS5 tunnel on 127.0.0.1:1080
-  ///
-  /// Returns null on success, or an [ActivateError] describing what went wrong.
-  static Future<ActivateError?> activate() async {
-    developer.log(
-      'activate() called, isActive=$_isActive',
-      name: 'ParazitX',
-    );
-    if (_isActive) return null;
-    // Stale state from prior run — clean up before re-activating.
-    if (_isActive) {
-      developer.log('stale active state, forcing deactivate', name: 'ParazitX');
-      await deactivate();
-    }
-
-    // Refresh server pool on every cold activate — subscription updates
-    // after [deactivate] should propagate immediately.
-    if (_servers.isEmpty) {
-      _servers = await _loadServersFromSubscription();
-      _servers.shuffle();
-      _serverIndex = 0;
-    }
-
+  /// POST encrypted VK cookies to callfactory and return the join_link,
+  /// or an [ActivateError] describing what went wrong. Tries every server
+  /// in the pool, falling back on 503 / transient errors.
+  static Future<_SessionResult> _requestJoinLink() async {
     final cookies = await VkAuthService.loadCookies();
-    if (cookies == null) return ActivateError.noCookies;
+    if (cookies == null) {
+      return const _SessionResult.err(ActivateError.noCookies);
+    }
 
     final encrypted = await CryptoService.encryptCookies(cookies);
     final body = jsonEncode(encrypted);
 
     var lastError = ActivateError.networkError;
 
-    // Try each server in order; on 503 or transient error move to the next.
     for (var attempt = 0; attempt < _servers.length; attempt++) {
       final idx = (_serverIndex + attempt) % _servers.length;
       final server = _servers[idx];
@@ -172,10 +148,7 @@ class ParazitXManager {
             )
             .timeout(_sessionRequestTimeout);
       } catch (e) {
-        developer.log(
-          'Server $server request failed: $e',
-          name: 'ParazitX',
-        );
+        developer.log('Server $server request failed: $e', name: 'ParazitX');
         lastError = ActivateError.networkError;
         continue;
       }
@@ -194,9 +167,7 @@ class ParazitXManager {
         if (respBody.contains('vk unauthorized') ||
             respBody.contains('timeout waiting') ||
             respBody.contains('check cookies')) {
-          // Auth problem is not server-specific — bail out immediately,
-          // the user needs to re-login.
-          return ActivateError.vkUnauthorized;
+          return const _SessionResult.err(ActivateError.vkUnauthorized);
         }
         developer.log(
           'Server $server returned ${response.statusCode}: ${response.body}',
@@ -220,89 +191,68 @@ class ParazitXManager {
         continue;
       }
 
-      _currentJoinLink = joinLink;
-
-      final tunnelResult = await VkTunnelPlugin.startTunnel(joinLink);
-      if (!tunnelResult.isSuccess) {
-        // Tunnel failures are local (VpnService / librelay) — retrying
-        // another callfactory won't help. Surface the error.
-        return ActivateError.tunnelError;
-      }
-
-      _currentSession = tunnelResult.session;
-      _isActive = true;
-      // Remember the working server as the new starting point.
-      _serverIndex = idx;
-      _subscribeToRelayStatus();
-
-      // In case librelay emitted STATUS:TUNNEL_CONNECTED before we subscribed
-      // (fast path: cached session, no captcha), query once after subscription.
-      // Idempotent — _startVpnLayer checks _vpnStarted internally.
-      unawaited(_checkAlreadyConnected());
-
-      _startRotationTimer();
-      return null;
+      return _SessionResult.ok(joinLink, idx);
     }
 
-    // Every server in the pool failed.
     developer.log(
       'All ${_servers.length} server(s) failed, lastError=$lastError',
       name: 'ParazitX',
     );
-    return lastError;
+    return _SessionResult.err(lastError);
   }
 
-  static Future<void> _checkAlreadyConnected() async {
-    try {
-      final s = await VkTunnelPlugin.getStatus();
-      print(
-          '[ParazitX] _checkAlreadyConnected: status=$s tunnelReady=$_tunnelReady');
-      if (TunnelStatus.isTunnelReady(s) && !_tunnelReady) {
-        _tunnelReady = true;
-        _tunnelReadyCtrl.add(true);
-        unawaited(_startVpnLayer());
-      }
-    } on Exception catch (e) {
-      print('[ParazitX] _checkAlreadyConnected error: $e');
-    }
-  }
+  /// Activate ParazitX mode:
+  /// 1. Load stored VK cookies
+  /// 2. Encrypt them with X25519+AES-GCM (forward secrecy)
+  /// 3. POST to callfactory → receive join_link
+  /// 4. Hand joinLink to ParazitXVpnService (in `:parazitx` process) which
+  ///    owns the whole pipeline: spawns relay, waits for TUNNEL_CONNECTED,
+  ///    brings up tun + tun2socks.
+  ///
+  /// Returns null on success, or an [ActivateError] describing what went wrong.
+  static Future<ActivateError?> activate() async {
+    developer.log('activate() called, isActive=$_isActive', name: 'ParazitX');
+    if (_isActive) return null;
 
-  /// Starts the ParazitX VpnService once librelay reports TUNNEL_CONNECTED.
-  /// Requires a pre-confirmed session (SOCKS credentials known) so
-  /// [Androidbind.startTun2Socks] can attach to the right SOCKS5 listener.
-  static Future<ActivateError?> _startVpnLayer() async {
-    print(
-        '[ParazitX] _startVpnLayer called, _vpnStarted=$_vpnStarted, session=${_currentSession?.socksPort}');
-    if (_vpnStarted) return null;
-    final s = _currentSession;
-    if (s == null) {
-      print('[ParazitX] _startVpnLayer: NO SESSION');
-      return ActivateError.tunnelError;
+    if (_servers.isEmpty) {
+      _servers = await _loadServersFromSubscription();
+      _servers.shuffle();
+      _serverIndex = 0;
     }
+
+    final session = await _requestJoinLink();
+    if (session.error != null) return session.error;
+
+    final joinLink = session.joinLink!;
+    _currentJoinLink = joinLink;
+    _serverIndex = session.serverIndex!;
+
+    // Subscribe BEFORE start so we don't miss the first CONNECTING status
+    // (the service broadcasts synchronously on startForegroundService).
+    _subscribeToRelayStatus();
+
     try {
-      print('[ParazitX] calling ParazitXVpnPlugin.start port=${s.socksPort}');
       await ParazitXVpnPlugin.start(
-        socksPort: s.socksPort,
-        socksUser: s.socksUser,
-        socksPass: s.socksPass,
+        joinLink: joinLink,
+        socksPort: _socksPort,
       );
-      _vpnStarted = true;
-      print('[ParazitX] VpnPlugin.start returned OK');
-      return null;
     } on PlatformException catch (e) {
-      print('[ParazitX] vpn start FAILED: ${e.code} ${e.message}');
-      return ActivateError.tunnelError;
-    } catch (e) {
-      print('[ParazitX] vpn start UNEXPECTED: $e');
+      developer.log('vpn start failed: ${e.code} ${e.message}',
+          name: 'ParazitX');
+      await _statusSub?.cancel();
+      _statusSub = null;
       return ActivateError.tunnelError;
     }
+
+    _isActive = true;
+    _startRotationTimer();
+    return null;
   }
 
   static void _subscribeToRelayStatus() {
-    print('[ParazitX] subscribe called');
     _statusSub?.cancel();
     _statusSub = VkTunnelPlugin.statusStream.listen((status) {
-      print('[ParazitX] relay status: $status');
+      developer.log('relay status: $status', name: 'ParazitX');
 
       final captchaUrl = TunnelStatus.captchaUrl(status);
       if (captchaUrl != null) {
@@ -311,51 +261,39 @@ class ParazitXManager {
       }
 
       if (TunnelStatus.isTunnelReady(status)) {
-        print('[ParazitX] TUNNEL_READY detected, _tunnelReady=$_tunnelReady');
         if (!_tunnelReady) {
           _tunnelReady = true;
           _tunnelReadyCtrl.add(true);
-          unawaited(_startVpnLayer());
         }
       } else if (TunnelStatus.isFailure(status)) {
-        print(
-            '[ParazitX] TUNNEL FAILURE detected: $status, triggering reconnect');
+        developer.log(
+          'tunnel failure: $status, scheduling reconnect',
+          name: 'ParazitX',
+        );
         if (_tunnelReady) {
           _tunnelReady = false;
           _tunnelReadyCtrl.add(false);
         }
-        // Auto-reconnect on tunnel failure
         unawaited(_reconnectAfterFailure());
       }
     });
   }
 
-  /// Tear down in reverse order of bring-up: VpnService first (so the tun
-  /// is gone before its downstream SOCKS5 listener disappears), then the
-  /// librelay process, then local state.
+  /// Tear down the VpnService (which tears down relay + tun2socks
+  /// internally) and clear local state.
   static Future<void> deactivate() async {
     _stopRotationTimer();
     _reconnectDebounce?.cancel();
     _reconnectDebounce = null;
     await _statusSub?.cancel();
     _statusSub = null;
-    if (_vpnStarted) {
-      try {
-        await ParazitXVpnPlugin.stop();
-      } on PlatformException catch (e) {
-        developer.log('vpn stop failed: ${e.message}', name: 'ParazitX');
-      }
-      _vpnStarted = false;
-    }
     try {
-      await VkTunnelPlugin.stopTunnel();
-    } on Exception catch (_) {
-      // ignore — native may not be running
+      await ParazitXVpnPlugin.stop();
+    } on PlatformException catch (e) {
+      developer.log('vpn stop failed: ${e.message}', name: 'ParazitX');
     }
     _isActive = false;
     _currentJoinLink = null;
-    _currentSession = null;
-    // Drop cached pool so the next activate picks up subscription updates.
     _servers = [];
     _serverIndex = 0;
     if (_tunnelReady) {
@@ -364,10 +302,14 @@ class ParazitXManager {
     }
   }
 
-  /// Returns tunnel status string.
-  static Future<String> getStatus() async {
+  /// Returns last known tunnel status from the live stream. The service
+  /// owns the authoritative state — ask for a rebroadcast by re-listening
+  /// (the native EventChannel does so automatically on first listener).
+  static String getStatus() {
     if (!_isActive) return 'inactive';
-    return VkTunnelPlugin.getStatus();
+    return _tunnelReady
+        ? TunnelStatus.tunnelConnected
+        : TunnelStatus.connecting;
   }
 
   static void _startRotationTimer() {
@@ -382,94 +324,46 @@ class ParazitXManager {
     _rotationTimer = null;
   }
 
-  /// Periodic rotation: ask callfactory for a new call and hand it to the
-  /// relay. Tries the current server first, falls back across the pool on
-  /// 503 / transient errors so a single overloaded node doesn't break the
-  /// user's session.
+  /// Periodic rotation: ask callfactory for a new join_link and hand it to
+  /// the running VpnService (which forwards it to relay as a fresh AUTH,
+  /// reusing the same process + tun).
   static Future<void> _rotateCall() async {
     if (!_isActive) return;
     if (_servers.isEmpty) return;
 
-    final cookies = await VkAuthService.loadCookies();
-    if (cookies == null) return;
-
-    final encrypted = await CryptoService.encryptCookies(cookies);
-    final body = jsonEncode(encrypted);
-
-    for (var attempt = 0; attempt < _servers.length; attempt++) {
-      final idx = (_serverIndex + attempt) % _servers.length;
-      final server = _servers[idx];
-
-      final http.Response response;
-      try {
-        response = await http
-            .post(
-              Uri.parse('http://$server/v1/session'),
-              headers: {'Content-Type': 'application/json'},
-              body: body,
-            )
-            .timeout(_sessionRequestTimeout);
-      } catch (e) {
-        developer.log(
-          'Rotation: $server failed: $e',
-          name: 'ParazitX',
-        );
-        continue;
-      }
-
-      if (response.statusCode == 503) {
-        developer.log(
-          'Rotation: $server overloaded, trying next',
-          name: 'ParazitX',
-        );
-        continue;
-      }
-
-      if (response.statusCode != 200) {
-        developer.log(
-          'Rotation: $server returned ${response.statusCode}',
-          name: 'ParazitX',
-        );
-        continue;
-      }
-
-      final Map<String, dynamic> data;
-      try {
-        data = jsonDecode(response.body) as Map<String, dynamic>;
-      } catch (_) {
-        continue;
-      }
-
-      final newJoinLink = data['join_link'] as String?;
-      if (newJoinLink == null || newJoinLink == _currentJoinLink) return;
-
-      // Restart tunnel with new link.
-      await VkTunnelPlugin.stopTunnel();
-      final result = await VkTunnelPlugin.startTunnel(newJoinLink);
-
-      if (result.isSuccess) {
-        _currentJoinLink = newJoinLink;
-        _currentSession = result.session;
-        _serverIndex = idx;
-        developer.log('Rotation successful on $server', name: 'ParazitX');
-      }
+    final session = await _requestJoinLink();
+    if (session.error != null) {
+      developer.log(
+        'Rotation failed: ${session.error}, keeping current call',
+        name: 'ParazitX',
+      );
       return;
     }
 
-    developer.log(
-      'Rotation: all ${_servers.length} server(s) failed, keeping current call',
-      name: 'ParazitX',
-    );
+    final newJoinLink = session.joinLink!;
+    if (newJoinLink == _currentJoinLink) return;
+
+    try {
+      await ParazitXVpnPlugin.start(
+        joinLink: newJoinLink,
+        socksPort: _socksPort,
+      );
+      _currentJoinLink = newJoinLink;
+      _serverIndex = session.serverIndex!;
+      developer.log('Rotation successful', name: 'ParazitX');
+    } on PlatformException catch (e) {
+      developer.log('Rotation vpn start failed: ${e.message}',
+          name: 'ParazitX');
+    }
   }
 
   /// Debounce timer to prevent reconnect spam on rapid failures.
   static Timer? _reconnectDebounce;
 
   /// Auto-reconnect after tunnel failure with debounce.
-  /// Waits 2 seconds to avoid rapid reconnect loops, then attempts
-  /// to establish a new VK call session.
+  /// Waits 2 seconds to avoid rapid reconnect loops, then attempts to
+  /// establish a new VK call session.
   static Future<void> _reconnectAfterFailure() async {
-    // Cancel any pending reconnect
     _reconnectDebounce?.cancel();
 
     _reconnectDebounce = Timer(const Duration(seconds: 2), () async {
@@ -480,29 +374,31 @@ class ParazitXManager {
 
       developer.log('Auto-reconnect: attempting new session', name: 'ParazitX');
 
-      // Stop current tunnel first
-      try {
-        await VkTunnelPlugin.stopTunnel();
-      } catch (_) {}
-
-      // Reset tunnel ready state
-      if (_tunnelReady) {
-        _tunnelReady = false;
-        _tunnelReadyCtrl.add(false);
-      }
-
-      // Try to get a new session (reuses _rotateCall logic)
       await _rotateCall();
 
-      // If rotation failed, try full reactivation
       if (_currentJoinLink == null) {
         developer.log(
           'Reconnect: rotation failed, trying full reactivate',
           name: 'ParazitX',
         );
-        _isActive = false; // Allow activate() to proceed
+        _isActive = false;
         await activate();
       }
     });
   }
+}
+
+class _SessionResult {
+  const _SessionResult.ok(String link, int idx)
+      : joinLink = link,
+        serverIndex = idx,
+        error = null;
+  const _SessionResult.err(ActivateError err)
+      : joinLink = null,
+        serverIndex = null,
+        error = err;
+
+  final String? joinLink;
+  final int? serverIndex;
+  final ActivateError? error;
 }

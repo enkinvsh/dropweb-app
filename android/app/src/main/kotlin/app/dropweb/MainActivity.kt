@@ -1,6 +1,9 @@
 package app.dropweb
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -10,6 +13,7 @@ import app.dropweb.plugins.ServicePlugin
 import app.dropweb.plugins.TilePlugin
 import app.dropweb.plugins.VpnPlugin
 import app.dropweb.services.ParazitXVpnController
+import app.dropweb.services.ParazitXVpnService
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -70,18 +74,39 @@ class MainActivity : FlutterActivity() {
                 }
             }
         
+        // Cross-process status bridge: ParazitXVpnService lives in `:parazitx`
+        // (dedicated process so FGS policy can't freeze librelay). It
+        // sends status via package-scoped broadcast; we forward to Flutter.
         EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "app.dropweb/vktunnel/status",
         ).setStreamHandler(object : EventChannel.StreamHandler {
+            private var receiver: BroadcastReceiver? = null
             override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
                 val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
-                ParazitXRelayController.statusListener = { status ->
-                    uiHandler.post { events.success(status) }
+                val r = object : BroadcastReceiver() {
+                    override fun onReceive(ctx: Context, intent: Intent) {
+                        val status = intent.getStringExtra(ParazitXVpnService.EXTRA_STATUS)
+                            ?: return
+                        uiHandler.post { events.success(status) }
+                    }
                 }
+                val filter = IntentFilter(ParazitXVpnService.BROADCAST_STATUS)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(r, filter, Context.RECEIVER_NOT_EXPORTED)
+                } else {
+                    @Suppress("UnspecifiedRegisterReceiverFlag")
+                    registerReceiver(r, filter)
+                }
+                receiver = r
+                // If the service is already running (app reopened while VPN
+                // active), ask it to rebroadcast its current status so the
+                // UI can bootstrap without waiting for the next transition.
+                ParazitXVpnController.queryStatus(applicationContext)
             }
             override fun onCancel(arguments: Any?) {
-                ParazitXRelayController.statusListener = null
+                try { receiver?.let { unregisterReceiver(it) } } catch (_: Exception) {}
+                receiver = null
             }
         })
 
@@ -92,9 +117,16 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "start" -> {
                         val args = call.arguments as? Map<String, Any?> ?: emptyMap()
+                        val joinLink = args["joinLink"] as? String ?: ""
                         val port = (args["socksPort"] as? Number)?.toInt() ?: 1080
-                        val user = args["socksUser"] as? String ?: ""
-                        val pass = args["socksPass"] as? String ?: ""
+                        if (joinLink.isEmpty()) {
+                            result.error(
+                                "BAD_ARGS",
+                                "joinLink required",
+                                null,
+                            )
+                            return@setMethodCallHandler
+                        }
                         // Reuse AppPlugin's VPN consent flow — it registers its
                         // activity-result listener through ActivityPluginBinding,
                         // so the FlutterActivity keeps its EGL context across
@@ -103,7 +135,7 @@ class MainActivity : FlutterActivity() {
                         // Impeller's EGL state on Pixel 10 (black screen).
                         appPlugin.requestVpnPermission {
                             val started = ParazitXVpnController.start(
-                                applicationContext, port, user, pass,
+                                applicationContext, port, joinLink,
                             )
                             if (started) result.success(null)
                             else result.error(
@@ -119,42 +151,6 @@ class MainActivity : FlutterActivity() {
                     }
                     "isRunning" -> {
                         result.success(ParazitXVpnController.isRunning)
-                    }
-                    else -> result.notImplemented()
-                }
-            }
-
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/vktunnel")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "startTunnel" -> {
-                        val joinLink = call.argument<String>("joinLink") ?: ""
-                        val socksPortArg = call.argument<String>("socksPort")
-                            ?: call.argument<Int>("socksPort")?.toString()
-                            ?: "1080"
-                        val socksPort = socksPortArg.toIntOrNull() ?: 1080
-                        val error = VkTunnelManager.startTunnel(
-                            applicationContext,
-                            joinLink,
-                            socksPort,
-                        )
-                        if (error == null) {
-                            val (user, pass) = VkTunnelManager.getSocksCredentials()
-                            result.success(mapOf(
-                                "socksPort" to socksPort,
-                                "socksUser" to user,
-                                "socksPass" to pass,
-                            ))
-                        } else {
-                            result.error("TUNNEL_ERROR", error, null)
-                        }
-                    }
-                    "stopTunnel" -> {
-                        VkTunnelManager.stopTunnel()
-                        result.success(null)
-                    }
-                    "getStatus" -> {
-                        result.success(VkTunnelManager.getStatus())
                     }
                     else -> result.notImplemented()
                 }
