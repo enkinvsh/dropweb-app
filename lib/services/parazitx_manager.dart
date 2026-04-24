@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:dropweb/models/models.dart';
+import 'package:dropweb/state.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
@@ -37,6 +39,27 @@ class ParazitXManager {
   static StreamSubscription<String>? _statusSub;
   static bool _vpnStarted = false;
   static const _rotationInterval = Duration(minutes: 10);
+  static const _sessionRequestTimeout = Duration(seconds: 35);
+
+  /// Fallback when subscription does not provide a server list.
+  /// Port 3478 matches the new callfactory (TURN mimicry).
+  static const _fallbackServers = <String>['31.57.105.213:3478'];
+
+  /// Name of the subscription HTTP header that lists callfactory endpoints.
+  /// Must use the `dropweb-` prefix — the profile loader only accepts
+  /// dropweb-* provider headers (see Profile.fetchFile in models/profile.dart).
+  static const _serversHeaderName = 'dropweb-parazitx-servers';
+
+  /// Ordered list of `host:port` endpoints for /v1/session requests.
+  /// Populated from the subscription header on first [activate] call,
+  /// shuffled once to spread load across the pool, and cached until
+  /// [deactivate] clears it.
+  static List<String> _servers = [];
+
+  /// Index of the last known working server inside [_servers].
+  /// Used as the starting point for rotation/fallback loops so we stick
+  /// to a proven endpoint until it fails.
+  static int _serverIndex = 0;
 
   static final StreamController<bool> _tunnelReadyCtrl =
       StreamController<bool>.broadcast();
@@ -50,10 +73,58 @@ class ParazitXManager {
 
   static bool get isActive => _isActive;
 
+  /// Read the callfactory endpoint pool from the active profile's
+  /// provider headers. Falls back to [_fallbackServers] when the header
+  /// is missing, empty, or the profile cannot be read.
+  static Future<List<String>> _loadServersFromSubscription() async {
+    try {
+      final profile = globalState.config.currentProfile;
+      if (profile == null) {
+        developer.log(
+          'No active profile, using fallback servers',
+          name: 'ParazitX',
+        );
+        return List<String>.from(_fallbackServers);
+      }
+
+      final raw = profile.providerHeaders[_serversHeaderName];
+      if (raw == null || raw.isEmpty) {
+        developer.log(
+          'No $_serversHeaderName header, using fallback',
+          name: 'ParazitX',
+        );
+        return List<String>.from(_fallbackServers);
+      }
+
+      final servers = raw
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      if (servers.isEmpty) {
+        return List<String>.from(_fallbackServers);
+      }
+
+      developer.log(
+        'Loaded ${servers.length} server(s) from subscription',
+        name: 'ParazitX',
+      );
+      return servers;
+    } catch (e) {
+      developer.log(
+        'Failed to load servers from subscription: $e',
+        name: 'ParazitX',
+      );
+      return List<String>.from(_fallbackServers);
+    }
+  }
+
   /// Activate ParazitX mode:
   /// 1. Load stored VK cookies
   /// 2. Encrypt them with X25519+AES-GCM (forward secrecy)
-  /// 3. POST to callfactory → receive join_link
+  /// 3. POST to callfactory → receive join_link (with 503/error fallback
+  ///    across the server pool from the subscription)
   /// 4. Start VK SOCKS5 tunnel on 127.0.0.1:1080
   ///
   /// Returns null on success, or an [ActivateError] describing what went wrong.
@@ -69,57 +140,116 @@ class ParazitXManager {
       await deactivate();
     }
 
+    // Refresh server pool on every cold activate — subscription updates
+    // after [deactivate] should propagate immediately.
+    if (_servers.isEmpty) {
+      _servers = await _loadServersFromSubscription();
+      _servers.shuffle();
+      _serverIndex = 0;
+    }
+
     final cookies = await VkAuthService.loadCookies();
     if (cookies == null) return ActivateError.noCookies;
 
-    // Encrypt cookies for transport
     final encrypted = await CryptoService.encryptCookies(cookies);
+    final body = jsonEncode(encrypted);
 
-    // Send to callfactory and request a session
-    final http.Response response;
-    try {
-      response = await http.post(
-        Uri.parse('http://31.57.105.213:8088/v1/session'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(encrypted),
-      );
-    } catch (_) {
-      return ActivateError.networkError;
-    }
+    var lastError = ActivateError.networkError;
 
-    if (response.statusCode != 200) {
-      final body = response.body.toLowerCase();
-      if (body.contains('vk unauthorized') ||
-          body.contains('timeout waiting')) {
-        return ActivateError.vkUnauthorized;
+    // Try each server in order; on 503 or transient error move to the next.
+    for (var attempt = 0; attempt < _servers.length; attempt++) {
+      final idx = (_serverIndex + attempt) % _servers.length;
+      final server = _servers[idx];
+      developer.log('Trying server: $server', name: 'ParazitX');
+
+      final http.Response response;
+      try {
+        response = await http
+            .post(
+              Uri.parse('http://$server/v1/session'),
+              headers: {'Content-Type': 'application/json'},
+              body: body,
+            )
+            .timeout(_sessionRequestTimeout);
+      } catch (e) {
+        developer.log(
+          'Server $server request failed: $e',
+          name: 'ParazitX',
+        );
+        lastError = ActivateError.networkError;
+        continue;
       }
-      return ActivateError.serverError;
+
+      if (response.statusCode == 503) {
+        developer.log(
+          'Server $server overloaded (503), trying next',
+          name: 'ParazitX',
+        );
+        lastError = ActivateError.serverError;
+        continue;
+      }
+
+      if (response.statusCode != 200) {
+        final respBody = response.body.toLowerCase();
+        if (respBody.contains('vk unauthorized') ||
+            respBody.contains('timeout waiting') ||
+            respBody.contains('check cookies')) {
+          // Auth problem is not server-specific — bail out immediately,
+          // the user needs to re-login.
+          return ActivateError.vkUnauthorized;
+        }
+        developer.log(
+          'Server $server returned ${response.statusCode}: ${response.body}',
+          name: 'ParazitX',
+        );
+        lastError = ActivateError.serverError;
+        continue;
+      }
+
+      final Map<String, dynamic> data;
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {
+        lastError = ActivateError.serverError;
+        continue;
+      }
+
+      final joinLink = data['join_link'] as String?;
+      if (joinLink == null) {
+        lastError = ActivateError.serverError;
+        continue;
+      }
+
+      _currentJoinLink = joinLink;
+
+      final tunnelResult = await VkTunnelPlugin.startTunnel(joinLink);
+      if (!tunnelResult.isSuccess) {
+        // Tunnel failures are local (VpnService / librelay) — retrying
+        // another callfactory won't help. Surface the error.
+        return ActivateError.tunnelError;
+      }
+
+      _currentSession = tunnelResult.session;
+      _isActive = true;
+      // Remember the working server as the new starting point.
+      _serverIndex = idx;
+      _subscribeToRelayStatus();
+
+      // In case librelay emitted STATUS:TUNNEL_CONNECTED before we subscribed
+      // (fast path: cached session, no captcha), query once after subscription.
+      // Idempotent — _startVpnLayer checks _vpnStarted internally.
+      unawaited(_checkAlreadyConnected());
+
+      _startRotationTimer();
+      return null;
     }
 
-    final Map<String, dynamic> data;
-    try {
-      data = jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (_) {
-      return ActivateError.serverError;
-    }
-
-    _currentJoinLink = data['join_link'] as String?;
-    if (_currentJoinLink == null) return ActivateError.serverError;
-
-    final tunnelResult = await VkTunnelPlugin.startTunnel(_currentJoinLink!);
-    if (!tunnelResult.isSuccess) return ActivateError.tunnelError;
-
-    _currentSession = tunnelResult.session;
-    _isActive = true;
-    _subscribeToRelayStatus();
-
-    // In case librelay emitted STATUS:TUNNEL_CONNECTED before we subscribed
-    // (fast path: cached session, no captcha), query once after subscription.
-    // Idempotent — _startVpnLayer checks _vpnStarted internally.
-    unawaited(_checkAlreadyConnected());
-
-    _startRotationTimer();
-    return null;
+    // Every server in the pool failed.
+    developer.log(
+      'All ${_servers.length} server(s) failed, lastError=$lastError',
+      name: 'ParazitX',
+    );
+    return lastError;
   }
 
   static Future<void> _checkAlreadyConnected() async {
@@ -219,6 +349,9 @@ class ParazitXManager {
     _isActive = false;
     _currentJoinLink = null;
     _currentSession = null;
+    // Drop cached pool so the next activate picks up subscription updates.
+    _servers = [];
+    _serverIndex = 0;
     if (_tunnelReady) {
       _tunnelReady = false;
       _tunnelReadyCtrl.add(false);
@@ -243,40 +376,83 @@ class ParazitXManager {
     _rotationTimer = null;
   }
 
+  /// Periodic rotation: ask callfactory for a new call and hand it to the
+  /// relay. Tries the current server first, falls back across the pool on
+  /// 503 / transient errors so a single overloaded node doesn't break the
+  /// user's session.
   static Future<void> _rotateCall() async {
     if (!_isActive) return;
+    if (_servers.isEmpty) return;
 
-    // Get new join_link
     final cookies = await VkAuthService.loadCookies();
     if (cookies == null) return;
 
     final encrypted = await CryptoService.encryptCookies(cookies);
+    final body = jsonEncode(encrypted);
 
-    final http.Response response;
-    try {
-      response = await http.post(
-        Uri.parse('http://31.57.105.213:8088/v1/session'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(encrypted),
-      );
-    } catch (_) {
+    for (var attempt = 0; attempt < _servers.length; attempt++) {
+      final idx = (_serverIndex + attempt) % _servers.length;
+      final server = _servers[idx];
+
+      final http.Response response;
+      try {
+        response = await http
+            .post(
+              Uri.parse('http://$server/v1/session'),
+              headers: {'Content-Type': 'application/json'},
+              body: body,
+            )
+            .timeout(_sessionRequestTimeout);
+      } catch (e) {
+        developer.log(
+          'Rotation: $server failed: $e',
+          name: 'ParazitX',
+        );
+        continue;
+      }
+
+      if (response.statusCode == 503) {
+        developer.log(
+          'Rotation: $server overloaded, trying next',
+          name: 'ParazitX',
+        );
+        continue;
+      }
+
+      if (response.statusCode != 200) {
+        developer.log(
+          'Rotation: $server returned ${response.statusCode}',
+          name: 'ParazitX',
+        );
+        continue;
+      }
+
+      final Map<String, dynamic> data;
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {
+        continue;
+      }
+
+      final newJoinLink = data['join_link'] as String?;
+      if (newJoinLink == null || newJoinLink == _currentJoinLink) return;
+
+      // Restart tunnel with new link.
+      await VkTunnelPlugin.stopTunnel();
+      final result = await VkTunnelPlugin.startTunnel(newJoinLink);
+
+      if (result.isSuccess) {
+        _currentJoinLink = newJoinLink;
+        _currentSession = result.session;
+        _serverIndex = idx;
+        developer.log('Rotation successful on $server', name: 'ParazitX');
+      }
       return;
     }
 
-    if (response.statusCode != 200) return;
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final newJoinLink = data['join_link'] as String?;
-
-    if (newJoinLink == null || newJoinLink == _currentJoinLink) return;
-
-    // Restart tunnel with new link
-    await VkTunnelPlugin.stopTunnel();
-    final result = await VkTunnelPlugin.startTunnel(newJoinLink);
-
-    if (result.isSuccess) {
-      _currentJoinLink = newJoinLink;
-      _currentSession = result.session;
-    }
+    developer.log(
+      'Rotation: all ${_servers.length} server(s) failed, keeping current call',
+      name: 'ParazitX',
+    );
   }
 }
