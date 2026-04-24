@@ -79,6 +79,21 @@ class AppLocalizations {
     );
   }
 
+  /// `ParazitX`
+  String get parazitx {
+    return Intl.message('ParazitX', name: 'parazitx', desc: '', args: []);
+  }
+
+  /// `Network drop bypass via VK`
+  String get parazitxDesc {
+    return Intl.message(
+      'Network drop bypass via VK',
+      name: 'parazitxDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `By rule`
   String get rule {
     return Intl.message('By rule', name: 'rule', desc: '', args: []);

@@ -499,16 +499,10 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
     if (_captchaOpen || !mounted) return;
     _captchaOpen = true;
     try {
-      final navigator = Navigator.of(context);
-      await navigator.push<bool>(
+      await Navigator.of(context).push<bool>(
         MaterialPageRoute(builder: (_) => CaptchaScreen(proxyUrl: url)),
       );
-      if (!mounted) return;
-      // Pop back to dashboard. The InAppWebView in Settings/VkLogin survives
-      // a tunnel handoff cleanly only when fully unmounted before Android
-      // delivers the VpnService network change — otherwise the GPU surface
-      // gets EGL_BAD_ACCESS and the whole app paints black on resume.
-      navigator.popUntil((route) => route.isFirst);
+      // ParazitXPage listens for tunnelReady and does the popUntil-isFirst.
     } finally {
       _captchaOpen = false;
     }
@@ -689,11 +683,6 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const ListItem(
-          title: Text('ParazitX'),
-          subtitle: Text('Обход whitelist через VK'),
-        ),
-        const Divider(height: 0),
         ListItem.switchItem(
           title: const Text('Обход whitelist (β)'),
           subtitle: Row(
@@ -782,10 +771,6 @@ class ApplicationSettingView extends StatelessWidget {
           child: OpenLogsFolderItem(),
         ),
       ],
-      const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ParazitXSectionItem(),
-      ),
       Padding(
         padding: EdgeInsets.only(top: system.isDesktop ? 0 : 16),
         child: ResetAppItem(),

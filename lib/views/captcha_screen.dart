@@ -23,7 +23,13 @@ class _CaptchaScreenState extends State<CaptchaScreen> {
     super.initState();
     _statusSub = VkTunnelPlugin.statusStream.listen((status) {
       if (!mounted) return;
-      if (TunnelStatus.isTunnelReady(status)) {
+      // Close as soon as the relay accepts the captcha — don't wait for
+      // TUNNEL_CONNECTED. The page-level blocking modal takes over input
+      // immediately after this pop, so the user can never tap anything
+      // while the WebRTC handshake (~1-7s) finishes.
+      if (status.startsWith('Captcha solved') ||
+          TunnelStatus.isTunnelReady(status) ||
+          TunnelStatus.isFailure(status)) {
         Navigator.of(context).pop(true);
       }
     });

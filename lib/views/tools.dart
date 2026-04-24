@@ -19,6 +19,7 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' show dirname, join;
 
 import 'package:dropweb/pages/send_to_tv_page.dart';
+import 'package:dropweb/views/parazitx_page.dart';
 
 import 'developer.dart';
 import 'theme.dart';
@@ -80,6 +81,7 @@ class _ToolboxViewState extends ConsumerState<ToolsView> {
           if (Platform.isWindows) const _LoopbackItem(),
           if (Platform.isAndroid) const _AccessItem(),
           if (Platform.isAndroid) const _TvItem(),
+          if (Platform.isAndroid) const _ParazitXItem(),
           if (enableDeveloperMode) const _ConfigItem(),
           if (enableDeveloperMode) const _SettingItem(),
         ],
@@ -376,6 +378,23 @@ class _TvItemState extends ConsumerState<_TvItem> {
               );
             }
           : null,
+    );
+  }
+}
+
+class _ParazitXItem extends StatelessWidget {
+  const _ParazitXItem();
+
+  @override
+  Widget build(BuildContext context) {
+    final appLocale = AppLocalizations.of(context);
+    return ListItem(
+      leading: const HugeIcon(icon: HugeIcons.strokeRoundedShield01, size: 24),
+      title: Text(appLocale.parazitx),
+      subtitle: Text(appLocale.parazitxDesc),
+      onTap: () {
+        BaseNavigator.push(context, const ParazitXPage());
+      },
     );
   }
 }
