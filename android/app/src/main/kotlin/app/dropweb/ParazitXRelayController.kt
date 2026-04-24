@@ -89,10 +89,11 @@ object ParazitXRelayController {
             } finally {
                 synchronized(this) {
                     isRunning = false
-                    status = "disconnected"
+                    status = "TUNNEL_LOST"
                     process = null
                     stdinWriter = null
                 }
+                try { statusListener?.invoke("TUNNEL_LOST") } catch (_: Exception) {}
             }
         }.also { it.start() }
 

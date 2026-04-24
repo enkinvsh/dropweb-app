@@ -318,10 +318,14 @@ class ParazitXManager {
           unawaited(_startVpnLayer());
         }
       } else if (TunnelStatus.isFailure(status)) {
+        print(
+            '[ParazitX] TUNNEL FAILURE detected: $status, triggering reconnect');
         if (_tunnelReady) {
           _tunnelReady = false;
           _tunnelReadyCtrl.add(false);
         }
+        // Auto-reconnect on tunnel failure
+        unawaited(_reconnectAfterFailure());
       }
     });
   }
@@ -331,6 +335,8 @@ class ParazitXManager {
   /// librelay process, then local state.
   static Future<void> deactivate() async {
     _stopRotationTimer();
+    _reconnectDebounce?.cancel();
+    _reconnectDebounce = null;
     await _statusSub?.cancel();
     _statusSub = null;
     if (_vpnStarted) {
@@ -454,5 +460,49 @@ class ParazitXManager {
       'Rotation: all ${_servers.length} server(s) failed, keeping current call',
       name: 'ParazitX',
     );
+  }
+
+  /// Debounce timer to prevent reconnect spam on rapid failures.
+  static Timer? _reconnectDebounce;
+
+  /// Auto-reconnect after tunnel failure with debounce.
+  /// Waits 2 seconds to avoid rapid reconnect loops, then attempts
+  /// to establish a new VK call session.
+  static Future<void> _reconnectAfterFailure() async {
+    // Cancel any pending reconnect
+    _reconnectDebounce?.cancel();
+
+    _reconnectDebounce = Timer(const Duration(seconds: 2), () async {
+      if (!_isActive) {
+        developer.log('Reconnect aborted: not active', name: 'ParazitX');
+        return;
+      }
+
+      developer.log('Auto-reconnect: attempting new session', name: 'ParazitX');
+
+      // Stop current tunnel first
+      try {
+        await VkTunnelPlugin.stopTunnel();
+      } catch (_) {}
+
+      // Reset tunnel ready state
+      if (_tunnelReady) {
+        _tunnelReady = false;
+        _tunnelReadyCtrl.add(false);
+      }
+
+      // Try to get a new session (reuses _rotateCall logic)
+      await _rotateCall();
+
+      // If rotation failed, try full reactivation
+      if (_currentJoinLink == null) {
+        developer.log(
+          'Reconnect: rotation failed, trying full reactivate',
+          name: 'ParazitX',
+        );
+        _isActive = false; // Allow activate() to proceed
+        await activate();
+      }
+    });
   }
 }
