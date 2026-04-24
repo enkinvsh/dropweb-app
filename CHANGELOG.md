@@ -1,3 +1,3064 @@
+## v0.6.0-beta3
+
+- release(v0.6.0-beta3): Win32 WM_SIZING hook — actually cap window width
+
+- Beta2 was wrong. window_manager.setMaximumSize() doesn't work on frameless
+- windows because the plugin's own WM_SIZING handler ignores maximum_size_.
+- Beta2 hooked WM_GETMINMAXINFO only, which is skipped on some Windows 11
+- borderless configurations.
+
+- Beta3: hook WM_SIZING in windows/runner/flutter_window.cpp BEFORE
+- Flutter's plugin handler. Mutate the proposed RECT on every drag tick
+- based on which edge the user is dragging. This is the canonical Win32
+- pattern and works regardless of plugin behavior.
+
+- Kept WM_GETMINMAXINFO as fallback for fresh-start + programmatic moves.
+
+## v0.6.0-beta2
+
+- release(v0.6.0-beta2): hotfix Windows width cap + installer desktop icon
+
+- Hotfix for v0.6.0-beta1 — both Windows-specific fixes from beta1 reported
+- broken by test-group users:
+
+- - Window width still resizable past 600px (window_manager.setMaximumSize
+-   unreliable on frameless windows). Fixed via Win32 WM_GETMINMAXINFO
+-   hook in windows/runner/flutter_window.cpp.
+- - Installer hid the desktop-icon checkbox whenever it detected an upgrade.
+-   Removed the 'Check: not IsUpgradeInstallation' clause so the checkbox
+-   always appears.
+
+## v0.6.0-beta1
+
+- release(v0.6.0-beta1): decouple dropweb from FlClashX (Windows registry + headers)
+
+- Fixes two user-reported Windows bugs:
+
+- Bug #1: VPN connect button disappears when the window is resized wider.
+-   Root cause: bottom nav bar + connect button only render in ViewMode.mobile
+-   (<=600px). Desktop/laptop layouts have no connect button.
+-   Fix: clamp window max width to 600px via window_manager.
+
+- Bug #2: dropweb 'steals' FlClashX's subscriptions + widgets on Windows.
+-   Root cause: two-layer entanglement.
+-     (a) Protocol.register() unconditionally overwrote HKCU\\Software\\Classes
+-         \\flclash and \\clashx, hijacking deep-link handlers that belong
+-         to FlClashX.
+-     (b) Subscription parser accepted HTTP response headers with flclashx-*
+-         prefix - so any Remnawave panel serving FlClashX-targeted layouts
+-         would apply them to dropweb too.
+-   Fix: hard decouple both layers.
+-     - flclash:// and clashx:// now registered with onlyIfMissing=true.
+-     - One-time migration removes our existing claims on shared schemes.
+-     - Remnawave header parser now accepts ONLY dropweb-* prefix.
+-     - Uninstaller conditionally removes shared scheme handlers.
+
+- BREAKING: Remnawave panel (cab.dropweb.space) and @dropwebpay_bot must be
+- updated in the same release window to emit dropweb-* headers and
+- dropweb:// links. Legacy flclashx-* is silently ignored.
+
+- TG notifications disabled for this release (notify_telegram.py still
+- posts as FlClashX - separate rebrand task).
+
+- See .sisyphus/plans/2026-04-20-flclashx-hard-decouple.md for full plan.
+
+## v0.5.2
+
+- release(v0.5.2): macOS tray popover size + magic rings on resize
+
+- - fix(macos): pin NSPopover preferredContentSize to 375×600. Without it
+-   the Flutter view pushed the popover to grow vertically (observed at
+-   ~1180 px on user's tray) — autoresizingMask alone wasn't enough.
+
+- - fix(home): MagicRings stayed at a stale anchor after window resize on
+-   desktop. Added WidgetsBindingObserver to _ConnectCircle so position
+-   is re-reported via didChangeMetrics after the layout settles.
+
+## v0.5.1
+
+- release(v0.5.1): juicy easter-egg + drop-zone fix
+
+- - feat(about): full game-feel pass on File Transfer easter egg
+-   - wandering target (Lissajous, ×1.6 amp / ×1.8 freq on drag)
+-   - SHRINKING target: drop zone collapses from full-height to a 220dp
+-     square when a drag starts — surrounding space becomes miss zone
+-   - anti-drag ping taunts cycling every 1.1s, with an escalating
+-     dread set for kinvsh ('НЕТ', 'умоляю', 'это конец')
+-   - success: animated progress, 14-particle confetti via CustomPainter,
+-     zone pulse, '+1 shipped' float-up, medium haptic
+-   - failure: shard burst via same painter + heavy haptic at drop point
+-   - SURPRISE A (chen boomerang): first 'successful' chen08209 drop is
+-     a fakeout — card returns, progress rolls back to 0, try again
+-   - SURPRISE B (kinvsh ghost counter): '9 из 9' morphs through
+-     '9 из 13 / 9 из ∞ / ? из ?' while kinvsh hovers the drop zone
+-   - SURPRISE C (kinvsh glitch exit): 4 black/red flashes + fake
+-     terminal stack trace before handleExit() — ~1.5s of drama
+
+- - fix(game): AnimatedContainer crashed with 'Cannot interpolate between
+-   finite and unbounded constraints' when animating width/height between
+-   double.infinity and 220. Wrapped drop zone in LayoutBuilder and
+-   animate between two resolved finite numbers, with fallback 360/480
+-   for the first layout pass.
+
+- fix(about+nav): repo URL, header tap zones, easter-egg moved to nav-bar
+
+- - fix: repository constant was 'enkinvsh/dropweb-app' but the actual
+-   GitHub repo is 'enkinvsh/dropweb' — broke About 'Проект' link, the
+-   in-app update checker, and release page redirects.
+
+- - perf(home): _ConnectCircle._scheduleTracking was an infinite
+-   addPostFrameCallback running every frame on Dashboard
+-   (findRenderObject + localToGlobal + ValueNotifier write each tick).
+-   The button doesn't move while Dashboard is alive — report position
+-   once in initState and again after didChangeDependencies for
+-   orientation / insets shifts.
+
+- - fix(home): dev-mode no longer activates accidentally. Counter for
+-   '5 taps on Settings' now resets on any non-Tools nav-bar tap, so
+-   Dashboard↔Tools bouncing can't unlock it.
+
+- - feat(home): easter-egg game moved off the About page. 10 rapid
+-   consecutive taps on the Dashboard nav-bar entry now launch the File
+-   Transfer game. Tools/Dashboard counters are mutually exclusive
+-   (tapping Tools resets egg counter and vice versa).
+
+- - refactor(about): drop _EasterEggDetector wrapper from the header
+-   since the trigger lives in the nav-bar now. Header keeps the 3D
+-   flip and three discrete tap zones (avatar=flip, name=link,
+-   subtitle=link).
+
+- - fix(tools): bottom padding on the settings list was 20px while the
+-   floating nav-bar takes ~80px + system insets, hiding the last item
+-   once dev-mode unlocks extra entries. Now uses 96 + viewPadding.bottom.
+
+## v0.5.0
+
+- refine(about): simplify structure, hide kinvsh behind logo flip
+
+- - feat: 3D flip on logo+name tap → swaps dropweb↔kinvsh with author avatar
+- - refactor: Благодарность reduced to one menu item that opens credits sheet
+-   (no parade of avatars on main About page); kinvsh excluded from the sheet
+-   since he's already the flip-side of the logo
+- - fix: restore missing assets/images/icon.png (removed in 61fe7c0 'remove
+-   unused legacy brand assets' but still referenced by About + sidebar +
+-   launcher config)
+- - feat: easter-egg drag-and-drop game — 10 taps on header opens it,
+-   move contributor cards one-by-one to shipped/, final kinvsh drop
+-   closes the app via appController.handleExit() (can't ship yourself)
+- - docs: changelog rewrite to match final v0.5.0 behaviour
+
+- release(v0.5.0): fix Dashboard→Settings stutter, clean up About, hidden credits egg
+
+- - perf(tools): move Keystore IPC out of _TvItem.build() into initState
+-   via ref.listenManual. Eliminates 335ms frame spike during page
+-   transitions (Pixel 10, debug: p99 335→15ms, slow frames 19%→6%).
+
+- - refactor(about): drop three legacy contributors/thanks/gratitude
+-   sections inherited from upstream forks. Public About now shows just
+-   logo, version, core, description and links.
+
+- - fix(about): remove in-app 'Check for updates' on Android (Play Store
+-   policy forbids it). Retained for desktop builds.
+
+- - fix(about): fix stale repo links — originalRepository now points to
+-   pluralplay/FlClashX (our direct upstream, not chen08209/FlClash),
+-   core points to MetaCubeX/mihomo (real VPN engine, not the fork).
+
+- - feat(about): hidden credits via File Transfer Manager easter egg.
+-   Ten taps on the logo reveal a credits roll disguised as a file
+-   transfer: each 'file' is actually a contributor with avatar and role,
+-   in order chen08209 → pluralplay → ... → enkinvsh. Transfer hangs
+-   forever on the last one.
+
+## v0.4.5
+
+- release(v0.4.5): consolidate splash-hang fix, rebrand repo dropweb-app → dropweb
+
+- Consolidates the real splash-hang fix (file_logger infinite microtask
+- loop, see lib/common/file_logger.dart) into a single v0.4.5 release.
+- All previous v0.4.5 → v0.4.18 tags/releases were red herrings chasing
+- Impeller, Flutter version, plugin lifecycle, and savedInstanceState —
+- none of which were the actual bug. The whole timeline rolls into this
+- single release under its proper version.
+
+- Also renames the repository: enkinvsh/dropweb-app → enkinvsh/dropweb.
+- Updated README.md, README_EN.md, and .github/release_template.md.
+- GitHub preserves a redirect from the old URL.
+
+- Update changelog
+
+- fix(fatal): splash hang — file_logger infinite microtask loop
+
+- ROOT CAUSE FOUND via Dart VM service getStack on a live hung debug build:
+
+-     0  verifiedLocale @ intl_helpers.dart
+-     1  verifiedLocale @ intl_helpers.dart
+-     2  DateFormat @ date_format.dart
+-     3  _getTodayDate @ file_logger.dart:52
+-     4  _getCurrentLogFile @ file_logger.dart
+-     5  _ensureSink @ file_logger.dart
+-     6  _processQueue @ file_logger.dart:170
+-     7  _processQueue @ file_logger.dart:188   <-- recursive retry
+-     ... runBinary / handleError / _propagateToListeners / _completeErrorObject
+-     ... runBinary / handleError / _propagateToListeners / _completeErrorObject
+-     _microtaskLoop
+-     _startMicrotaskLoop
+
+- DateFormat('yyyy-MM-dd') with no explicit locale falls through to
+- Intl.systemLocale, and during early cold start (before locale data is
+- loaded) it throws in intl_helpers.verifiedLocale.
+
+- _processQueue catches this silently and then checks if queue is non-empty
+- and recursively schedules itself via unawaited(_processQueue()). Since
+- every log message entering the queue re-triggers the same throw, the
+- microtask loop runs forever. Microtasks have higher priority than event
+- loop tasks, so runApp's scheduleAttachRootWidget never fires, and the
+- splash screen sits on DRAW_PENDING indefinitely.
+
+- Why post-reboot specifically: on warm start _service logs less and the
+- race loses, but on cold start after reboot the service isolate floods
+- commonPrint.log() calls (dns handshake, socks port init, service ready
+- signaling) before the main isolate has a chance to schedule its first
+- runApp frame. The queue saturates, the recursive retry wedges main.
+
+- Explains every symptom seen across v0.4.5 → v0.4.17:
+- - Post-reboot / cold-start specific (locale data not yet loaded)
+- - All devices (Pixel 5, 10) — not a hardware issue
+- - Impeller/Flutter-bump 'fixes' worked by accident (changed timing
+-   enough that locale loaded before first log)
+- - 10 previous tags churning around plugin lifecycle were all red herrings
+
+- Fix:
+- 1. Replace DateFormat with manual ISO string formatting for both date
+-    and timestamp. No locale dependency.
+- 2. On sink failure, drop the queue instead of retrying the same broken
+-    sink — infinite retry on persistent errors is never correct anyway.
+
+- Verified fix on live debug build via flutter run + Dart VM service:
+- after hot-restart with these changes, Application.initState fires,
+- UI renders, subscription card visible, VPN toggle button present.
+
+- Bumps version to 0.4.18.
+
+- diag: add granular [MAIN] and [APP] tracing around runApp
+
+- Live logcat from v0.4.16 after force-stop+relaunch under memory pressure
+- shows main isolate reaches '[MAIN] globalState.initApp done' and then
+- goes silent — splash still hangs. The remaining code before runApp and
+- inside Application.initState was untraced.
+
+- This release adds debugPrint at every step from globalState.initApp
+- completion through runApp return, and at every step of Application.initState
+- including the postFrameCallback. Next repro will pinpoint exact line.
+
+- Not a fix, just instrumentation. Bumps version to 0.4.17.
+
+- Update changelog
+
+- fix(android): discard stale savedInstanceState post-reboot
+
+- Actual root cause of post-reboot splash hang (reproducible on Pixel 5 and
+- Pixel 10, not device-specific):
+
+- Android keeps our Task persistent across reboots (isPersistable=true,
+- mNeverRelinquishIdentity=true by default for singleTop launcher Activity).
+- After reboot, launcher does LAUNCH_SINGLE_TOP on the saved Task, and Android
+- passes a savedInstanceState Bundle from the pre-reboot process into the
+- freshly-forked MainActivity.onCreate. FlutterActivity.onCreate then tries
+- to restore FlutterEngine state from that Bundle — but the engine it
+- references no longer exists (process was killed). Restoration path
+- blocks in native code indefinitely.
+
+- Logcat evidence: wm_on_create_called/wm_on_resume_called fire normally,
+- but no Impeller/flutter/Dart logs ever appear. Main thread sits at R(running)
+- in userspace, CPU burned but no forward progress for minutes.
+
+- Fix: pass null to super.onCreate. We don't use Flutter's restoration API
+- (no RestorationScope / restorationId anywhere), so there's nothing to
+- recover. Fresh engine boot every cold-start is what we want anyway.
+
+- Bumps version to 0.4.16.
+
+- Update changelog
+
+- fix(android): ServicePlugin.init — post initServiceEngine, don't block channel call
+
+- v0.4.14 didn't fix splash hang. Stack trace from Log.w(Throwable) on live
+- device deobfuscated via R8 mapping:
+
+-     GlobalState.initServiceEngine() (from Throwable at line 156)
+-     ServicePlugin.onMethodCall("init") at ServicePlugin.kt:40
+-     (invoked via MethodChannel "service" from Dart main isolate)
+
+- Cold-start flow:
+
+- 1. lib/main.dart main() runs: await clashCore.preload()
+- 2. ClashCore._internal() instantiates clashLib (lazy) → ClashLib._internal()
+- 3. ClashLib._internal() synchronously calls _initService()
+- 4. _initService() calls await service?.init() → platform channel 'init'
+- 5. ServicePlugin.onMethodCall("init") calls GlobalState.initServiceEngine()
+-    synchronously, which runs runLock.withLock { executeDartEntrypoint(_service) }
+-    on the Android platform thread.
+- 6. While the platform thread is busy bootstrapping the service Dart VM,
+-    main engine never gets a chance to progress its own Dart isolate.
+-    MainActivity surface stays DRAW_PENDING, splash stuck with 'db' logo.
+
+- Fix: post initServiceEngine onto the next main looper tick so the
+- platform channel 'init' call returns immediately. result.success(true)
+- fires synchronously, Dart main isolate keeps running, clashCore.preload()
+- awaits its handshake, and on the next looper tick the service engine
+- bootstraps without starving the platform thread.
+
+- Also adds [MAIN] diagnostic logs to lib/main.dart so we can confirm where
+- main isolate is progressing (previously had ZERO logs from main() in
+- production logcat — impossible to tell if it was blocked or not running
+- at all). v0.4.14's GlobalState defer guard stays in place: it's a belt-
+- and-braces defense for any other caller that might hit the same path
+- (AppPlugin.onActivityResult on VPN_PERMISSION_REQUEST_CODE, tile quick-
+- start). Bumps version to 0.4.15.
+
+- Update changelog
+
+- fix(android): defer initServiceEngine when main engine is alive
+
+- Root cause of post-reboot/cold-start splash hang found via live logcat on
+- v0.4.13 (Pixel 10): something triggers GlobalState.initServiceEngine() on
+- the platform thread during MainActivity.onCreate, BEFORE FlutterActivity
+- schedules main FlutterEngine's default Dart entrypoint. The synchronous
+- serviceEngine.dartExecutor.executeDartEntrypoint(_service) call under
+- runLock starves the platform thread, main engine's Dart main() never
+- starts, and the splash screen sits with mDrawState=DRAW_PENDING forever.
+
+- Symptoms in logcat (v0.4.13, fresh cold start, no VPN active):
+- - TilePlugin.onAttachedToEngine fires twice (main + service)
+- - 16x "plugin already registered" warnings
+- - ConnectivityManager: NetworkCallback was already registered (ERROR)
+- - _service entrypoint runs to completion
+- - NOT a single log line from lib/main.dart's main() entrypoint
+- - splash window HAS_DRAWN, MainActivity surface DRAW_PENDING for minutes
+
+- Fix: when MainActivity's flutterEngine is already alive, post the service
+- engine init onto the next main looper cycle instead of running it
+- synchronously. This lets FlutterActivity's pending runnables (including
+- main engine's executeDartEntrypoint) drain first. Service engine still
+- gets created — VPN connect path (AppPlugin.onActivityResult RESULT_OK,
+- DropwebVpnService.onCreate, GlobalState.handleStart with no TilePlugin)
+- keeps working, just one looper tick later.
+
+- Also adds a Throwable to the deferred-path log so the next reproduction
+- will tell us WHICH callsite is firing initServiceEngine on cold-start —
+- the four known callers (handleStart, AppPlugin.onActivityResult,
+- ServicePlugin.onMethodCall("init"), DropwebVpnService.onCreate) all
+- showed no preceding log line in the captured trace, so the trigger
+- remains to be confirmed.
+
+- Bumps version to 0.4.14.
+
+- Update changelog
+
+- fix(android): re-enable Impeller — disabling it broke post-reboot launch
+
+- Diff against last-known-working v0.4.4 showed I'd flipped
+- EnableImpeller from \"true\" to \"false\" with a comment claiming
+- two FlutterEngine instances couldn't share Vulkan. That comment
+- was wrong: upstream FlClashX has been on Impeller=true since
+- 2025-09-11 with no issue.
+
+- On Pixel 10 with an active VPN profile, the Skia GLES backend
+- fails Surface init after a cold device boot. UI never renders,
+- which is exactly the splash hang every CI 0.4.7→0.4.12 build
+- reproduced. Local builds happened to work because Gradle still
+- had warm OpenGL ES context state from prior `flutter run` debug
+- sessions; they reproduced reliably only after a real reboot.
+
+- Reverting to Impeller=true matches upstream and resolves the
+- hang. The trade-off (custom shaders silently fail on Impeller's
+- GLES backend) is documented in the dropweb skill and not in play
+- for our current asset set.
+
+- fix(ci): bump Flutter to 3.41.6 — 3.32.8 causes post-reboot splash hang
+
+- CI was pinned to Flutter 3.32.8 (Dec 2024). Local builds against
+- 3.41.6 do not reproduce the post-reboot splash hang with an active
+- VPN profile; CI-built 0.4.11 APKs hang consistently. Diff was
+- traced to this single line after confirming Go 1.24 produces an
+- identical-size libclash.so either way.
+
+- Bump to 3.41.6 (3 weeks old stable) to match the local toolchain
+- and unblock release. Also drop the diagnostic `[MAIN]` traces from
+- main.dart now that the splash-hang path has been isolated.
+
+- Update changelog
+
+- chore: bump version to 0.4.11
+
+- chore: drop diagnostic [MAIN] tracing + bump 0.4.11
+
+- Splash hang confirmed fixed on-device (double reboot + active profile +
+- active VPN → clean UI render). Ship a clean 0.4.11 without the debug
+- logging that helped locate the issue.
+
+- docs: add Telegram discussion forum link
+
+- docs: fix FlClashX link — point to pluralplay/FlClashX, not chen08209/FlClash
+
+- Description said "Fork of FlClashX" but linked to chen08209/FlClash,
+- which is FlClash (no X). Our real parent is pluralplay/FlClashX.
+- Link both: FlClashX as the parent fork we sync from, FlClash as the
+- original project the whole chain descends from.
+
+- chore: trim verbose comments + bump 0.4.10
+
+- Strip narrative comments from this session's commits — keep only those
+- explaining non-obvious security/perf decisions or upstream-inherited
+- rationale. Drop the diagnostic [MAIN] tracing now that the splash hang
+- is fixed and the logging served its purpose.
+
+- diag: add startup tracing to track post-reboot splash hang
+
+- main.dart: log every step of main() so we can see exactly where the
+- main isolate stops in the (still-occurring) post-reboot splash hang.
+- Logs fire for: start, system.version, preload(), initApp, android.init,
+- window.init, vpn singleton, runApp.
+
+- GlobalState.initServiceEngine: log a Throwable to capture the call
+- site. This already proved the service engine is born from
+- ServicePlugin.onMethodCall (Dart main isolate calling service.init()
+- inside ClashLib._initService) — not from VpnService restoration.
+
+- These print through commonPrint.log → debugPrint, which keeps showing
+- up in release logcat as I/flutter, so they are visible without a debug
+- build.
+
+- Verified on Pixel 10: fresh install of the release APK now traces
+- all main-isolate steps and renders the UI (Surface HAS_DRAWN).
+- Awaiting on-device reboot test with an active profile to capture the
+- hang scenario.
+
+- fix(android): revert proguard-rules.pro to upstream (1 line)
+
+- ROOT CAUSE of the post-reboot splash hang, found after running
+- flutter run on debug and seeing main isolate log everything it's
+- supposed to. Debug build works fine. Release build hangs. The only
+- release-specific thing I'd touched was ProGuard / R8.
+
+- My previous 85-line proguard-rules.pro (commit dbdd8b6 as part of
+- "security harden") stripped logs in release:
+
+-   -assumenosideeffects class android.util.Log {
+-       public static int v(...);
+-       public static int d(...);
+-   }
+
+- That tells R8 "Log.v and Log.d are pure, their arguments don't need
+- to be evaluated". In practice it deletes ANY code passed as an
+- argument. Flutter's embedding has Log.d calls where the argument
+- is an expression with side effects during engine startup — R8
+- drops the side effect, engine init is now skipped, and the Dart
+- main() never fires. Splash stays forever.
+
+- Upstream pluralplay/FlClashX ships a one-line proguard-rules.pro:
+
+-   -keep class com.follow.clashx.models.**{ *; }
+
+- Everything else is left to Flutter's default rules which Flutter
+- Gradle plugin merges in automatically. That's it. No hardening
+- needed at this layer — AAB signing and Play Store obfuscation
+- already give us the defense-in-depth the custom rules were meant
+- to provide.
+
+- Fix: replace the full 85-line file with the upstream one-liner
+- (adjusted to `app.dropweb.models`).
+
+- Verified on Pixel 10: release APK (95MB, 275KB smaller than the
+- previous broken build) installs and launches cleanly to the
+- disclaimer screen. Debug build also works as it did before.
+- Awaiting on-device reboot test with an active profile.
+
+- fix(android): revert all my splash-hang "fixes" back to upstream baseline
+
+- After four failed attempts at debugging the post-reboot splash hang,
+- I pulled upstream pluralplay/FlClashX at 0a5afe9 and diffed. All my
+- "fixes" were regressions against a baseline that works. The real
+- culprit was a change I'd made but never attributed to: forcing
+- START_STICKY on the VPN service.
+
+- Changes reverted to upstream form:
+
+- 1. DropwebVpnService: drop `onStartCommand { return START_STICKY }`.
+-    Upstream FlClashXVpnService has no onStartCommand override — it
+-    inherits the default (START_STICKY_COMPATIBILITY, treated as
+-    START_NOT_STICKY on modern Android). My override forced the
+-    service to be revived by Android after any process death,
+-    including post-boot. That revival triggered GlobalState
+-    .initServiceEngine() BEFORE MainActivity.onCreate ran, which
+-    left the service FlutterEngine first-in-line for singleton
+-    plugin attachment and broke the main engine's handshake.
+
+- 2. VpnPlugin: `class` → `data object` (my 2bbe737 was a wrong turn).
+-    ServicePlugin: same. Upstream uses singletons and the main/
+-    service engine share them by design — re-attaching rebinds the
+-    MethodChannel to the currently-active engine, which is correct.
+
+- 3. MainActivity.configureFlutterEngine: restore
+-    `GlobalState.syncStatus()` call (reverting cf9f2a2). Upstream
+-    has this exact call and their app boots fine post-reboot; the
+-    "deadlock" I theorized wasn't real.
+
+- 4. DropwebApplication: drop the FlutterLoader.startInitialization
+-    pre-warm (reverting 59c3add). Upstream doesn't do this, so it
+-    was never the actual race condition fix I thought it was.
+
+- Net diff is small: -12 lines. All that debugging, just to delete
+- code I never should have written.
+
+- Verified: release APK built, installed, launches on fresh install.
+- Awaiting on-device reboot test with an active profile — the scenario
+- that originally reproduced the hang.
+
+- fix(android): pre-warm FlutterLoader in Application.onCreate
+
+- Third attempt at the post-reboot splash hang. Logs on a hung release
+- process showed:
+
+-   - main engine created (Impeller opt-out @ T+0.45s)
+-   - MainActivity window ready (VRI, T+0.54s)
+-   - second engine created (Impeller opt-out @ T+0.56s) = service engine
+-   - 15× FlutterEngineCxnRegstry warnings "already registered" on the
+-     service engine for every pub plugin (PathProvider, SharedPrefs,
+-     URL launcher, etc.)
+-   - service isolate Dart reaches `[DART] Not quickStart, calling
+-     _handleMainIpc` and goes idle waiting for the main isolate
+-   - main isolate NEVER produces a single log line — no system.version,
+-     no clashCore.preload, nothing; main() never starts
+
+- The race: FlutterLoader.startInitialization loads libflutter.so and
+- the AOT snapshot once per process. On a fresh boot that first load
+- takes hundreds of ms and is traditionally done during
+- FlutterActivity.onCreate on the Android UI thread. Meanwhile the
+- service engine creation path (triggered from Dart IPC) calls
+- FlutterLoader.startInitialization on a background thread. Both paths
+- racing on the same native initializers leaves the main engine in a
+- half-initialized state where its DartExecutor never fires the Dart
+- entrypoint.
+
+- Fix: call startInitialization exactly once, from Application.onCreate,
+- before any engine is created. Android guarantees Application.onCreate
+- runs on the UI thread before any component (Activity, Service,
+- ContentProvider) sees `onCreate`. Subsequent startInitialization calls
+- short-circuit because it caches state in a FlutterLoader singleton.
+- This removes the race entirely.
+
+- Still needs real post-reboot testing on a device with an active
+- profile — that's the only scenario where the race reproduced.
+
+- fix(android): convert VpnPlugin/ServicePlugin from data object to class
+
+- REAL root cause of the post-reboot splash hang (previous attempts
+- targeted symptoms, not this). Logs from a hung release build showed:
+
+-   - Only the service engine FlutterEngine@f20dfb6 is created
+-   - Main engine Dart main() never runs
+-   - FlutterEngineCxnRegstry warnings: "plugin (X) already registered
+-     with this FlutterEngine" — for every VpnPlugin/ServicePlugin
+-     attempt on the second engine
+
+- Flutter's plugin registry deduplicates by class instance. Attaching
+- the same Kotlin `data object` (singleton) to a second engine is a
+- no-op: onAttachedToEngine is NEVER called for the second engine. So:
+
+-   1. VpnService revives post-boot (START_STICKY) → initServiceEngine
+-      creates service FlutterEngine → VpnPlugin singleton attaches →
+-      flutterMethodChannel bound to service engine's binaryMessenger.
+-   2. User taps icon → MainActivity creates main FlutterEngine →
+-      tries to register the SAME VpnPlugin singleton → registry
+-      silently ignores → main engine has no `vpn` channel handler.
+-   3. Dart main() runs `vpn; // init singleton` → method channel
+-      call into native → no handler on main engine → suspends
+-      forever. Main UI isolate never gets past that line, never
+-      renders first frame, splash stays on screen.
+
+- Fix: convert VpnPlugin and ServicePlugin to regular classes, add
+- new instances per engine. Persistent state that must be shared
+- across engines (bound service, vpn options, foreground-params
+- cache, network subscription, timer job) moved into the Companion
+- object of VpnPlugin. ServicePlugin holds no state so it was a
+- straight `data object` → `class`. TilePlugin and AppPlugin were
+- already classes, no changes needed.
+
+- MainActivity.configureFlutterEngine and GlobalState.initServiceEngine
+- updated to instantiate (`VpnPlugin()` / `ServicePlugin()`).
+
+- Verified: release APK built locally, installed on Pixel 10, launches
+- cleanly to the disclaimer screen on first run. Needs on-device
+- reboot test with an active profile to close the loop — that's the
+- scenario that originally reproduced the hang.
+
+- fix(android): remove syncStatus deadlock from MainActivity startup
+
+- Second splash-hang regression on post-boot with an active profile.
+- `DropwebVpnService` is marked START_STICKY, so Android revives it on
+- boot before the user even taps the icon. `onCreate` calls
+- `GlobalState.initServiceEngine()` which attaches the singleton
+- `VpnPlugin` to the service engine — binding its MethodChannel to the
+- service engine's binaryMessenger.
+
+- When the user then launches the app, `MainActivity.configureFlutterEngine`
+- adds the same `VpnPlugin` data-object to the main engine. Kotlin's plugin
+- registry invokes `onAttachedToEngine` again, which rebinds
+- `flutterMethodChannel` to the main engine's messenger. The service
+- isolate is now holding references to an unwired channel.
+
+- Immediately after that rebind the old code called `syncStatus()` —
+- which routed `flutterMethodChannel.awaitResult("status")` across a
+- channel that could only be answered by the UI Dart isolate. But the UI
+- Dart `main()` had not even begun executing yet; it won't register
+- handlers until after `runApp`. `awaitResult` suspends forever. The
+- native splash stays on screen because the UI never renders its first
+- frame.
+
+- Fix: drop the synchronous sync. The UI side already reconciles run
+- state in `AppController.syncRunStateFromNative()` on
+- `AppLifecycleState.resumed`, which fires after runApp and the first
+- frame when all channels are properly wired.
+
+- A comment was added inline documenting exactly why this call is
+- forbidden here — this is the third time the bug has cycled through
+- (b438704 fix → c920cc2 revert → this), and I'd like to stop the cycle.
+
+- fix(android): don't block startup on Android Keystore IPC
+
+- Symptom: after a cold device reboot the release build stays on the
+- native splash forever. `dumpsys window` shows MainActivity
+- `Surface shown=false mDrawState=DRAW_PENDING`, i.e. Flutter never
+- produced the first frame. Debug build doesn't reproduce because its
+- Keystore IPC path warms up while Gradle is still pushing the APK.
+
+- Root cause: `preferences.getConfig()` — called synchronously on the
+- critical path of `globalState.init()` before `runApp` — was fetching
+- every profile's subscription URL from `flutter_secure_storage`. On
+- Pixel 10 after a cold boot the Gatekeeper/Keystore daemon can take
+- 10-30 s to answer the first IPC, and the call blocks the main
+- isolate. No UI, no splash handoff, no timeout.
+
+- Fix: URLs no longer live in the in-memory Config. getConfig() now
+- returns the Config straight from SharedPreferences (with empty URL
+- fields, which is the scrubbed-on-disk shape). Callers that actually
+- need the URL read it on demand through the two new accessors on
+- Preferences:
+-   - `preferences.getProfileUrl(profile)`
+-   - `preferences.getProfileFallbackUrl(profile)`
+
+- Updated call sites:
+-   - `Profile.update()` (subscription refresh)
+-   - `EditProfileView.initState()` (populates the URL field async)
+-   - `_TvItem` (Send-to-TV ListItem; now async-aware)
+
+- Phase-9 migration (move plaintext URLs out of the JSON blob into the
+- encrypted store) runs from a `WidgetsBinding.addPostFrameCallback`
+- inside `AppController.init()`, AFTER the first frame, so a slow
+- keystore can no longer freeze the splash. Idempotent:
+- `migrateProfileUrlsIfNeeded()` exits immediately if the marker is
+- already set.
+
+- Verified on Pixel 10 debug + release builds: UI renders immediately,
+- secure-storage reads happen only when the user opens a profile form
+- or fires a subscription refresh. `flutter_analyze` clean on the
+- touched files.
+
+- Update changelog
+
+- fix(android): suppress R8 warnings for unused Play Core / tika classes
+
+- v0.4.8 CI failed at :app:minifyReleaseWithR8 with
+- "Missing class com.google.android.play.core.splitcompat.SplitCompatApplication"
+- and a dozen similar Play Core / tika stubs. Flutter's embedding
+- references those classes for deferred components even when the feature
+- is not enabled, so R8 choked when my hardened proguard-rules.pro
+- (commit 2dd7106) dropped the implicit -dontwarn that the AGP-default
+- rules used to carry.
+
+- Re-add targeted `-dontwarn` for:
+-   - com.google.android.play.core.** (Flutter deferred components)
+-   - com.google.android.play.**      (umbrella for Play Services stubs)
+-   - javax.xml.stream.**             (via transitive tika pull)
+-   - org.apache.tika.**
+
+- Runtime behaviour is unchanged — the stripped code paths are gated by
+- runtime feature checks, and we don't ship the Play Core library.
+
+- chore: bump version to 0.4.8
+
+- fix(android): bump minSdk to 24 for flutter_secure_storage v10
+
+- CI for v0.4.7 failed at :app:processReleaseMainManifest because the
+- newly-added flutter_secure_storage 10.0.0 ships minSdkVersion=24 in
+- its AndroidManifest and we were still hardcoded to 23. The merged
+- manifest picks the highest min across all modules, and AGP rejected
+- the mismatch instead of auto-uplifting silently.
+
+- Bumped minSdk from 23 → 24 (Android 7.0, 2016). That's the floor
+- that flutter_secure_storage v10 requires; we inherited the tighter
+- requirement when Phase 9 migrated subscription URLs into the
+- encrypted store. Downgrading to v9.x would drop the automatic
+- Jetpack-Security→AES-GCM migration path the plugin handles for us,
+- which is not worth the handful of Android 6 users.
+
+- Also bumps pubspec to 0.4.8.
+
+- chore: bump version to 0.4.7
+
+- fix(android): FAB now reacts when VPN is stopped from outside the app
+
+- The connect button used a ConsumerStatefulWidget backed by a local
+- `isStart` mirror that was only updated from
+- `startButtonSelectorStateProvider`. That provider's inputs
+- (init/profiles/proxies) don't change when the VPN toggles, so stopping
+- the tunnel via the QS tile, the foreground notification's STOP action,
+- or a system revoke left the icon stuck on "stop" even though the tunnel
+- was already torn down.
+
+- Now the icon watches `runTimeProvider` directly in build(), which is
+- the canonical source that TileManager.onStop resets. The breathing
+- halo's ticker is driven from a post-frame callback so flipping
+- AnimationController state doesn't re-enter the build phase (an earlier
+- attempt to run it inline produced an ANR).
+
+- Belt-and-braces additions:
+- - AppStateManager now calls a new `syncRunStateFromNative()` on
+-   AppLifecycleState.resumed. Read-only sync — it reconciles Dart-side
+-   bookkeeping with the actual native runtime when the app comes back
+-   without ever calling handleStart/Stop on its own.
+- - TileManager.onStart/onStop log the sync event. commonPrint already
+-   strips these in release via kDebugMode.
+
+- Verified on Pixel 10: connect → notification STOP → icon flips to
+- "plug" within a frame of LTE🔐 going away. No ANR, no rebuild loop.
+
+- security: move subscription URLs to flutter_secure_storage
+
+- Hybrid storage split: subscription URLs (plus their fallback twins) now
+- live in the OS-encrypted store (Android EncryptedSharedPrefs/AES-GCM via
+- Keystore, iOS Keychain, OS credential vault on desktop). Everything else
+- in Config stays in SharedPreferences — cheaper, no IPC on UI reads.
+
+- Why: subscription URLs almost always embed an auth token
+- (`https://example.com/sub/<token>`). Plaintext in `shared_prefs/*.xml`
+- meant anyone with root, an ADB backup, or a debug dump could harvest
+- live VPN credentials.
+
+- What changed
+- - add `flutter_secure_storage: ^10.0.0` (already integrates on
+-   Android/iOS/macOS/Linux/Windows; no native code here)
+- - new `SecureProfileUrlStore` singleton — per-profile-id URL + fallback
+- - `Preferences.saveConfig` now strips `url`/`fallbackUrl` out of the
+-   Config blob before JSON-encoding to SharedPrefs, mirror-writing the
+-   real values to the secure store
+- - `Preferences.getConfig` rehydrates stripped profiles with values from
+-   the secure store
+- - One-time migration on first upgraded launch: harvest URLs already
+-   sitting in SharedPrefs, copy them to the secure store, overwrite the
+-   SharedPrefs blob with stripped copies, then set
+-   `profile_url_migrated_v1` so we never scan plaintext again
+
+- Verified: fresh install boots, one-time migration runs (log shows
+- `Migrated 0 items` on a first-time install — expected), SOCKS port loads,
+- mihomo initialises, UI renders with the real subscription label.
+
+- perf: cache Theme.of() + debounce sticky-header scroll updates
+
+- - widgets/scaffold.dart: _buildAppBar hit Theme.of(context) 7× per frame
+-   via the InheritedWidget lookup chain. Cache theme + derived flags
+-   (isDark, iconBrightness, transparentAppBar) once per build.
+
+- - views/proxies/list.dart: ScrollController fires 60+ times/sec during a
+-   scroll; we rebuilt the sticky header on every pixel. Coalesce to one
+-   update per frame via addPostFrameCallback, guarded by mounted +
+-   hasClients so we never touch disposed state.
+
+- Verified on Pixel 10: dashboard renders, subscription fetch, VPN connect
+- and disconnect all work; no regressions observed.
+
+- security: harden Dart + Android surface for Play submission
+
+- Dart:
+- - http.dart: remove global cert bypass, only trust self-signed for localhost
+- - system.dart: rewrite Linux sudo call — Process.start with stdin, no shell interpolation
+- - request.dart: strip subscription URLs/tokens from print(), null-safe checkIp,
+-   Dio timeouts (15s/15s/30s), 50 MiB size cap on profile fetches
+- - controller.dart: validate profile URL (http/https only) before fetch;
+-   hook PlatformDispatcher.instance.onError for isolate errors
+- - state.dart: _vpnTransitionInFlight flag against double-tap start/stop race;
+-   5 s timeout on service.stopVpn with graceful degradation
+- - string.dart: toMd5() → SHA-256 truncated; add toSha256()
+- - constant.dart: Random.secure() for unix socket path (was Mersenne Twister, 10K variants)
+- - receive_profile_dialog.dart: log length only, never URLs
+- - managers: async void → Future<void> (window/clash); dispose() sync + unawaited
+
+- Android:
+- - AndroidManifest: TempActivity exported=false (was open VPN toggle to any app),
+-   widget receiver gets BIND_APPWIDGET, allowBackup=false,
+-   data_extraction_rules.xml excludes everything, legacy flclash:// scheme removed,
+-   QUERY_ALL_PACKAGES backed up by narrow <queries> block
+- - file_paths.xml: scoped to configs/ + logs/ + cache/shared/ (was whole filesDir)
+- - network_security_config: base cleartext=false, localhost-only exception
+- - proguard-rules: full production set (services, widgets, JNI, Flutter, Kotlin, log strip)
+
+- Misc:
+- - .gitignore: local.properties, key.properties, *.keystore, signing.properties
+- - pubspec: pin rationale for git-deps (re_editor, flutter_js)
+- - Remove redundant Unbounded-Regular.ttf (−760 KB; Variable font covers all weights)
+- - l10n: +invalidProfileUrl, +connectTv, +connectTvDesc across en/ru/ja/zh_CN
+
+- Verified: flutter_analyze 0 errors; flutter run on Pixel 10 boots cleanly,
+- subscription fetch with strict cert validation works, SOCKS protection active,
+- VPN interface allocates on demand.
+
+- fix(android): revert VpnPlugin service-engine guard — broke VPN connect
+
+- v0.4.5 added `if (flutterEngine == null)` around VpnPlugin/AppPlugin/
+- TilePlugin attachment to service engine. The intent was to avoid
+- singleton VpnPlugin's MethodChannel getting rebound to service's
+- binaryMessenger. In practice this broke everything:
+
+- Service engine runs the `_service` Dart entrypoint which invokes
+- MethodChannel("vpn", "start") on its own binaryMessenger. With the
+- guard, those channels had no handler registered on the service engine
+- side, so all MethodChannel calls from the service isolate silently
+- dropped. Symptoms:
+- - UI showed subscription but proxy list never loaded
+- - Connect button tap did nothing (no handleStart fired)
+- - Logcat went silent after save preferences
+
+- The splash hang that guard was meant to fix was actually just an
+- adb screencap quirk (native splash overlay cached in screenshot even
+- after Flutter drew first frame). A real touch input removed it.
+
+- Restore both plugin attachments. Keep Impeller=false and mesh glow.
+
+- Update changelog
+
+- fix(android): hardcode minSdk=23 for CI compatibility
+
+- CI uses Flutter 3.32.8 where flutter.minSdkVersion defaults to 21.
+- Core module declares minSdk=23 — Manifest merger fails with
+- "minSdkVersion 21 cannot be smaller than version 23 declared in [:core]".
+
+- Local builds on Flutter 3.41.6 worked because newer Flutter bumped
+- its default to 23, masking the issue.
+
+- chore: bump version to 0.4.5 (sync pubspec with release tag)
+
+- fix(android): splash hang + restore bottom-right ambient glow
+
+- Splash hang (cold-start, critical):
+- - GlobalState.initServiceEngine no longer re-attaches VpnPlugin /
+-   AppPlugin / TilePlugin when a MainActivity engine already owns them.
+-   VpnPlugin is a Kotlin `data object` (singleton); re-attaching rebinds
+-   its MethodChannel to the service engine's binaryMessenger, silently
+-   breaking the UI↔native bridge and freezing the app on the launcher
+-   splash screen after first resume.
+- - Disabled Impeller in AndroidManifest (EnableImpeller=false). Two
+-   parallel FlutterEngines (UI + VPN service) both initializing Impeller
+-   Vulkan+GLES contexts caused surface creation contention on Pixel 10.
+-   Custom shaders are already gone — Skia covers everything we render.
+
+- UX:
+- - MeshBackground: bottom-right tertiary glow dimmed and tightened after
+-   user feedback (radius 1.8→1.3, alpha 0.42/0.18→0.28/0.10). Gives the
+-   dashboard a visible but not overwhelming ambient glow in the dark
+-   theme; light theme unaffected (MeshBackground short-circuits).
+- - Removed the LightPillar experiment from the dashboard Stack — the
+-   mesh glow is the single source of ambient light now.
+
+- Verification: APK rebuilt, installed on Pixel 10. `AppLifecycleState
+- .resumed` observed on first cold-start post-fix; splash disappears
+- immediately on first touch input.
+
+- perf(ui): fix memory leaks, cut rebuild cascades, remove dead code
+
+- Memory leaks (3 files):
+- - announce_widget, metainfo_widget, service_info_widget:
+-   TapGestureRecognizer was created inline in TextSpan.recognizer and
+-   never disposed — each rebuild leaked a recognizer holding callbacks
+-   and context. Converted widgets to ConsumerStatefulWidget, track
+-   recognizers in a List, dispose on rebuild and in dispose().
+
+- Rebuild cascades (ProxyCard):
+- - Narrowed three Consumer watches with .select() to bool predicates.
+-   Sibling proxies in the same group no longer rebuild when the active
+-   proxy changes — only the two cards whose selection state flipped do.
+-   Applied to: _buildProxyNameText (oneline), main card Consumer,
+-   _ProxyComputedMark visibility check.
+
+- Tray CPU (Windows):
+- - tray_manager._startMenuMonitor: bumped Timer.periodic from 100ms to
+-   200ms (50% CPU reduction, user-imperceptible). Added debugPrint to
+-   previously silent catch block. TODO noted for proper
+-   SetWinEventHook event-driven implementation.
+
+- Dead code cleanup:
+- - Removed color_bends_bg.dart widget + shader asset (GLSL program has
+-   been silently failing on Impeller since 2025-09-11, dashboard use
+-   was commented out as a perf test). Removed shader registration from
+-   pubspec.yaml and export from widgets barrel.
+- - Removed commented-out ServiceMessageListener mixin, SetupParamsExt,
+-   ProcessData/Fd freezed classes from models/core.dart (36 lines).
+- - Removed commented CommonCardTypeExt from enum/enum.dart.
+- - Removed dead corePalette conditional from providers/state.dart.
+
+- Verification:
+- - flutter analyze: 0 errors, 18 warnings, 632 infos (baseline 655).
+- - Warnings/infos now concentrated in setup.dart and tool/ helpers, not
+-   lib/ runtime code.
+
+- deps(flutter_js): bump fork to 17be98e for 16KB page size alignment
+
+- libfastdev_quickjs_runtime.so was the last native library in the APK
+- with 4KB ELF LOAD alignment, triggering the Android 15+ system modal
+- ('Совместимость приложений Android') on every launch on Pixel 10 and
+- blocking Google Play acceptance of release builds targeting SDK 36.
+
+- Root cause: flutter_js 0.8.3 depends on the JitPack artifact
+- com.github.fast-development.android-js-runtimes:fastdev-jsruntimes-quickjs:0.3.5,
+- which was built before the 16KB page-size requirement landed. Upstream
+- fast-development/android-js-runtimes shipped 0.3.6 in Sep 2025 (PR #5)
+- rebuilding the QuickJS .so with -Wl,-z,max-page-size=16384.
+
+- The enkinvsh/flutter_js fork (master) was bumped to pull 0.3.6 instead
+- of 0.3.5 in commit 17be98e. This file locks dropweb-app to that commit.
+
+- Verified: built release APK (dist/dropweb-arm64-v8a.apk), extracted
+- libfastdev_quickjs_runtime.so, checked ELF p_align via python struct —
+- LOAD segments now align=65536 (64KB, valid 16KB-multiple) instead of
+- 4096. Installed the APK on Pixel 10, launched: no system modal appears,
+- main UI renders normally. libclash.so (16KB) and libflutter.so (64KB)
+- remain correctly aligned.
+
+- feat(socks): persist random SOCKS port across app restarts
+
+- The SOCKS protection port was regenerated on every cold start, which
+- made the randomization useless for evading port-scan-based VPN detection
+- (detectors care about port stability over a session, not first-launch
+- entropy). Persist the port to SharedPreferences on first generation and
+- reuse it on subsequent launches. Username/password are still rotated
+- per-session for credential security.
+
+- - constant.dart: add socksPortKey
+- - preferences.dart: getSocksPort/saveSocksPort helpers
+- - proxy_credentials.dart: generate(persistedPort:) reuses port if given
+- - state.dart: load persisted port in init(), save on first generation
+
+- Verified on Pixel 10: first launch logs 'Generated and saved new port
+- 33932', subsequent launches log 'Loaded persisted port: 33932'.
+
+- build(android): 16KB page alignment — defensive hardening
+
+- Android 16 on Pixel 10 fires a system warning dialog claiming libclash,
+- libflutter, libdatastore, camera libs are not 16KB-aligned. Reality
+- check via llvm-readelf -l on the installed debug APK:
+
+-   libclash.so                       0x4000  (16KB OK — Go already 16KB-safe)
+-   libflutter.so                     0x10000 (64KB OK — Flutter 3.38+ fixed)
+-   libdatastore_shared_counter.so    0x4000  (16KB OK)
+-   libimage_processing_util_jni.so   0x4000  (16KB OK)
+-   libsurface_util_jni.so            0x4000  (16KB OK)
+-   libfastdev_quickjs_runtime.so     0x1000  (4KB — the actual offender)
+
+- zipalign -P 16 passes, so Play Store won't reject. The Android 16
+- warning was generic and over-listed. Real outstanding work is
+- rebuilding enkinvsh/flutter_js fork with max-page-size=16384.
+
+- This commit applies precautionary 16KB flags so future builds stay
+- compliant even if Go/NDK/deps regress:
+
+- - setup.dart: CGO_LDFLAGS='-O2 -s -w -Wl,-z,max-page-size=16384' for
+-   Android Go lib builds (libclash.so). No-op on other platforms.
+
+- - build.gradle.kts: useLegacyPackaging=false. Legacy packaging extracts
+-   .so at install time which destroys 16KB alignment at runtime. Required
+-   by Google Play for Android 15+ targets.
+
+- - build.gradle.kts: force androidx.datastore 1.1.7. Version 1.2.0 ships
+-   a 4KB-aligned libdatastore_shared_counter.so and breaks 16KB compliance.
+-   Pin until 1.3.0 (with proper alignment) stabilizes.
+-   Refs: flutter/flutter#182898
+
+- Also includes pre-existing minSdk flutter.minSdkVersion revert
+- (core module still needs ≥23 at runtime — comment preserved).
+
+- fix(ui): audit-found UX regressions on Pixel 10
+
+- Found during 2026-04-17 full UI audit on Pixel 10 Android 16:
+
+- 1. AccessView app bar title 'Контроль доступа приложений' was being
+-    truncated to 'Контроль доступа прил...'. OpenDelegate passed the
+-    long appAccessControl label; the switch row INSIDE AccessView
+-    already shows the long form, so the app bar only needs the short
+-    'Контроль доступа' — eliminates both truncation and redundancy.
+
+- 2. MagicRingsOverlay is placed at scaffold level and rendered on every
+-    dark-themed page with a bottomNavigationBar. After connect, the
+-    rings stayed visible on Settings and sub-pages, overlapping
+-    content. Gate visibility on isCurrentPageProvider(PageLabel.dashboard)
+-    so rings only animate on the dashboard where the connect button
+-    lives.
+
+- 3. StartButton breathing glow alpha was 0.15-0.3 (from Tier-1 perf
+-    pass). Invisible on OLED Pixel 10. Bumped to 0.25-0.45 — still
+-    gentler than the pre-Tier-1 0.2-0.5, now actually visible.
+
+- fix(windows): complete Wave 1 rebrand — kill FlClashX shared config
+
+- Runner.rc exe metadata still identified as 'clashx' by 'com.follow'.
+- inno_setup.iss killed non-existent FlClashCore.exe/FlClashHelperService.exe
+- and its uninstaller wiped {userappdata}\com.follow\clashx — the SAME
+- folder original FlClashX uses. Installing both apps side-by-side would
+- let dropweb's uninstaller nuke FlClashX's config.
+
+- - Runner.rc: CompanyName/InternalName/ProductName → dropweb, copyright 2026
+- - inno_setup.iss: kill DropwebCore.exe/DropwebHelperService.exe (real names)
+- - inno_setup.iss: uninstaller path → {userappdata}\dropweb\dropweb
+-   (matches path_provider Windows layout from new Runner.rc values)
+
+- Note: existing Windows users upgrading to this version will see their
+- settings reset (old path was com.follow\clashx, new is dropweb\dropweb).
+- No migration path — clean break.
+
+- docs: add SEO keywords (Clash Meta, DPI bypass, split tunneling, Xray-core)
+
+- docs: fix legal phrasing, remove dropweb.org links, improve disclaimer
+
+- docs: rewrite README with Gemini 3.1 — engineer-to-engineer tone, detection protection focus
+
+- - Honest fork positioning (FlClashX → dropweb for non-tech users)
+- - Added detection protection section with Habr link (YourVPNDead/RKNHardering)
+- - Build from source instructions (setup.dart)
+- - Removed AI service name-dropping (was SEO bullshit)
+- - for-the-badge style badges
+- - Dual language (RU/EN)
+
+- Update changelog
+
+## v0.4.4
+
+- fix(ci): add write permissions for changelog job
+
+## v0.4.3
+
+- fix(android): restore minSdk 23 (required by core module)
+
+## v0.4.2
+
+- feat(windows): unified tray icon - black bg, gray db when inactive
+
+## v0.4.1
+
+- chore: use flutter SDK minSdkVersion, update fork refs
+
+- perf: optimize UI for mid-range devices (Pixel 5)
+
+- - disable BackdropFilter blur on navbar, connect button, subscription tabs
+- - disable ColorBendsBg shader (reloads on every rebuild)
+- - enable keep: true for dashboard/tools pages to avoid rebuild on switch
+- - add AutomaticKeepAliveClientMixin for Proxies/Profiles tabs
+
+- Fixes 12fps lag on swipes and page transitions on Snapdragon 765G.
+
+- docs: improve README - stars badge, SEO alt texts, sync EN version
+
+- docs: remove build instructions
+
+- docs: add dropweb.org link
+
+- docs: add trending AI keywords
+
+- docs: add disclaimer with SEO keywords
+
+- docs: clean up README, restore header
+
+## v0.4.0
+
+- fix(windows): regenerate icons with 32-bit color depth
+
+- Old: 16 colors, 4 bits/pixel (garbage quality)
+- New: 32 bits/pixel, proper sizes (256/128/64/48/32/16)
+
+- fix(desktop): minimize to tray on close, restore macOS tray icon
+
+- - Windows: close button now minimizes to tray instead of quitting
+- - macOS: restore icon_white.png for menu bar icon
+
+- fix(desktop): keep fixed port for system proxy, protect only mobile
+
+- - Mobile (Android/iOS): random port + auth (YourVPNDead protection)
+- - Desktop (Mac/Win/Linux): fixed port + skip-auth for localhost
+
+- chore: migrate git deps to own forks (re-editor, flutter_js)
+
+- Full autonomy from chen08209 (FlClash author) repos.
+
+- fix(android): restore minSdk 23 (required by core module)
+
+- chore: migrate mihomo submodule to own fork (enkinvsh/xHomo)
+
+- docs: changelog v0.3.5
+
+- chore: remove unused legacy brand assets
+
+- fix(android): complete SOCKS protection against VPN detection
+
+- - Remove setHttpProxy from VpnService (was exposing proxy to system)
+- - Mobile apps go DIRECT (excluded from VPN, no proxy needed)
+- - Enable auth on random port, remove skip-auth-prefixes
+- - Use flutter.minSdkVersion instead of hardcoded value
+
+- Tested with YourVPNDead: 7 ports found, 0 vulnerable.
+
+- fix(icons): use nearest-neighbor for pixel-perfect ASCII art scaling
+
+- fix(icons): regenerate tray icons with proper sizes (16/32/48/64/256)
+
+- fix(windows): update app icon, enable minimize to tray, fix bottom padding
+
+- - Replace Windows app_icon.ico with Dropweb icon
+- - Set minimizeOnExit default to true (close → tray instead of exit)
+- - Increase bottom bar padding from 12 to 20px for desktop
+
+- fix(ui): reduce default desktop window height from 900 to 650
+
+- feat(security): add SOCKS port protection against VPN detection
+
+- - Generate random port (10000-59999) + auth credentials per session
+- - Inject into mihomo config: mixed-port, authentication, skip-auth-prefixes
+- - Regenerate on connect, clear on disconnect
+- - Update ProxyManager for desktop system proxy
+
+- Prevents RKN-style detectors that scan known ports (7890, 1080, 8080).
+- Reference: https://habr.com/ru/articles/1022422/
+
+- fix: regenerate freezed files properly + fix build_runner
+
+- - Add dependency_overrides for analyzer_plugin ^0.13.0 (fixes
+-   incompatibility with analyzer 7.6.0)
+- - Regenerate core.freezed.dart and core.g.dart with proper
+-   includePackage/excludePackage fields
+- - Remove dead import for non-existent controllers.dart
+
+- docs: add FlClashX feature port plan
+
+- feat(ui): add proxies search bar
+
+- Wire SearchBar to existing proxiesQueryProvider - backend
+- filtering was already ported, just needed the UI input field.
+
+- fix(android): VPN include/exclude package priority + MTU 9000
+
+- Port from upstream FlClashX commit a4b131b:
+- - Profile-level tun.include-package/exclude-package now take
+-   precedence over app-level access control
+- - MTU increased from 1500 to 9000 for better throughput
+- - Added try/catch for package add/remove to handle missing apps
+
+- chore(cleanup): remove legacy code, fix Go issues, rebrand to Dropweb
+
+- Go core fixes:
+- - Fix panic without recover in dart-bridge/lib.go and server.go
+- - Fix inverted error logic in common.go sideUpdateExternalProvider
+- - Add missing return in action.go getExternalProviderMethod case
+- - Rename lib_no_android.go → lib_other.go (match upstream FlClashX)
+- - Fix nextHandle signature mismatch
+
+- Chinese legacy cleanup:
+- - Replace hardcoded Chinese strings with i18n/English
+- - Update FlClash references in comments to Dropweb
+- - Keep GPL attribution in about.dart
+
+- Dead code removal:
+- - Delete empty files: common/state.dart, providers/controllers.dart
+- - Delete unused widgets: view.dart, bar_chart.dart
+- - Delete unused glass_audio.dart
+- - Remove ~120 lines of commented code (memory_info.dart, builder.dart)
+- - Remove unused deps: webview_flutter, audioplayers
+
+- fix(ci): left-aligned flat badges, no center div, add macOS section
+
+## v0.3.5
+
+- fix(ci): update release template with new artifact names + add macOS badge
+
+- fix(rebrand): rename FlClashCore → DropwebCore across all platforms
+
+- Windows CMakeLists.txt, Linux CMakeLists.txt, macOS pbxproj + Swift,
+- Dart corePath, setup.dart coreName. This fixes Windows build failure
+- (CMake could not find FlClashHelperService.exe — was renamed to
+- DropwebHelperService but CMakeLists.txt still referenced old name).
+
+- ci: add macOS to unified build matrix (drop separate build-macos workflow)
+
+- fix(android): restore minSdk=23, Go core requires it (flutter default is 21)
+
+- chore(build): drop platform prefix from artifact names
+
+- Extension already identifies the platform (.apk=Android, .dmg=macOS, .exe=Windows).
+- dropweb-android-arm64-v8a.apk → dropweb-arm64-v8a.apk
+- dropweb-macos-arm64.dmg → dropweb-arm64.dmg
+
+- chore: add .opencode/ and opencode.json to .gitignore
+
+- chore(android): migrate minSdk to flutter.minSdkVersion
+
+- Auto-upgrade by Flutter tooling — uses Flutter's default minSdkVersion (23)
+- instead of hardcoded value.
+
+- fix(macos): align core path — Swift now uses app.dropweb to match Dart
+
+- feat(theme): replace Unbounded with Onest font across all text levels
+
+- Add Onest (9 weights, 100-900) as the app-wide font family. Covers all 15
+- Material TextTheme levels (display/headline/title/body/label). Replace
+- Unbounded references in about.dart. Add FontFamily.onest to enum.
+
+- feat(dashboard): rework MetainfoWidget — replace subscription label with service name + announce text
+
+- Remove useless subscription label (user_468...), show provider service name
+- with logo from providerHeaders instead (fallback: 'Подписка'). Add announce
+- text section with clickable URLs below expiry, ported from ServiceInfoWidget.
+
+- fix(macos): deep re-sign app bundle to unify Team IDs across frameworks
+
+- fix(macos): dropweb icon + drag-to-Applications DMG installer
+
+- feat(notification): show mode + speed + uptime, sync mode via IPC
+
+- Notification shade now shows:
+- - Title: 'По правилам • Server name' (localized mode + server)
+- - Content: '↑ 1.2 MB/s ↓ 5.6 MB/s' (live speeds)
+- - SubText: '3h 24m • 1.8 GB' (uptime + session traffic)
+
+- Mode changes sync from UI to service isolate via IPC message
+- 'updateMode' to keep notification in sync with actual routing mode.
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(ux): add 5-tap developer mode, fix ring animation tracking
+
+- Developer mode: 5 rapid taps on Settings tab in navbar enables dev mode
+- (Google-style). Shows snackbar confirmation.
+
+- Ring animation fix: connect button position now tracked every frame via
+- self-rescheduling post-frame callback instead of only on widget rebuild.
+- Fixes stale ring origin when layout changes (e.g. navbar appears).
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- refactor(dashboard): merge AnnounceWidget into ServiceInfoWidget
+
+- Provider announcements now display below the service name/logo in the
+- same card with clickable URLs, instead of a separate dashboard widget.
+- Remove announce grid item from DashboardWidget enum.
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(theme): set default scheme to vibrant (Яркие)
+
+- Change ThemeProps.schemeVariant default from content to vibrant.
+- Update freezed generated file and theme reset handler to match.
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(settings): restructure menu — remove backup, hide dev options, add TV
+
+- - Remove Backup item entirely
+- - Hide Core Config + App Settings behind developerMode flag
+- - Remove section header 'Настройки' (keep screen title only)
+- - Add 'Подключить TV / Передать подписку' menu item using existing SendToTvPage
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(l10n): add TV menu strings, update settings subtitles
+
+- - connectTv / connectTvDesc for new TV menu item
+- - themeDesc → 'Изменить' / 'Change'
+- - accessControlDesc → 'Настроить приложения' / 'Configure apps'
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(ci): replace create-dmg with hdiutil — no signing identity needed
+
+- fix(ci): fix macOS build — create missing libclash/ dir, configure ad-hoc signing
+
+- ci: add standalone macOS build workflow (manual trigger)
+
+## v0.3.4
+
+- fix(ci): minimal release page — no headers, no bloat
+
+- fix(ci): badge download buttons with counters, clean release layout
+
+- fix(ci): clean release notes — template first, one-line commits
+
+- fix(ci): make Telegram notification non-blocking
+
+- fix(ci): await Windows/Linux build to ensure dist/ is populated
+
+- fix(android): bump minSdk to 23 to match core module
+
+- chore: bump version to 0.3.4
+
+- refactor(ui): use theme colors for mesh background instead of hardcoded Lumina
+
+- feat(ui): rework navbar — oval glass pill selector, dual icons, compact layout
+
+- feat(ux): add profile bottom sheet with QR/URL + glow pulse when no profile
+
+- feat(ux): hide navbar when no profile — onboarding-ready first launch
+
+- feat(android): add home screen VPN toggle widget with Lumina styling
+
+- feat(ui): remove Direct mode, auto-select fastest proxy for Global
+
+- fix: map DioException and HTTP errors to human-readable messages
+
+- Add HTTP status code patterns (404, 403, 5xx) and DioException patterns
+- to ErrorMapper. Hook mapper into loadingRun() which catches all profile
+- add/update/backup errors — covers the entire app, not just core logs.
+
+- feat: human-readable VPN error messages + fix silent start failure
+
+- Add ErrorMapper that translates raw mihomo core errors to clear messages
+- in Russian/English with actionable suggestions. Fix VPN start silently
+- failing without any feedback to the user.
+
+- feat(profile): add fallback URL support for subscription updates
+
+- Parse fallback-url header from provider response and retry with it
+- when primary subscription URL fails (timeout, HTTP error, network).
+
+- fix: keep core module at org.dropweb.vpn.core for JNI compat
+
+- Go native library (libcore.so) has org/dropweb/vpn/core/TunInterface
+- hardcoded in JNI_OnLoad. Cannot rename without recompiling Go core.
+- App package stays app.dropweb, only core module keeps old path.
+
+- refactor: rename package org.dropweb.vpn → app.dropweb
+
+- Move Kotlin/Java sources to app/dropweb/ directory structure,
+- update all package declarations, Gradle configs, Manifest,
+- Dart references and proguard rules. Final package name before
+- Google Play submission.
+
+- fix(ui): regenerate monochrome icon from logo.svg, max size
+
+- Render from vector SVG instead of tracing bitmap. Zero padding,
+- edge-to-edge db silhouette for tile and notification visibility.
+
+- fix(ui): monochrome icon for tile + black splash background
+
+- Generate proper db silhouette from icon.png, crop to fill canvas,
+- point tile service to drawable instead of adaptive mipmap, set all
+- splash and icon backgrounds to pure black.
+
+- fix(vpn): survive Android Doze without manual warm-up
+
+- Add setUnderlyingNetworks() on network changes, onLinkPropertiesChanged
+- callback, screen-ON BroadcastReceiver for DNS refresh, and START_STICKY
+- to auto-restart killed service. Inherited gap from FlClashX fork.
+
+- perf(proxies): debounce lifecycle save + lazy ListView
+
+- - savePreferences → savePreferencesDebounce in didChangeAppLifecycleState (was firing 5-10x per minimize)
+
+- - ListView → ListView.builder in _RulesProxiesView (lazy card creation)
+
+- - getSelectedProxyNameProvider → getProxyNameProvider (avoids groupsProvider dependency, no rebuild on ping)
+
+
+
+- fix(proxies): instant visual update on proxy selection
+
+- Subscription proxies view was reading group.realNow (Go core state) instead of the Riverpod selectedMap provider, causing the UI to not reflect proxy changes until page re-entry. Wire _RulesGroupCard and _ProxySelectorSheet through getSelectedProxyNameProvider for optimistic updates, and use updateCurrentSelectedMap + changeProxyDebounce in the sheet tap handler (matching ProxyCard behavior).
+
+- Also swap tab order (Proxies first) and mode order (Global before Direct).
+
+
+
+- core: bump sing-tun for GSO fix + TUN MTU 1500 hardcode
+
+- Fix slow Telegram / general VPN throughput regression caused by a GSO
+- UDP/ICMP bug in pluralplay/xHomo fork base (b64d7d11, mihomo v1.19.18).
+- Upstream fix landed in mihomo commit b7b05e07 as a one-line sing-tun
+- pseudo-version bump.
+
+- We can't upgrade the Clash.Meta submodule itself — v1.19.19+ removed
+- features.Android, listener.StopListener, tunnel.ProxiesWithProviders
+- and constant.DefaultTestURL which the forked core/*.go wrapper still
+- depends on. Instead, override sing-tun in core/go.mod via `replace`
+- pointing at the fixed pseudo-version b67c0377e081. GSO fix lives
+- entirely in sing-tun; no Clash.Meta source changes needed. Submodule
+- pointer unchanged at b64d7d11.
+
+- Also:
+- - DropwebVpnService.kt: setMtu 9000 → 1500 (match mobile link MTU,
+-   prevent fragmentation; 9000 was inherited FlClashX gigabit desktop
+-   hardcode).
+- - .gitmodules: fix broken enkinvsh/xHomo.git URL (wrong repo; xHomo
+-   is a Python project) → https://github.com/MetaCubeX/mihomo.git.
+- - pubspec.yaml: 2026040801 → 2026042802 (allow install -r over the
+-   pre-fix APK with the future-dated versionCode).
+
+- Verified on Pixel 10 + Remnawave nl-001 cascade:
+- - libclash.so embeds sing-tun@v0.4.16-0.20260303144527-b67c0377e081
+- - tun0 mtu = 1500 at runtime, zero RX errors
+- - Cloudflare 20MB download via mixed-port 7891: 20.5 MB/s (164 Mbps)
+- - Previous baseline from 2026-04-09 session: 4.4 MB/s (35 Mbps)
+- - +370% throughput improvement
+
+- Prod template mihomo.fixed.yml (v1) remains unchanged.
+
+- docs(readme): screenshots table with captions + ASCII fork lineage tree
+
+- docs(readme): terminal identity pass — code headers, tighter badges, drop h1
+
+- docs(readme): replace logo with retro wireframe header banner
+
+- docs(readme): replace HWID (inherited) with real security, strip to essentials
+
+- docs(readme): separate fork features from inherited ones
+
+- docs(readme): point download links to /releases instead of /releases/latest
+
+- GitHub treats /releases/latest as 'most recent stable', which
+- currently resolves to v0.3.3 and hides pre-releases like
+- v0.3.4-pre.1. Link to the full /releases page instead so the
+- latest build (stable or pre-release) is always discoverable.
+
+- ci(build): trim matrix to android+windows-amd64
+
+- - Drop linux, macos and windows-arm build entries from the matrix.
+-   They were consistently failing on setup/signing and blocking the
+-   upload + changelog jobs from running (needs.build.result was
+-   never 'success' with a broken matrix entry).
+- - Remove dead build steps: Rust setup for Windows ARM64, macOS
+-   signing certificate, Xcode signing configuration, macOS keychain
+-   cleanup, Flutter master channel for ARM runners.
+- - Remove sign-macos job entirely and delete the
+-   macos-sign-notarize.yaml reusable workflow.
+- - Drop 'sign-macos' from upload job needs.
+- - Remove the 'Download signed macOS artifacts' step in upload.
+
+- Linux / macOS / Windows-arm entries can be restored from git
+- history once their build failures are fixed.
+
+- docs(repo): polish README, templates and metadata for v0.3.4
+
+- - Rewrite README.md + README_EN.md with hero block, brand-color
+-   badges, polished feature list, screenshots section and trimmed
+-   download table (Android + Windows amd64 only).
+- - Rewrite release_template.md + pre_release_template.md with
+-   structured sections: Download / Known issues / Build from source
+-   / License. Pre-release variant carries a yellow warning header
+-   and bug-report CTA.
+- - Delete .github/FUNDING.yml (was pointing to dropweb.org, dead).
+- - Add docs/screenshots/ with dashboard.png and proxy.png taken
+-   from Pixel 10 running the current build.
+
+- Repo description + 14 topics were also set via 'gh repo edit'.
+
+- chore(release): bump to v0.3.4-pre.1
+
+- Pre-release patch bundling two user-facing improvements:
+
+- - perf(ui): lumina Tier 1+2 — weaken GPU-heavy effects and narrow
+-   traffic rebuild scope (commit 65be18a). Lumina blur sigma halved,
+-   shader targetFps 30→15, breathing glow parameters softened, magic
+-   rings 4→2, light pillars 4→2, traffic update loop 1s→2s,
+-   NetworkSpeed/TrafficUsage split into per-leaf Consumer widgets,
+-   LineChart computeMetrics dead work removed.
+
+- - refactor(modes): restore FlClashX three-mode model rule/direct/global
+-   (commit 1a1e3d9). Removed the e477230 Smart repurpose (_SmartProxiesView
+-   was read-only and trapped users on mixed templates). Mode enum, UI
+-   label and mihomo mode are now 1:1: rule→Правила, direct→Прямой,
+-   global→Глобальный. All three modes use the tappable _RulesProxiesView
+-   so the compact card UI gains interactivity in every mode.
+
+- Using pre-release marker (-pre.1) because the perf changes have not
+- been validated on mid-range Android hardware yet — awaiting feedback
+- from the users who originally reported the lag. Internal track only.
+
+- refactor(modes): restore FlClashX three-mode model (rule/direct/global)
+
+- Previously commit e477230 introduced a "Smart / Rules / Global" mode
+- switcher that repurposed Mode.direct as a UI "Rules" tab (manual
+- selector) while force-patching all select proxy-groups to url-test
+- when Mode.rule ("Smart") was active. Commit 7426bde later reverted
+- the force-patcher because it broke nested template router groups
+- (by-legiz etc.) via recursive url-test, but left the repurpose and
+- read-only _SmartProxiesView behind. That created two latent issues:
+
+-   1. UX dead-end: _SmartGroupCard was read-only (no InkWell onTap),
+-      so on mixed templates (select groups inside Smart mode) users
+-      could see proxies but had no way to change them.
+-   2. Mode semantics: Mode.direct in the UI meant "Rules" but in
+-      mihomo config was mapped to "rule" mode. Mode enum, UI label,
+-      and mihomo mode were three different concepts.
+
+- Restore the original FlClashX three-mode model — enum, label, and
+- mihomo mode are now 1:1:
+
+-   Mode.rule   → "Правила"    → mihomo "rule"
+-   Mode.direct → "Прямой"     → mihomo "direct"  (real bypass)
+-   Mode.global → "Глобальный" → mihomo "global"
+
+- Changes:
+
+- - lib/views/subscription.dart:
+-   - Delete _SmartProxiesView + _SmartGroupCard (~130 lines of read-
+-     only duplicate of _RulesProxiesView)
+-   - _ProxiesContent: was ConsumerWidget with switch(mode), now a
+-     plain StatelessWidget rendering _RulesProxiesView for all modes.
+-     The bottom mode bar watches mode internally for its highlight.
+-   - SharedProxiesBody: same simplification
+-   - _modeLabel: smart→rules, rules→direct (shift labels to match
+-     enum semantics; uses existing "rules"/"direct" l10n keys)
+
+- - lib/views/dashboard/widgets/outbound_mode.dart:
+-   - _modeLabel: same shift (smart→rules, rules→direct)
+-   - _modeIcon: Mode.rule now uses strokeRoundedFilter (rule filter),
+-     Mode.direct uses strokeRoundedArrowRight01 (direct bypass)
+-   - Header comment rewritten for FlClashX-original semantics
+
+- - lib/providers/state.dart: updateParams no longer remaps
+-   Mode.direct → Mode.rule; mode passes through verbatim
+
+- - lib/state.dart: patchRawConfig no longer remaps; mihomo config
+-   gets realPatchConfig.mode.name directly
+
+- Visually verified on Pixel 10: compact card style preserved (emoji
+- + type·selected + delay badge + chevron), tap-to-select now works
+- in all three modes (was read-only in the previous Smart mode),
+- bottom bar shows "Правила / Прямой / Глобальный". No regressions
+- in flutter analyze (0 errors, 16 warnings, 569 infos — same baseline
+- as pre-change).
+
+- No migration shipped: Mode.direct users from the brief (<24h) window
+- between e477230 and this commit will land in real Direct/bypass mode
+- on first launch. They can switch back to "Правила" manually. Deemed
+- acceptable because the affected cohort is small and this restores
+- the long-standing FlClashX behavior.
+
+- perf(ui): lower lumina GPU load + narrow traffic rebuild scope
+
+- Mid-range Android users reported UI lag after the LUMINA 2027
+- redesign (commit 0e516bf and follow-ups). Root cause: a stack of
+- ~5 simultaneous GPU-heavy effects running on the dashboard. Two-tier
+- fix without architectural changes — Tier 1 weakens each effect's
+- parameters; Tier 2 narrows Riverpod rebuild scopes on the hot
+- traffic update path and trims dead work.
+
+- Tier 1 — weaken lumina effects globally:
+- - lumina.dart: blurSigma 10→4, blurSigmaHeavy 16→8 (BackdropFilter
+-   cost is ~quadratic in sigma → ~6x cheaper for nav bar, connect
+-   button, subscription glass tabs; all use Lumina.glassBlur centrally)
+- - color_bends_bg.dart: default targetFps 30→15
+- - start_button.dart: breathing glow 3s→4s, tween 0.2-0.5→0.15-0.3,
+-   BoxShadow blurRadius 16→8, spreadRadius 2→1
+- - magic_rings.dart: duration 8000ms→14000ms, _ringCount 4→2
+- - light_pillar.dart: 4 pillars → 2 (kept the two widest)
+
+- Tier 2 — narrow traffic rebuild scope and remove dead work:
+- - state.dart: traffic update loop 1s→2s (halves background cascade
+-   work; slightly less live speedometer)
+- - color_bends_bg.dart: Ticker is now lazily created only after the
+-   shader loads successfully. Previously ran every frame even though
+-   shaders/color_bends.frag has been silently failing on Impeller
+-   since 2025-09-11 (upstream manifest sets EnableImpeller=true,
+-   FragmentProgram fails on GLES, widget falls back to SizedBox.shrink)
+- - network_speed.dart: split into StatelessWidget scaffolding +
+-   _SpeedChart ConsumerWidget (full traffics list watch) + _SpeedText
+-   ConsumerWidget using ref.watch(trafficsProvider.select(...)) on a
+-   derived display string — rebuilds only when the formatted text
+-   actually changes (String has proper value equality)
+- - traffic_usage.dart: split into StatelessWidget +
+-   _TrafficUsageContent ConsumerWidget → CommonCard chrome no longer
+-   rebuilds on every totalTrafficProvider tick
+- - line_chart.dart: removed computeMetrics().first.extractPath(0,
+-   length) dead work in getAnimatedPath. For a simple connected
+-   quadraticBezierTo sequence it produces an equivalent path but
+-   walks it O(n) per repaint. Equivalent output, cheaper per frame.
+
+- Visually verified on Pixel 10 (not mid-range, but sufficient to
+- confirm no visual regression): magic rings animate smoothly,
+- breathing glow lit, glass tab bar renders, VPN state persists
+- through hot restart. Impeller-related static color-bends background
+- is pre-existing state since 2025-09-11, unrelated to this change;
+- skill flutter-dropweb-dev Gotcha #1 was updated separately to
+- document that situation.
+
+- flutter analyze: 0 errors (16 warnings, 568 infos — baseline clean,
+- no regressions vs pre-change state).
+
+- revert: stop force-patching proxy-groups in Smart mode
+
+- Remove client-side select→url-test patcher from state.dart and
+- simplify changeMode back to pre-e477230 behavior. The patcher from
+- commit e477230 was breaking template router groups: e.g. by-legiz
+- template has 🌍 VPN (select) referencing ⚡ Fastest / 📶 First
+- Available — when force-patched to url-test, mihomo started running
+- recursive url-test across nested group references, producing
+- unpredictable selection (cascade nodes usually winning on raw latency,
+- masking direct nodes even when template explicitly tried to structure
+- them separately).
+
+- The correct solution lives server-side: Remnawave templates use native
+- mihomo filter / exclude-filter on their url-test groups to shape which
+- proxies enter the auto-selection pool. Client should respect template
+- structure, not reshape it.
+
+- Security tier 1-2 from e477230 (_apiSecret random API auth,
+- _randomMixedPort localhost hardening) is preserved — only the proxy
+- group patching and custom changeMode reload/firstRuleGroup logic are
+- reverted.
+
+- fix: remove leftover FlClashX vector drawables
+
+- Wave 1 icon rebrand regenerated launcher PNGs via flutter_launcher_icons
+- but missed two vector XMLs which silently overrode them at Android
+- resource resolution:
+
+- - drawable/ic_launcher_foreground.xml (cyan X-bars gradient) — used by
+-   adaptive launcher icon and windowSplashScreenAnimatedIcon
+- - drawable/ic.xml (white X-bars vector) — used by VPN notification
+-   small icon via setSmallIcon(R.drawable.ic)
+
+- Notification now uses R.drawable.ic_launcher_monochrome (regenerated
+- dropweb silhouette). Splash screen animated icon dropped — Android 12+
+- falls back to the app launcher icon which is now dropweb. Play Store
+- listing asset ic_launcher-playstore.png regenerated from canonical
+- assets/images/icon.png source.
+
+- fix: add clash-verge UA prefix for Remnawave subscription compat
+
+- fix: replace icons with official db neon logo
+
+- fix: minSdk 21 → 23 to match core module
+
+- rebrand: FlClashX → dropweb v0.3.3
+
+- Full rebrand across all platforms:
+- - Dart: DropwebHttpOverrides, UA 'dropweb/v...', repository enkinvsh/dropweb-app
+- - Kotlin: 4 files renamed (DropwebApplication/Service/VpnService/TileService)
+- - Android: manifests, adaptive icons from official db pixel-art logo
+- - macOS: bundle ID org.dropweb.vpn, copyright, xib, pbxproj
+- - Windows/Linux: publisher dropweb, service names, packager info
+- - Icons: official neon db logo, monochrome, tray variants, TV banner
+- - Meta: README RU+EN rewritten, GitHub templates, CI workflows, .gitmodules
+- - Submodules: forked to enkinvsh/xHomo + enkinvsh/flutter_distributor
+- - Rust helper: DropwebHelperService
+- - GPL-3.0 attribution preserved for chen08209/FlClash and pluralplay/FlClashX
+
+- BREAKING: flclashx-* HTTP headers unchanged (Remnawave protocol compat)
+
+- refactor: unify desktop proxies/profiles with mobile UI
+
+- - Add SharedProxiesBody/SharedProfilesBody public widgets in subscription.dart
+- - Desktop ProxiesView (328→40 lines): delegates to SharedProxiesBody, clears actions/FAB
+- - Desktop ProfilesView: delegates to SharedProfilesBody, clears actions/FAB
+- - Both platforms now share same Smart/Rules/Global views, mode bar, add card, pull-to-refresh
+
+- refactor: subscription page UX overhaul — glass tabs, inline add, pull-to-refresh
+
+- - Replace rectangular tab bars with Lumina glass-styled containers (blur, radiusLg, glass border)
+- - Move mode switcher from AppBar popup to bottom segmented control (text-only, matching top tabs)
+- - Replace FAB with inline '+' card in profiles grid
+- - Replace AppBar action buttons with pull-to-refresh (profiles: update subs, proxies: ping all)
+- - Remove dead code: ProxiesTabView/ListeView/Setting imports, _proxiesTabKey, _isTab, _hasProviders
+- - Clean unused _ModeSelectorAction, expand/collapse, tab scroll-to-selected, DelayTestButton
+
+- fix: revert mixed-port randomization — caused connection refused on restart
+
+- Random per-session port desynchronized with persisted Dio proxy config,
+- breaking subscription updates. Port scanning mitigation is ineffective
+- anyway (65535 ports scanned in seconds). The secret on external-controller
+- is the real protection.
+
+
+- feat: localhost API protection + Smart/Rules/Global mode switcher
+
+- Security (Tier 1-2):
+- - Inject random 64-char secret on external-controller API (per-session)
+- - Randomize mixed-port when default 7890 (hinders localhost scanning)
+
+- Mode switcher:
+- - Smart: url-test groups, interval=60s, tolerance=100ms, lazy=false
+-   Compact row view (group → auto-selected proxy → delay badge)
+- - Rules: select groups, same compact rows + tap → bottom sheet selector
+- - Global: mihomo global mode
+- - Full config reload (setupClashConfigDebounce) on Smart↔Rules switch
+
+- Localization: smart/rules keys for en/ru/ja/zh_CN
+
+
+- feat: migrate all icons from Material to HugeIcons strokeRounded
+
+- Replace 205 Material Icons with HugeIcons SVG across 45 files:
+- views, widgets, pages, managers. Add hugeicons package to pubspec.
+- Consistent strokeRounded style throughout the app.
+
+
+- feat: add SubscriptionPage with profiles/proxies tabs, restructure navigation
+
+- New fullscreen SubscriptionPage (MetainfoWidget tap → Subscription).
+- Two tabs: Profiles (subscription list + FAB) and Proxies (proxy groups).
+- Remove Proxies from bottom nav — now 2 tabs: Home | Settings.
+- Compact island layout (ConstrainedBox 55% width, connect button right).
+- MeshBackground on subscription page.
+
+
+- refactor: widen NavigationItem.icon to Widget, PopupMenuItemData.icon to Widget?
+
+- Prepare model types for HugeIcons migration — Icon and IconData are
+- too narrow for SVG-based icon widgets. Freezed generated code updated
+- manually (build_runner broken).
+
+
+- feat: add subscription localization key across all languages
+
+- Add "subscription" key to en/ru/ja/zh_CN ARB files and regenerate
+- l10n + intl message files.
+
+
+- feat: magic rings fade-in/out animation with thinner strokes
+
+- - AnimatedOpacity 800ms ease-in-out on connect/disconnect
+- - Stroke width 2.0→0.8px, quadratic radial fade
+- - Controller stops only after fade-out completes (onEnd)
+
+
+
+- fix: keep magic rings under tab bar island, not above
+
+- MagicRingsOverlay stays in dashboard body Stack (under bottomNavigationBar).
+- Rings pass behind the glass tab bar island — intentional layering.
+
+- feat: fullscreen magic rings from connect button, haptic feedback
+
+- - MagicRingsOverlay: 4 rings expand from connect button to full screen
+-   diagonal, 8s cycle, GlobalKey → RenderBox.localToGlobal for exact
+-   button position, globalToLocal for paint-space conversion
+- - _ConnectCircle reports screen position via connectButtonCenter notifier
+- - Removed glow shadow on connect button (glassShadow only)
+- - HapticFeedback on tab switch (selectionClick) and connect (mediumImpact)
+- - Added audioplayers + glass sound assets (unused for now, haptic preferred)
+- - Glass audio service (GlassAudio) created but not wired — available for
+-   future use if needed
+
+- fix: remove PRE badge, subtle ring animation, haptic feedback on connect
+
+- - Remove PRE/DEBUG banner from app_state_manager entirely
+- - Tone down ring BoxShadow: spread 2→20 (was 4→32), blur 1→5 (was 2→14),
+-   alpha 0.25 (was 0.35) — cleaner, less blurry rings
+- - Add HapticFeedback.mediumImpact on VPN connect/disconnect
+- - Add HapticFeedback.lightImpact on add profile action
+
+- feat: color bends shader bg, transparent AppBar, connect button as add-profile
+
+- - Add GLSL color bends fragment shader (reactbits port) on dashboard
+- - Disable Impeller on Android (Skia fallback) — Impeller GLES silently
+-   fails to load custom FragmentProgram shaders
+- - Make AppBar transparent in dark mode + extendBodyBehindAppBar so
+-   gradient bleeds through from top edge
+- - Remove 'Добавить профиль' dashboard card — replaced by connect button
+- - Connect button shows '+' icon when no profile, opens URL dialog on tap
+- - MeshBackground rewritten: DecoratedBox stack instead of CustomPaint +
+-   ImageFiltered (avoids Size.infinite + blur clipping issues)
+- - LightPillar: bump opacity, add docs, guard zero-size
+- - ColorBendsBg: ValueNotifier-driven repaint, 30fps throttle, zero
+-   widget rebuilds during animation
+
+- feat: LUMINA 2027 design system — glass surfaces, mesh gradient, light pillars, bioluminescent glow
+
+- - Add Lumina design tokens (lumina.dart): void #030305, glass 3%/8%, blur sigma 10, glow colors, animation curve
+- - Theme: void surface hierarchy, glass CardTheme for dark mode
+- - Mesh gradient background: 3 radial gradients (green/lightgreen/blue) with blur, in scaffold
+- - Animated light pillars: 4 vertical beams with slow drift, Home screen only
+- - Glass tab bar + connect button: BackdropFilter blur, specular borders, deep shadows
+- - Glass dashboard widgets: CommonCard uses Lumina glass values on dark theme
+- - Bioluminescent active states: connect button breathe animation, tab glow dot
+- - Light theme fallback: solid surfaces, no blur, clean Material 3
+
+- redesign: dropweb branded UI — floating island tab bar, circular connect button, Unbounded font, green theme
+
+- - Tab bar: floating island pill with outline, blur, shadow
+- - Connect button: circle next to tab bar, fills primary on connect
+- - Theme: #15803D green accent, pureBlack dark mode default
+- - Font: Unbounded (variable) for headings, system for body
+- - Dashboard: removed title bar, removed widget edit button
+- - Defaults: removed announce & mode switcher from home widgets
+- - Layout: connect button + widgets in scrollable content
+
+- rebrand FlClashX → dropweb: package org.dropweb.vpn, custom icon, cleanup nav
+
+- fix: tg channel link
+
+## v0.3.2
+
+- release: version 0.3.2
+
+- critical fix: ClashHelperService
+
+- fix: ClashHelper installer
+
+- feat: new tray icon, new title bar
+
+- fix: tg notify
+
+## v0.3.1
+
+- fix: androidTV focusing dpad proxy page
+
+- feat: new readme
+
+## v0.3.1-pre.1
+
+- fix: windows logic service
+- fix: Linux arm build
+
+## v0.3.0
+
+- fix 0.3.0 release
+
+- fix: added pureblack variant hex header
+- fix: optimize base
+- fix: icon linux-based distrib
+
+- fix: HWID notify logic
+- fix: removed the proxy group type from the proxy page
+
+- feat: 3 days notice of expiring subscription every day (only Android for now)
+
+- feat: new header flclashx-globalmode
+- feat: visible servicename and host in foreground notify
+- fix: update dependencies packages
+- fix: flclashx-custom logic
+- fix: windows installer
+- fix: update logic empty widgets visible
+- fix: update notify TG
+
+## v0.3.0-pre.13
+
+- ci: fix notify
+
+- fix: android tile service
+- feat: manual check in IPchecker widget
+- feat: mode selector in ProxyPage
+- feat: notify modal in HWID limit
+- fix: logic geo updater
+
+- fix: android tile service
+- feat: manual check in IPchecker widget
+- feat: mode selector in ProxyPage
+- feat: notify modal in HWID limit
+- fix: logic geo updater
+
+- feat: manually check ip from networkDetection widget
+
+- fix: cache icons
+
+- fix: the proxy tab disappears when renewing a subscription or in other cases
+
+- feat: add restart button in tray control
+- feat: new pop-up window when HWID Limit is reached
+
+- fix: blur on bottomsheets, sidesheets
+
+## v0.3.0-pre.12
+
+- fix: memtagmode off (temp solution)
+
+- fix: serivceinfo widget base64 issue
+
+- fix: backup/restore app function
+
+## v0.3.0-pre.11
+
+- fix: release script
+
+- fix: init proxiesgroup for start/stop button
+
+- feat: add button to check latency across all proxy groups
+- feat: new header flclashx-hex (custom theme app)
+- fix: search button in proxy groups
+- fix: setting up proxy group sorting
+
+- fix android tile service
+
+- fix: andriod adaptive icon
+
+- fix: release template
+
+## v0.3.0-pre.10
+
+- fix: build pages RepaintBoundary widgets
+- feat: notify release
+- fix: modal pages opacity
+
+- fix: windows arm actions
+
+- fix: coreversion on build app
+
+- fix: artefact slidemenu
+
+- fix: serviceinfo and changeserver support latin or base64 header for cyrillic, unicode and emoji support
+- fix: support https:// links announce widget
+
+- update flclashx-serverinfo description
+
+## v0.3.0-pre.9
+
+- fix: android icons and splashscreen
+- refactor: changeserverbutton widget
+- fear: new header flclashx-serverinfo
+- refactor: update readme and templates
+- fix: cache logo in service-logo header
+- fix: theme opacity layer
+
+- fix: optimize theme for opacity layers
+- fix: deprecated core version
+- fix: about page
+
+## v0.3.0-pre.8
+
+- fix: release template
+
+- new submodule init
+
+- Remove old submodule
+
+- Remove old submodule
+
+- fix: visible log folder button on andriod
+
+- fix: gtk flags
+
+- fix: workflow
+
+- feat: logs folder button in settings menu
+- refactor: about page
+
+- refactor: cleaning up excess logs
+
+- feat: logger in file (logrotate10 days)
+
+- fix: android hwid generator (Settings.Secure_ID)
+
+- fix: running a single instance on Linux
+
+## v0.3.0-pre.7
+
+- fix: pubsec.yaml
+
+- fix: workflow flutter version
+
+- update: geofiles
+
+- fix: locale
+- refactor: recive mixed-port from subscription
+
+- fix: recieve App Setting from provider
+- fix: en localization
+- update: readme
+
+- fix: migrate deprecated iconstyle
+
+- feat: add flclashx-backgroud header (the ability to customize the application background)
+- feat: button to hide/show all proxy groups
+- fix: kill application when installing over an older version
+
+- refactor: apply comprehensive linting rules and code style improvements
+- Add extensive lint rules in analysis_options.yaml (100+ rules)
+- Apply automated code formatting across entire codebase
+- Changes to Linux distribution descriptions
+- Adding full support for 120Hz screens on Android
+
+- Delete workflow
+- test comm
+- test
+- Merge pull request #29 from pluralplay/pluralplay-patch-1
+
+- wf
+- wf
+- Merge branch 'main' of https://github.com/pluralplay/FlClashX
+
+- Revert "fix: macos naming artifact"
+
+- This reverts commit 72fe70aa9d4737e750bc41ffa180367c1113f149.
+
+- Merge pull request #27 from pluralplay/dev
+
+- 0.3.0-pre.6
+
+## v0.3.0-pre.6
+
+- feat: recive parameters from a subscription and enabling from an override in client: allow-lan, ipv6, find-process-mode, tun-stack
+- feat: the ability to completely reset application profiles from settings
+
+- update: readme
+- fix: exclude closeConnections provider control
+
+- fix: android notification start bug
+- refactor: cardType fill flexible
+
+- Merge pull request #25 from katsukibtw/main
+
+- Proxies list view refactoring using Expansible widget
+- add custom logo and new header flclashx-servicelogo (work only with flclashx-servicename header)
+
+- Merge pull request #26 from pluralplay/main
+
+- fix: macos naming artifact
+- fix: macos naming artifact
+
+- remove standard icon style
+
+- refactor: use Expansible for proxy groups in proxies list view
+
+- update dev branch pre release
+
+- update dev branch
+- fix: notify icon android
+
+- Merge pull request #6 from pluralplay/main
+
+- todev
+
+## v0.3.0-pre.4
+
+
+## v0.3.0-pre.5
+
+- fix: main settings UI and default variable
+- fix: hwid generator
+- fix: macos version artifact rename
+
+## v0.3.0-pre.3
+
+- fix: pre-release posting gh
+
+- fix: delete message from update core version
+
+## v0.3.0-pre.2
+
+- fix template
+
+- fix: init FlClashX
+
+- fix: init
+
+- fix: init universal apk
+- fix: init fork flutter_distributor
+
+- feat: universal APK
+- feat: new UI for geofiles menu
+- feat: Application settings from sub-header (disableable setting override)
+- feat: saving custom settings from the profile header
+- fix: custom geofiles loader (check hash from URL)
+- fix: safe_patch error
+- fix: metainfo widget logical
+- fix: localization
+
+- fix about page and adding new translate
+
+- fix declension
+- adding hour counter remaining sub
+
+- fix russian translate
+
+- fix timecounter start/stop button
+
+- fix lang metainfo card
+
+- refactor about page
+
+- update proxy state before update sub
+
+- fix tray control and change color depending on Windows theme
+- fix stop service helper
+- fix external-ui subupdate
+
+- fix server description standard card
+- fix macos deeplink (add flclashx)
+- add core version in About page
+- fix uninstaller and uninstall logo
+- fix deeplink first install
+
+- Merge pull request #18 from prettyleaf/main
+
+- feat(release): add Repology badge for FlClashX version tracking
+- feat(release): add Repology badge for FlClashX version tracking
+
+- Merge pull request #15 from kastov/macos-features
+
+- New widgets, macOS signing&notarization, macOS tray
+- feat(dashboard): enhance MetainfoWidget with improved expiration display and UI adjustments
+
+- - Updated the logic to show days left until subscription expiration, limiting display to within 3 days.
+
+- fix(utils): update time formatting for getTimeText method
+
+- - Changed the default return value for null timestamps from '00:00:00' to '000:00:00' to accommodate larger hour values.
+- - Adjusted the hour limit check from 99 to 999 to support longer durations.
+- - Updated the return statement to ensure hours are padded to three digits for consistent formatting.
+
+- chore(build): update macOS configuration and clean up Windows platform entries
+
+- - Changed macOS version from 'macos-13' to 'macos-latest' for improved compatibility.
+- - Commented out Windows platform configuration to simplify the build workflow.
+- - Updated the Flutter subproject commit to indicate a dirty state.
+
+- feat(build): clean up build workflow
+
+- - Removed the Telegram bot service configuration from the GitHub Actions workflow to streamline the build process.
+
+- feat(dashboard): add serviceInfo widget and update profile handling
+
+- - Introduced the `serviceInfo` widget to the dashboard for enhanced service display.
+- - Updated the `Profile` model to include a new `serviceName` field for better service management.
+- - Enhanced README files to document the new `serviceInfo` widget and its usage.
+
+- feat(proxy): enhance proxy card functionality and UI
+
+- - Introduced a new 'oneline' card type for improved display options in the proxy list.
+- - Updated the ProxyCard widget to handle the new card type, including layout adjustments and conditional rendering.
+- - Enhanced the getItemHeight function to accommodate the new card type.
+- - Refactored the handling of proxy descriptions and delay text for better clarity and user experience.
+- - Added support for the new card type in the computed mark display logic.
+
+- feat(proxy): enhance proxy handling with server descriptions and JSON integration
+
+- - Added extraction of server descriptions from raw YAML config to improve proxy management.
+- - Updated Proxy model to include an optional serverDescription field for better data representation.
+- - Enhanced handleGetProxies function to include server descriptions in the returned JSON structure.
+- - Adjusted UI components to display server descriptions where applicable, improving user experience.
+
+- feat(macos): adjust popover dimensions and enhance macOS app layout
+
+- - Updated the popover dimensions in AppDelegate and StatusBarController to 375x600 for better fit.
+- - Added platform-specific handling in ApplicationState to adjust the app layout for macOS, including a FittedBox for improved display.
+- - Ensured the app maintains a consistent appearance across different macOS environments.
+
+- feat(dashboard): enhance StartButton with animation and tap feedback
+
+- - Updated StartButton to use TickerProviderStateMixin for improved animation control.
+- - Added a new press animation for tap feedback, enhancing user interaction.
+- - Adjusted button duration for animations and improved visual feedback with scaling and size transitions.
+- - Refactored button layout to include GestureDetector for handling tap events.
+- - Updated text styling for better visibility and added keys for widget identification.
+
+- fix(window_manager): simplify macOS logic in WindowHeaderContainer and remove unused import
+
+- - Removed the unused import of app provider.
+- - Streamlined the macOS-specific logic in the WindowHeaderContainer to improve clarity and maintainability.
+
+- refactor: remove unused code
+
+- feat(localization): add "Change Server" string to multiple language files and update UI elements for macOS
+
+- - Added "Change Server" localization to English, Japanese, Russian, and Simplified Chinese ARB files.
+- - Updated the localization messages in the respective Dart files.
+- - Adjusted macOS UI elements for better integration, including window size and rounded corners for the popover.
+- - Enhanced the window manager logic to handle macOS-specific behavior more effectively.
+
+- feat(build): enhance Makefile and Xcode project for macOS notarization and code signing
+
+- feat(macos): implement native status bar and code signing support
+
+- Adds comprehensive macOS status bar integration and app signing capabilities:
+
+- - Replaces window-based UI with native status bar menu
+- - Implements secure core binary installation in Application Support
+- - Adds code signing and notarization workflow
+- - Updates build configuration for proper macOS code signing
+- - Improves DMG creation process using create-dmg
+- - Configures launch-at-login functionality
+- - Sets minimum macOS version to 11.0
+
+- This change significantly improves the native macOS experience by making the app behave more like a traditional menu bar utility while ensuring proper security measures through code signing and notarization.
+
+- Update bug_report.yml
+- Update bug_report.yml
+- Update bug_report.yml
+- Update feature_request.yml
+- Update config.yml
+- Update release_template.md
+- clean
+
+## v0.2.1
+
+- update mihomo core
+
+- update logo
+- update mihomo core
+
+- Create FUNDING.yml
+- update readme
+
+## v0.2.0
+
+- Merge branch 'dev'
+
+- - add new widget "Meta Info"
+- - add new catch-header (flclashx-view,flclashx-denywidgets,flclashx-custom)
+- - bug-fixes qr-code scanner
+
+- Update README.md
+- Update README_EN.md
+- Update README_EN.md
+- Update README.md
+- Update README.md
+- Update README.md
+- Update README.md
+- Update README.md
+- Merge pull request #4 from pluralplay/main
+
+- new
+- update snapshots
+
+## v0.1.0
+
+- Update flutter_distributor submodule to latest commit
+
+- Update .gitmodules
+- some changes
+
+- change GI dependence
+
+- enchance profile card UI
+- add catch new header flclashx-widget
+- flclashx-hidemode is deprecated
+- add support button in profile
+
+- enchance profile card UI
+- add catch new header flclashx-widget
+- flclashx-hidemode is deprecated
+- add support button in profile
+
+## v0.0.7
+
+- Feature: add profile from mobile on AndroidTV (QR-code init)
+
+- Merge pull request #3 from pluralplay/dev
+
+- Feature: add profile from mobile on AndroidTV (QR-code init)
+- Feature: add profile from mobile on AndroidTV (QR-code init)
+
+## v0.0.6
+
+- some changes
+
+- Add button "Paste" in Add Profile from URL (Android TV optimisation)
+- In Proxy page default mode - list
+- New header catch - flclashx-hidemode (boolean) - hide all widgets form Main Page in first Add Profile
+- Change About page
+
+- delete cache
+
+- Delete cache
+
+## v0.0.5
+
+- some changes
+
+- add hidemode widget feature
+
+## v0.0.4
+
+- some changes
+
+- - support redirect links (pinger work)
+- - some fixes tun on android
+
+- Update README.md
+- Update README.md
+- Delete cache
+
+## v0.0.3
+
+- tun mode android bug fixes
+
+## v0.0.2
+
+- some changes
+
+- add ru locale instalation, some bugfixes
+
+## v0.0.1
+
+- some changes
+
+- some changes
+
+- Merge branch 'main' of https://github.com/pluralplay/FlClashX
+
+- release 1
+
+- Delete services/helper/target directory
+- some changes
+
+- Release 1
+
+- Merge pull request #2 from pluralplay/dev
+
+- final dev build v.0.0.1
+- final dev build v.0.0.1
+
+- Merge pull request #1 from pluralplay/dev
+
+- new features
+- add announce widget, change default settings
+
+- add HWID
+
+- Update changelog
+
+- Fix windows tun issues
+
+- Optimize android get system dns
+
+- Optimize more details
+
+- Update changelog
+
+- Support override script
+
+- Support proxies search
+
+- Support svg display
+
+- Optimize config persistence
+
+- Add some scenes auto close connections
+
+- Update core
+
+- Optimize more details
+
+- Fix issues that TUN repeat failed to open.
+
+- Update changelog
+
+- Fix windows service verify issues
+
+- Update changelog
+
+- Add windows server mode start process verify
+
+- Add linux deb dependencies
+
+- Add backup recovery strategy select
+
+- Support custom text scaling
+
+- Optimize the display of different text scale
+
+- Optimize windows setup experience
+
+- Optimize startTun performance
+
+- Optimize android tv experience
+
+- Optimize default option
+
+- Optimize computed text size
+
+- Optimize hyperOS freeform window
+
+- Add developer mode
+
+- Update core
+
+- Optimize more details
+
+- Add issues template
+
+- Update changelog
+
+- Optimize android vpn performance
+
+- Add custom primary color and color scheme
+
+- Add linux nad windows arm release
+
+- Optimize requests and logs page
+
+- Fix map input page delete issues
+
+- Update changelog
+
+- Add rule override
+
+- Update core
+
+- Optimize more details
+
+- Update changelog
+
+- Optimize dashboard performance
+
+- Fix some issues
+
+- Fix unselected proxy group delay issues
+
+- Fix asn url issues
+
+- Update changelog
+
+- Fix tab delay view issues
+
+- Fix tray action issues
+
+- Fix get profile redirect client ua issues
+
+- Fix proxy card delay view issues
+
+- Add Russian, Japanese adaptation
+
+- Fix some issues
+
+- Update changelog
+
+- Fix list form input view issues
+
+- Fix traffic view issues
+
+- Update changelog
+
+- Optimize performance
+
+- Update core
+
+- Optimize core stability
+
+- Fix linux tun authority check error
+
+- Fix some issues
+
+- Fix scroll physics error
+
+- Update changelog
+
+- Add windows storage corruption detection
+
+- Fix core crash caused by windows resource manager restart
+
+- Optimize logs, requests, access to pages
+
+- Fix macos bypass domain issues
+
+- Update changelog
+
+- Fix some issues
+
+- Update changelog
+
+- Update popup menu
+
+- Add file editor
+
+- Fix android service issues
+
+- Optimize desktop background performance
+
+- Optimize android main process performance
+
+- Optimize delay test
+
+- Optimize vpn protect
+
+- Update changelog
+
+- Update core
+
+- Fix some issues
+
+- Update changelog
+
+- Remake dashboard
+
+- Optimize theme
+
+- Optimize more details
+
+- Update flutter version
+
+- Update changelog
+
+- Support better window position memory
+
+- Add windows arm64 and linux arm64 build script
+
+- Optimize some details
+
+- Remake desktop
+
+- Optimize change proxy
+
+- Optimize network check
+
+- Fix fallback issues
+
+- Optimize lots of details
+
+- Update change.yaml
+
+- Fix android tile issues
+
+- Fix windows tray issues
+
+- Support setting bypassDomain
+
+- Update flutter version
+
+- Fix android service issues
+
+- Fix macos dock exit button issues
+
+- Add route address setting
+
+- Optimize provider view
+
+- Update changelog
+
+- Update CHANGELOG.md
+
+- Add android shortcuts
+
+- Fix init params issues
+
+- Fix dynamic color issues
+
+- Optimize navigator animate
+
+- Optimize window init
+
+- Optimize fab
+
+- Optimize save
+
+- Fix the collapse issues
+
+- Add fontFamily options
+
+- Update core version
+
+- Update flutter version
+
+- Optimize ip check
+
+- Optimize url-test
+
+- Update release message
+
+- Init auto gen changelog
+
+- Fix windows tray issues
+
+- Fix urltest issues
+
+- Add auto changelog
+
+- Fix windows admin auto launch issues
+
+- Add android vpn options
+
+- Support proxies icon configuration
+
+- Optimize android immersion display
+
+- Fix some issues
+
+- Optimize ip detection
+
+- Support android vpn ipv6 inbound switch
+
+- Support log export
+
+- Optimize more details
+
+- Fix android system dns issues
+
+- Optimize dns default option
+
+- Fix some issues
+
+- Update readme
+
+- Fix build error2
+
+- Fix build error
+
+- Support desktop hotkey
+
+- Support android ipv6 inbound
+
+- Support android system dns
+
+- fix some bugs
+
+- Fix delete profile error
+
+- Fix submit error 2
+
+- Fix submit error
+
+- Optimize DNS strategy
+
+- Fix the problem that the tray is not displayed in some cases
+
+- Optimize tray
+
+- Update core
+
+- Fix some error
+
+- Fix tun update issues
+
+- Add DNS override
+- Fixed some bugs
+- Optimize more detail
+
+- Add Hosts override
+
+- fix android tip error
+- fix windows auto launch error
+
+- Fix windows tray issues
+
+- Optimize windows logic
+
+- Optimize app logic
+
+- Support windows administrator auto launch
+
+- Support android close vpn
+
+- Change flutter version
+
+- Support profiles sort
+
+- Support windows country flags display
+
+- Optimize proxies page and profiles page columns
+
+- Update flutter version
+
+- Update version
+
+- Update timeout time
+
+- Update access control page
+
+- Fix bug
+
+- Optimize provider page
+
+- Optimize delay test
+
+- Support local backup and recovery
+
+- Fix android tile service issues
+
+- Fix linux core build error
+
+- Add proxy-only traffic statistics
+
+- Update core
+
+- Optimize more details
+
+- Add fdroid-repo
+
+- Optimize proxies page
+
+- Fix ua issues
+
+- Optimize more details
+
+- Fix windows build error
+
+- Update app icon
+
+- Fix desktop backup error
+
+- Optimize request ua
+
+- Change android icon
+
+- Optimize dashboard
+
+- Remove request validate certificate
+
+- Sync core
+
+- Fix windows error
+
+- Fix setup.dart error
+
+- Fix android system proxy not effective
+
+- Add macos arm64
+
+- Optimize proxies page
+
+- Support mouse drag scroll
+
+- Adjust desktop ui
+
+- Revert "Fix android vpn issues"
+
+- This reverts commit 891977408e6938e2acd74e9b9adb959c48c79988.
+
+- Fix android vpn issues
+
+- Fix android vpn issues
+
+- Rollback partial modification
+
+- Fix the problem that ui can't be synchronized when android vpn is occupied by an external
+
+- Override default socksPort,port
+
+- Fix fab issues
+
+- Update version
+
+- Fix the problem that vpn cannot be started in some cases
+
+- Fix the problem that geodata url does not take effect
+
+- Update ua
+
+- Fix change outbound mode without check ip issues
+
+- Separate android ui and vpn
+
+- Fix url validate issues 2
+
+- Add android hidden from the recent task
+
+- Add geoip file
+
+- Support modify geoData URL
+
+- Fix url validate issues
+
+- Fix check ip performance problem
+
+- Optimize resources page
+
+- Add ua selector
+
+- Support modify test url
+
+- Optimize android proxy
+
+- Fix the error that async proxy provider could not selected the proxy
+
+- Fix android proxy error
+
+- Fix submit error
+
+- Add windows tun
+
+- Optimize android proxy
+
+- Optimize change profile
+
+- Update application ua
+
+- Optimize delay test
+
+- Fix android repeated request notification issues
+
+- Fix memory overflow issues
+
+- Optimize proxies expansion panel 2
+
+- Fix android scan qrcode error
+
+- Optimize proxies expansion panel
+
+- Fix text error
+
+- Optimize proxy
+
+- Optimize delayed sorting performance
+
+- Add expansion panel proxies page
+
+- Support to adjust the proxy card size
+
+- Support to adjust proxies columns number
+
+- Fix autoRun show issues
+
+- Fix Android 10 issues
+
+- Optimize ip show
+
+- Add intranet IP display
+
+- Add connections page
+
+- Add search in connections, requests
+
+- Add keyword search in connections, requests, logs
+
+- Add basic viewing editing capabilities
+
+- Optimize update profile
+
+- Update version
+
+- Fix the problem of excessive memory usage in traffic usage.
+
+- Add lightBlue theme color
+
+- Fix start unable to update profile issues
+
+- Fix flashback caused by process
+
+- Add build version
+
+- Optimize quick start
+
+- Update system default option
+
+- Update build.yml
+
+- Fix android vpn close issues
+
+- Add requests page
+
+- Fix checkUpdate dark mode style error
+
+- Fix quickStart error open app
+
+- Add memory proxies tab index
+
+- Support hidden group
+
+- Optimize logs
+
+- Fix externalController hot load error
+
+- Add tcp concurrent switch
+
+- Add system proxy switch
+
+- Add geodata loader switch
+
+- Add external controller switch
+
+- Add auto gc on trim memory
+
+- Fix android notification error
+
+- Fix ipv6 error
+
+- Fix android udp direct error
+
+- Add ipv6 switch
+
+- Add access all selected button
+
+- Remove android low version splash
+
+- Update version
+
+- Add allowBypass
+
+- Fix Android only pick .text file issues
+
+- Fix search issues
+
+- Fix LoadBalance, Relay load error
+
+- Fix build.yml4
+
+- Fix build.yml3
+
+- Fix build.yml2
+
+- Fix build.yml
+
+- Add search function at access control
+
+- Fix the issues with the profile add button to cover the edit button
+
+- Adapt LoadBalance and Relay
+
+- Add arm
+
+- Fix android notification icon error
+
+- Add one-click update all profiles
+- Add expire show
+
+- Temp remove tun mode
+
+- Remove macos in workflow
+
+- Change go version
+
+- Update Version
+
+- Fix tun unable to open
+
+- Optimize delay test2
+
+- Optimize delay test
+
+- Add check ip
+
+- add check ip request
+
+- Fix the problem that the download of remote resources failed after GeodataMode was turned on, which caused the application to flash back.
+
+- Fix edit profile error
+
+- Fix quickStart change proxy error
+
+- Fix core version
+
+- Fix core version
+
+- Update file_picker
+
+- Add resources page
+
+- Optimize more detail
+
+- Add access selected sorted
+
+- Fix notification duplicate creation issue
+
+- Fix AccessControl click issue
+
+- Fix Workflow
+
+- Fix Linux unable to open
+
+- Update README.md 3
+
+- Create LICENSE
+- Update README.md 2
+
+- Update README.md
+
+- Optimize workFlow
+
+- optimize checkUpdate
+
+- Fix submit error
+
+- add WebDAV
+
+- add Auto check updates
+
+- Optimize more details
+
+- optimize delayTest
+
+- upgrade flutter version
+
+- Update kernel
+- Add import profile via QR code image
+
+- Add compatibility mode and adapt clash scheme.
+
+- update Version
+
+- Reconstruction application proxy logic
+
+- Fix Tab destroy error
+
+- Optimize repeat healthcheck
+
+- Optimize Direct mode ui
+
+- Optimize Healthcheck
+
+- Remove proxies position animation, improve performance
+- Add Telegram Link
+
+- Update healthcheck policy
+
+- New Check URLTest
+
+- Fix the problem of invalid auto-selection
+
+- New Async UpdateConfig
+
+- add changeProfileDebounce
+
+- Update Workflow
+
+- Fix ChangeProfile block
+
+- Fix Release Message Error
+
+- Update Selector 2
+
+- Update Version
+
+- Fix Proxies Select Error
+
+- Fix the problem that the proxy group is empty in global mode.
+
+- Fix the problem that the proxy group is empty in global mode.
+
+- Add ProxyProvider2
+
+- Add ProxyProvider
+
+- Update Version
+
+- Update ProxyGroup Sort
+
+- Fix Android quickStart VpnService some problems
+
+- Update version
+
+- Set Android notification low importance
+
+- Fix the issue that VpnService can't be closed correctly in special cases
+
+- Fix the problem that TileService is not destroyed correctly in some cases
+
+- Adjust tab animation defaults
+
+- Add Telegram in README_zh_CN.md
+
+- Add Telegram
+
+- update mobile_scanner
+
+- Initial commit
+
 ## Unreleased
 
 ### Changed (breaking for closed test group)
