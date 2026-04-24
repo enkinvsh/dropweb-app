@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+import '../plugins/vk_tunnel_plugin.dart';
 
 class CaptchaScreen extends StatefulWidget {
   const CaptchaScreen({super.key, required this.proxyUrl});
@@ -12,6 +16,24 @@ class CaptchaScreen extends StatefulWidget {
 
 class _CaptchaScreenState extends State<CaptchaScreen> {
   bool _loading = true;
+  StreamSubscription<String>? _statusSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusSub = VkTunnelPlugin.statusStream.listen((status) {
+      if (!mounted) return;
+      if (TunnelStatus.isTunnelReady(status)) {
+        Navigator.of(context).pop(true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _statusSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -39,12 +61,6 @@ class _CaptchaScreenState extends State<CaptchaScreen> {
           onLoadStart: (_, __) => setState(() => _loading = true),
           onLoadStop: (_, __) => setState(() => _loading = false),
           onLoadError: (_, __, ___, ____) => setState(() => _loading = false),
-          onConsoleMessage: (_, msg) {
-            if (msg.message.contains('captcha solved') ||
-                msg.message.contains('success')) {
-              if (mounted) Navigator.of(context).pop(true);
-            }
-          },
         ),
       );
 }

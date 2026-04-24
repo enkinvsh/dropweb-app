@@ -112,35 +112,67 @@ class ParazitXManager {
     _currentSession = tunnelResult.session;
     _isActive = true;
     _subscribeToRelayStatus();
+
+    // In case librelay emitted STATUS:TUNNEL_CONNECTED before we subscribed
+    // (fast path: cached session, no captcha), query once after subscription.
+    // Idempotent — _startVpnLayer checks _vpnStarted internally.
+    unawaited(_checkAlreadyConnected());
+
     _startRotationTimer();
     return null;
+  }
+
+  static Future<void> _checkAlreadyConnected() async {
+    try {
+      final s = await VkTunnelPlugin.getStatus();
+      print(
+          '[ParazitX] _checkAlreadyConnected: status=$s tunnelReady=$_tunnelReady');
+      if (TunnelStatus.isTunnelReady(s) && !_tunnelReady) {
+        _tunnelReady = true;
+        _tunnelReadyCtrl.add(true);
+        unawaited(_startVpnLayer());
+      }
+    } on Exception catch (e) {
+      print('[ParazitX] _checkAlreadyConnected error: $e');
+    }
   }
 
   /// Starts the ParazitX VpnService once librelay reports TUNNEL_CONNECTED.
   /// Requires a pre-confirmed session (SOCKS credentials known) so
   /// [Androidbind.startTun2Socks] can attach to the right SOCKS5 listener.
   static Future<ActivateError?> _startVpnLayer() async {
+    print(
+        '[ParazitX] _startVpnLayer called, _vpnStarted=$_vpnStarted, session=${_currentSession?.socksPort}');
+    if (_vpnStarted) return null;
     final s = _currentSession;
-    if (s == null) return ActivateError.tunnelError;
+    if (s == null) {
+      print('[ParazitX] _startVpnLayer: NO SESSION');
+      return ActivateError.tunnelError;
+    }
     try {
+      print('[ParazitX] calling ParazitXVpnPlugin.start port=${s.socksPort}');
       await ParazitXVpnPlugin.start(
         socksPort: s.socksPort,
         socksUser: s.socksUser,
         socksPass: s.socksPass,
       );
       _vpnStarted = true;
+      print('[ParazitX] VpnPlugin.start returned OK');
       return null;
     } on PlatformException catch (e) {
-      developer.log('vpn start failed: ${e.code} ${e.message}',
-          name: 'ParazitX');
+      print('[ParazitX] vpn start FAILED: ${e.code} ${e.message}');
+      return ActivateError.tunnelError;
+    } catch (e) {
+      print('[ParazitX] vpn start UNEXPECTED: $e');
       return ActivateError.tunnelError;
     }
   }
 
   static void _subscribeToRelayStatus() {
+    print('[ParazitX] subscribe called');
     _statusSub?.cancel();
     _statusSub = VkTunnelPlugin.statusStream.listen((status) {
-      developer.log('relay status: $status', name: 'ParazitX');
+      print('[ParazitX] relay status: $status');
 
       final captchaUrl = TunnelStatus.captchaUrl(status);
       if (captchaUrl != null) {
@@ -149,6 +181,7 @@ class ParazitXManager {
       }
 
       if (TunnelStatus.isTunnelReady(status)) {
+        print('[ParazitX] TUNNEL_READY detected, _tunnelReady=$_tunnelReady');
         if (!_tunnelReady) {
           _tunnelReady = true;
           _tunnelReadyCtrl.add(true);

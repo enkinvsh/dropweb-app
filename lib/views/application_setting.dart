@@ -499,9 +499,16 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
     if (_captchaOpen || !mounted) return;
     _captchaOpen = true;
     try {
-      await Navigator.of(context).push<bool>(
+      final navigator = Navigator.of(context);
+      await navigator.push<bool>(
         MaterialPageRoute(builder: (_) => CaptchaScreen(proxyUrl: url)),
       );
+      if (!mounted) return;
+      // Pop back to dashboard. The InAppWebView in Settings/VkLogin survives
+      // a tunnel handoff cleanly only when fully unmounted before Android
+      // delivers the VpnService network change — otherwise the GPU surface
+      // gets EGL_BAD_ACCESS and the whole app paints black on resume.
+      navigator.popUntil((route) => route.isFirst);
     } finally {
       _captchaOpen = false;
     }

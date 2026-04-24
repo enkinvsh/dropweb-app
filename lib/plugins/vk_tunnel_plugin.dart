@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 class TunnelSession {
@@ -48,11 +50,28 @@ class VkTunnelPlugin {
   static const _channel = MethodChannel('app.dropweb/vktunnel');
   static const _statusChannel = EventChannel('app.dropweb/vktunnel/status');
 
-  /// Broadcast stream of raw STATUS: lines from the relay process.
-  /// Use [TunnelStatus] constants / helpers to interpret values.
-  static Stream<String> get statusStream => _statusChannel
-      .receiveBroadcastStream()
-      .map((event) => event?.toString() ?? '');
+  // The native EventChannel handler can hold only one StreamHandler at a
+  // time — every fresh receiveBroadcastStream().listen() causes onListen
+  // to overwrite the previous handler. We fan out a single underlying
+  // subscription into a process-wide broadcast controller so that
+  // ParazitXManager and CaptchaScreen can both observe the same statuses.
+  static StreamController<String>? _bus;
+
+  static Stream<String> get statusStream {
+    var bus = _bus;
+    if (bus != null) return bus.stream;
+    bus = StreamController<String>.broadcast(
+      onCancel: () {
+        // Keep the underlying native channel alive; we never close it.
+      },
+    );
+    _statusChannel.receiveBroadcastStream().listen(
+          (event) => bus!.add(event?.toString() ?? ''),
+          onError: (Object e) => bus!.addError(e),
+        );
+    _bus = bus;
+    return bus.stream;
+  }
 
   static Future<TunnelStartResult> startTunnel(
     String joinLink, {
