@@ -24,7 +24,10 @@ class LogUploader {
   LogUploader._();
 
   static const _uploadTimeout = Duration(seconds: 20);
+  static const _directTimeout = Duration(seconds: 3);
   static const _fallbackServers = <String>['31.57.105.213:3478'];
+  static const _ycProxyUrl =
+      'https://d5da461207asfg6i1lmt.628pfjdx.apigw.yandexcloud.net';
   static const _serversHeaderName = 'dropweb-parazitx-servers';
   static const _maxPayloadBytes = 100 * 1024;
 
@@ -60,41 +63,76 @@ class LogUploader {
       'logs': trimmed,
     });
 
+    // Try direct server first with short timeout
+    final directResult = await _tryUpload(
+      'http://31.57.105.213:3478/v1/logs',
+      payload,
+      _directTimeout,
+      now,
+    );
+    if (directResult != null) return directResult;
+
+    // Fallback to YC proxy
+    final proxyResult = await _tryUpload(
+      '$_ycProxyUrl/v1/logs',
+      payload,
+      _uploadTimeout,
+      now,
+    );
+    if (proxyResult != null) return proxyResult;
+
+    // Try other servers from subscription
     final servers = _resolveServers();
-    String? lastErr;
     for (final server in servers) {
-      try {
-        final resp = await http
-            .post(
-              Uri.parse('http://$server/v1/logs'),
-              headers: {'Content-Type': 'application/json'},
-              body: payload,
-            )
-            .timeout(_uploadTimeout);
-        if (resp.statusCode == 200) {
-          _lastUploadAt = now;
-          try {
-            final data = jsonDecode(resp.body) as Map<String, dynamic>;
-            final id = (data['id'] as String?) ?? 'ok';
-            return LogUploadResult.ok(id);
-          } catch (_) {
-            return LogUploadResult.ok('ok');
-          }
-        }
-        if (resp.statusCode == 429) {
-          return LogUploadResult.err(
-            'Сервер: слишком часто (429)',
-          );
-        }
-        if (resp.statusCode == 413) {
-          return LogUploadResult.err('Сервер: слишком большой payload');
-        }
-        lastErr = 'HTTP ${resp.statusCode}';
-      } catch (e) {
-        lastErr = e.toString();
-      }
+      if (server == '31.57.105.213:3478') continue; // already tried
+      final result = await _tryUpload(
+        'http://$server/v1/logs',
+        payload,
+        _uploadTimeout,
+        now,
+      );
+      if (result != null) return result;
     }
-    return LogUploadResult.err(lastErr ?? 'Все серверы недоступны');
+
+    return LogUploadResult.err('Все серверы недоступны');
+  }
+
+  static Future<LogUploadResult?> _tryUpload(
+    String url,
+    String payload,
+    Duration timeout,
+    DateTime now,
+  ) async {
+    try {
+      final resp = await http
+          .post(
+            Uri.parse(url),
+            headers: {'Content-Type': 'application/json'},
+            body: payload,
+          )
+          .timeout(timeout);
+      if (resp.statusCode == 200) {
+        _lastUploadAt = now;
+        try {
+          final data = jsonDecode(resp.body) as Map<String, dynamic>;
+          final id = (data['id'] as String?) ?? 'ok';
+          return LogUploadResult.ok(id);
+        } catch (_) {
+          return LogUploadResult.ok('ok');
+        }
+      }
+      if (resp.statusCode == 429) {
+        return LogUploadResult.err('Сервер: слишком часто (429)');
+      }
+      if (resp.statusCode == 413) {
+        return LogUploadResult.err('Сервер: слишком большой payload');
+      }
+      // Other error - try next server
+      return null;
+    } catch (_) {
+      // Connection error - try next server
+      return null;
+    }
   }
 
   static List<String> _trimToPayloadLimit(List<String> lines) {

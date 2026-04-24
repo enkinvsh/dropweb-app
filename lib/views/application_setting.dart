@@ -483,7 +483,16 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
     if (_parazitxEnabled) _state = _ParazitXState.active;
     _readySub = ParazitXManager.tunnelReadyStream.listen((ready) {
       if (!mounted) return;
-      setState(() => _tunnelReady = ready);
+      setState(() {
+        _tunnelReady = ready;
+        if (!ready && _parazitxEnabled) {
+          // Tunnel dropped — show reconnecting state (manager auto-reconnects)
+          _state = _ParazitXState.connecting;
+        } else if (ready && _parazitxEnabled) {
+          // Tunnel reconnected — show active state
+          _state = _ParazitXState.active;
+        }
+      });
     });
     _captchaSub = ParazitXManager.captchaStream.listen(_openCaptcha);
     _checkVkSession();

@@ -45,6 +45,11 @@ class ParazitXManager {
   /// Port 3478 matches the new callfactory (TURN mimicry).
   static const _fallbackServers = <String>['31.57.105.213:3478'];
 
+  /// Yandex.Cloud proxy for TSPU whitelist mode.
+  /// Used as fallback when direct IP is blocked.
+  static const String _ycProxyUrl =
+      'https://d5da461207asfg6i1lmt.628pfjdx.apigw.yandexcloud.net';
+
   /// Name of the subscription HTTP header that lists callfactory endpoints.
   /// Must use the `dropweb-` prefix — the profile loader only accepts
   /// dropweb-* provider headers (see Profile.fetchFile in models/profile.dart).
@@ -120,9 +125,76 @@ class ParazitXManager {
     }
   }
 
+  /// Try to obtain session from a single server endpoint.
+  /// [server] can be 'host:port' (HTTP) or a full URL (HTTPS).
+  /// Returns ok result on success, or error result on failure.
+  static Future<_SessionResult> _tryServer(
+    String server,
+    String body, {
+    required Duration timeout,
+    bool isHttps = false,
+  }) async {
+    final uri = isHttps
+        ? Uri.parse('$server/v1/session')
+        : Uri.parse('http://$server/v1/session');
+
+    developer.log('Trying server: $server', name: 'ParazitX');
+
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: body,
+          )
+          .timeout(timeout);
+    } catch (e) {
+      developer.log('Server $server request failed: $e', name: 'ParazitX');
+      return const _SessionResult.err(ActivateError.networkError);
+    }
+
+    if (response.statusCode == 503) {
+      developer.log(
+        'Server $server overloaded (503), trying next',
+        name: 'ParazitX',
+      );
+      return const _SessionResult.err(ActivateError.serverError);
+    }
+
+    if (response.statusCode != 200) {
+      final respBody = response.body.toLowerCase();
+      if (respBody.contains('vk unauthorized') ||
+          respBody.contains('timeout waiting') ||
+          respBody.contains('check cookies')) {
+        return const _SessionResult.err(ActivateError.vkUnauthorized);
+      }
+      developer.log(
+        'Server $server returned ${response.statusCode}: ${response.body}',
+        name: 'ParazitX',
+      );
+      return const _SessionResult.err(ActivateError.serverError);
+    }
+
+    final Map<String, dynamic> data;
+    try {
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      return const _SessionResult.err(ActivateError.serverError);
+    }
+
+    final joinLink = data['join_link'] as String?;
+    if (joinLink == null) {
+      return const _SessionResult.err(ActivateError.serverError);
+    }
+
+    return _SessionResult.ok(joinLink, 0);
+  }
+
   /// POST encrypted VK cookies to callfactory and return the join_link,
-  /// or an [ActivateError] describing what went wrong. Tries every server
-  /// in the pool, falling back on 503 / transient errors.
+  /// or an [ActivateError] describing what went wrong.
+  /// Strategy: Try direct server with short timeout (3s) for TSPU detection,
+  /// then fall back to YC proxy with longer timeout (30s) if direct fails.
   static Future<_SessionResult> _requestJoinLink() async {
     final cookies = await VkAuthService.loadCookies();
     if (cookies == null) {
@@ -132,71 +204,61 @@ class ParazitXManager {
     final encrypted = await CryptoService.encryptCookies(cookies);
     final body = jsonEncode(encrypted);
 
-    var lastError = ActivateError.networkError;
+    // Try direct server first with short timeout (TSPU detection)
+    final directResult = await _tryServer(
+      _fallbackServers[0],
+      body,
+      timeout: const Duration(seconds: 3),
+      isHttps: false,
+    );
+    if (directResult.error == null ||
+        directResult.error == ActivateError.vkUnauthorized) {
+      return directResult;
+    }
+
+    developer.log(
+      'Direct connection failed (${directResult.error}), trying YC proxy...',
+      name: 'ParazitX',
+    );
+
+    // Fall back to YC proxy with longer timeout
+    final proxyResult = await _tryServer(
+      _ycProxyUrl,
+      body,
+      timeout: const Duration(seconds: 30),
+      isHttps: true,
+    );
+    if (proxyResult.error == null) {
+      return proxyResult;
+    }
+
+    // If proxy also fails, try remaining fallback servers
+    var lastError = proxyResult.error ?? ActivateError.networkError;
 
     for (var attempt = 0; attempt < _servers.length; attempt++) {
       final idx = (_serverIndex + attempt) % _servers.length;
       final server = _servers[idx];
-      developer.log('Trying server: $server', name: 'ParazitX');
 
-      final http.Response response;
-      try {
-        response = await http
-            .post(
-              Uri.parse('http://$server/v1/session'),
-              headers: {'Content-Type': 'application/json'},
-              body: body,
-            )
-            .timeout(_sessionRequestTimeout);
-      } catch (e) {
-        developer.log('Server $server request failed: $e', name: 'ParazitX');
-        lastError = ActivateError.networkError;
-        continue;
+      final result = await _tryServer(
+        server,
+        body,
+        timeout: _sessionRequestTimeout,
+        isHttps: false,
+      );
+
+      if (result.error == null) {
+        return _SessionResult.ok(result.joinLink!, idx);
       }
 
-      if (response.statusCode == 503) {
-        developer.log(
-          'Server $server overloaded (503), trying next',
-          name: 'ParazitX',
-        );
-        lastError = ActivateError.serverError;
-        continue;
+      if (result.error == ActivateError.vkUnauthorized) {
+        return result;
       }
 
-      if (response.statusCode != 200) {
-        final respBody = response.body.toLowerCase();
-        if (respBody.contains('vk unauthorized') ||
-            respBody.contains('timeout waiting') ||
-            respBody.contains('check cookies')) {
-          return const _SessionResult.err(ActivateError.vkUnauthorized);
-        }
-        developer.log(
-          'Server $server returned ${response.statusCode}: ${response.body}',
-          name: 'ParazitX',
-        );
-        lastError = ActivateError.serverError;
-        continue;
-      }
-
-      final Map<String, dynamic> data;
-      try {
-        data = jsonDecode(response.body) as Map<String, dynamic>;
-      } catch (_) {
-        lastError = ActivateError.serverError;
-        continue;
-      }
-
-      final joinLink = data['join_link'] as String?;
-      if (joinLink == null) {
-        lastError = ActivateError.serverError;
-        continue;
-      }
-
-      return _SessionResult.ok(joinLink, idx);
+      lastError = result.error ?? ActivateError.networkError;
     }
 
     developer.log(
-      'All ${_servers.length} server(s) failed, lastError=$lastError',
+      'All fallback attempts failed, lastError=$lastError',
       name: 'ParazitX',
     );
     return _SessionResult.err(lastError);
