@@ -32,6 +32,9 @@ object ParazitXRelayController {
     @Volatile
     var statusListener: ((String) -> Unit)? = null
 
+    @Volatile
+    var logListener: ((String) -> Unit)? = null
+
     @Synchronized
     fun start(ctx: Context, socksPort: Int, joinLink: String): String? {
         if (isRunning) {
@@ -134,6 +137,9 @@ object ParazitXRelayController {
     }
 
     private fun handleStdoutLine(line: String) {
+        try { logListener?.invoke(line) } catch (e: Exception) {
+            Log.e(TAG, "logListener threw", e)
+        }
         when {
             line.startsWith("RESOLVE:") -> {
                 val hostname = line.removePrefix("RESOLVE:")

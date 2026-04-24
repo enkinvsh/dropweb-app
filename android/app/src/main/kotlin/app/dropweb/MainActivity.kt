@@ -110,6 +110,35 @@ class MainActivity : FlutterActivity() {
             }
         })
 
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "app.dropweb/parazitx/logs",
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            private var receiver: BroadcastReceiver? = null
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                val r = object : BroadcastReceiver() {
+                    override fun onReceive(ctx: Context, intent: Intent) {
+                        val line = intent.getStringExtra(ParazitXVpnService.EXTRA_LOG_LINE)
+                            ?: return
+                        uiHandler.post { events.success(line) }
+                    }
+                }
+                val filter = IntentFilter(ParazitXVpnService.BROADCAST_LOG)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(r, filter, Context.RECEIVER_NOT_EXPORTED)
+                } else {
+                    @Suppress("UnspecifiedRegisterReceiverFlag")
+                    registerReceiver(r, filter)
+                }
+                receiver = r
+            }
+            override fun onCancel(arguments: Any?) {
+                try { receiver?.let { unregisterReceiver(it) } } catch (_: Exception) {}
+                receiver = null
+            }
+        })
+
         val appPlugin = AppPlugin()
         flutterEngine.plugins.add(appPlugin)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/parazitx_vpn")

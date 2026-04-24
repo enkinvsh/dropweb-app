@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' hide context;
+import '../services/log_uploader.dart';
 import '../services/parazitx_manager.dart';
 import '../services/vk_auth_service.dart';
 import 'captcha_screen.dart';
@@ -739,6 +740,60 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
   }
 }
 
+class SendParazitXLogsItem extends StatefulWidget {
+  const SendParazitXLogsItem({super.key});
+
+  @override
+  State<SendParazitXLogsItem> createState() => _SendParazitXLogsItemState();
+}
+
+class _SendParazitXLogsItemState extends State<SendParazitXLogsItem> {
+  bool _sending = false;
+
+  Future<void> _send() async {
+    if (_sending) return;
+    setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await LogUploader.send();
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (result.isOk) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Отправлено, ID: ${result.id}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Не удалось отправить: ${result.error}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListItem(
+      title: const Text('📤 Отправить логи ParazitX'),
+      subtitle: const Text('Для диагностики проблем'),
+      leading: _sending
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : HugeIcon(icon: HugeIcons.strokeRoundedUpload01, size: 24),
+      trailing: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, size: 16),
+      onTap: _sending ? null : _send,
+    );
+  }
+}
+
 class ApplicationSettingView extends StatelessWidget {
   const ApplicationSettingView({super.key});
 
@@ -769,6 +824,12 @@ class ApplicationSettingView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 16),
           child: OpenLogsFolderItem(),
+        ),
+      ],
+      if (Platform.isAndroid) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: SendParazitXLogsItem(),
         ),
       ],
       Padding(

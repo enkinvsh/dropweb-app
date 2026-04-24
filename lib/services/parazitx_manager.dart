@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import '../plugins/parazitx_vpn_plugin.dart';
 import '../plugins/vk_tunnel_plugin.dart';
 import 'crypto_service.dart';
+import 'log_buffer.dart';
 import 'vk_auth_service.dart';
 
 /// Typed activation failure reasons.
@@ -212,6 +213,7 @@ class ParazitXManager {
   /// Returns null on success, or an [ActivateError] describing what went wrong.
   static Future<ActivateError?> activate() async {
     developer.log('activate() called, isActive=$_isActive', name: 'ParazitX');
+    LogBuffer.instance.add('activate() called, isActive=$_isActive');
     if (_isActive) return null;
 
     if (_servers.isEmpty) {
@@ -221,7 +223,10 @@ class ParazitXManager {
     }
 
     final session = await _requestJoinLink();
-    if (session.error != null) return session.error;
+    if (session.error != null) {
+      LogBuffer.instance.add('activate failed: ${session.error}');
+      return session.error;
+    }
 
     final joinLink = session.joinLink!;
     _currentJoinLink = joinLink;
@@ -239,6 +244,7 @@ class ParazitXManager {
     } on PlatformException catch (e) {
       developer.log('vpn start failed: ${e.code} ${e.message}',
           name: 'ParazitX');
+      LogBuffer.instance.add('vpn start failed: ${e.code} ${e.message}');
       await _statusSub?.cancel();
       _statusSub = null;
       return ActivateError.tunnelError;
@@ -250,9 +256,11 @@ class ParazitXManager {
   }
 
   static void _subscribeToRelayStatus() {
+    LogBuffer.instance.attachNativeChannel();
     _statusSub?.cancel();
     _statusSub = VkTunnelPlugin.statusStream.listen((status) {
       developer.log('relay status: $status', name: 'ParazitX');
+      LogBuffer.instance.add('status: $status');
 
       final captchaUrl = TunnelStatus.captchaUrl(status);
       if (captchaUrl != null) {

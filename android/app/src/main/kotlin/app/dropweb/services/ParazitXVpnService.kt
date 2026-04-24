@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 import android.util.Log
 import androidbind.Androidbind
 import app.dropweb.MainActivity
@@ -59,6 +60,9 @@ class ParazitXVpnService : VpnService() {
         const val BROADCAST_STATUS = "app.dropweb.parazitx.STATUS_BROADCAST"
         const val EXTRA_STATUS = "status"
 
+        const val BROADCAST_LOG = "app.dropweb.parazitx.LOG_BROADCAST"
+        const val EXTRA_LOG_LINE = "log_line"
+
         @Volatile
         var isRunning: Boolean = false
             private set
@@ -72,6 +76,7 @@ class ParazitXVpnService : VpnService() {
     @Volatile private var currentJoinLink: String = ""
 
     private var queryReceiver: BroadcastReceiver? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -117,6 +122,13 @@ class ParazitXVpnService : VpnService() {
         // crashes the process.
         startForegroundNotification()
 
+        // Acquire WakeLock to prevent CPU sleep while tunnel is active
+        if (wakeLock == null) {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ParazitX::Tunnel")
+            wakeLock?.acquire()
+        }
+
         if (isRunning) {
             // Already running — this is a rotation: re-AUTH with new joinLink.
             Log.i(TAG, "onStartCommand: already running, rotating joinLink")
@@ -131,6 +143,9 @@ class ParazitXVpnService : VpnService() {
         // early STATUS: lines.
         ParazitXRelayController.statusListener = { status ->
             onRelayStatus(status)
+        }
+        ParazitXRelayController.logListener = { line ->
+            broadcastLog(line)
         }
 
         val err = ParazitXRelayController.start(this, port, joinLink)
@@ -239,6 +254,13 @@ class ParazitXVpnService : VpnService() {
         sendBroadcast(i)
     }
 
+    private fun broadcastLog(line: String) {
+        val i = Intent(BROADCAST_LOG)
+            .setPackage(packageName)
+            .putExtra(EXTRA_LOG_LINE, line)
+        sendBroadcast(i)
+    }
+
     private fun stopSelfClean() {
         if (!isRunning && tunFd == null && !tun2socksStarted) {
             stopForegroundCompat()
@@ -249,6 +271,7 @@ class ParazitXVpnService : VpnService() {
 
         try {
             ParazitXRelayController.statusListener = null
+            ParazitXRelayController.logListener = null
             ParazitXRelayController.stop()
         } catch (e: Exception) {
             Log.e(TAG, "relay stop threw", e)
@@ -274,6 +297,11 @@ class ParazitXVpnService : VpnService() {
 
         currentStatus = "disconnected"
         broadcastStatus("disconnected")
+
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
+        wakeLock = null
 
         stopForegroundCompat()
         stopSelf()
