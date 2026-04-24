@@ -398,20 +398,28 @@ class ParazitXManager {
   /// the running VpnService (which forwards it to relay as a fresh AUTH,
   /// reusing the same process + tun).
   static Future<void> _rotateCall() async {
-    if (!_isActive) return;
-    if (_servers.isEmpty) return;
+    if (!_isActive) {
+      developer.log('rotateCall: not active, skipping', name: 'ParazitX');
+      return;
+    }
+    if (_servers.isEmpty) {
+      developer.log('rotateCall: no servers, skipping', name: 'ParazitX');
+      LogBuffer.instance.add('rotateCall: no servers, skipping');
+      return;
+    }
 
     final session = await _requestJoinLink();
     if (session.error != null) {
       developer.log(
-        'Rotation failed: ${session.error}, keeping current call',
+        'Rotation failed: ${session.error}',
         name: 'ParazitX',
       );
+      LogBuffer.instance.add('Rotation failed: ${session.error}');
       return;
     }
 
     final newJoinLink = session.joinLink!;
-    if (newJoinLink == _currentJoinLink) return;
+    developer.log('rotateCall: got new joinLink', name: 'ParazitX');
 
     try {
       await ParazitXVpnPlugin.start(
@@ -421,9 +429,11 @@ class ParazitXManager {
       _currentJoinLink = newJoinLink;
       _serverIndex = session.serverIndex!;
       developer.log('Rotation successful', name: 'ParazitX');
+      LogBuffer.instance.add('Rotation successful, new call started');
     } on PlatformException catch (e) {
       developer.log('Rotation vpn start failed: ${e.message}',
           name: 'ParazitX');
+      LogBuffer.instance.add('Rotation vpn start failed: ${e.message}');
     }
   }
 
@@ -439,20 +449,38 @@ class ParazitXManager {
     _reconnectDebounce = Timer(const Duration(seconds: 2), () async {
       if (!_isActive) {
         developer.log('Reconnect aborted: not active', name: 'ParazitX');
+        LogBuffer.instance.add('Reconnect aborted: not active');
         return;
       }
 
       developer.log('Auto-reconnect: attempting new session', name: 'ParazitX');
+      LogBuffer.instance.add('Auto-reconnect: attempting new session');
+
+      // Clear joinLink so we know if rotation actually succeeded
+      final oldJoinLink = _currentJoinLink;
+      _currentJoinLink = null;
 
       await _rotateCall();
 
+      // If rotation didn't set a new joinLink, do full reactivate
       if (_currentJoinLink == null) {
         developer.log(
           'Reconnect: rotation failed, trying full reactivate',
           name: 'ParazitX',
         );
+        LogBuffer.instance
+            .add('Reconnect: rotation failed, trying full reactivate');
         _isActive = false;
-        await activate();
+        final error = await activate();
+        if (error != null) {
+          developer.log('Reconnect: full reactivate failed: $error',
+              name: 'ParazitX');
+          LogBuffer.instance.add('Reconnect: full reactivate failed: $error');
+          // Restore old joinLink for next retry attempt
+          _currentJoinLink = oldJoinLink;
+        }
+      } else {
+        LogBuffer.instance.add('Reconnect: rotation successful');
       }
     });
   }
