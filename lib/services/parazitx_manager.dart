@@ -335,6 +335,20 @@ class ParazitXManager {
           _tunnelReady = true;
           _tunnelReadyCtrl.add(true);
         }
+        // Reset backoff on successful tunnel connection
+        if (_reconnectAttempt > 0) {
+          developer.log(
+            'Tunnel ready: resetting reconnect backoff (was attempt '
+            '$_reconnectAttempt, ${_currentBackoff.inSeconds}s)',
+            name: 'ParazitX',
+          );
+          LogBuffer.instance.add(
+            'Tunnel ready: resetting reconnect backoff '
+            '(attempt=$_reconnectAttempt)',
+          );
+          _reconnectAttempt = 0;
+          _currentBackoff = _minBackoff;
+        }
       } else if (TunnelStatus.isFailure(status)) {
         developer.log(
           'tunnel failure: $status, scheduling reconnect',
@@ -355,6 +369,8 @@ class ParazitXManager {
     _stopRotationTimer();
     _reconnectDebounce?.cancel();
     _reconnectDebounce = null;
+    _reconnectAttempt = 0;
+    _currentBackoff = _minBackoff;
     await _statusSub?.cancel();
     _statusSub = null;
     try {
@@ -440,13 +456,44 @@ class ParazitXManager {
   /// Debounce timer to prevent reconnect spam on rapid failures.
   static Timer? _reconnectDebounce;
 
-  /// Auto-reconnect after tunnel failure with debounce.
-  /// Waits 2 seconds to avoid rapid reconnect loops, then attempts to
-  /// establish a new VK call session.
+  /// Minimum backoff delay before first reconnect attempt.
+  static const _minBackoff = Duration(seconds: 2);
+
+  /// Maximum backoff delay (cap) — exponential growth stops here.
+  static const _maxBackoff = Duration(seconds: 60);
+
+  /// Number of consecutive reconnect attempts since last successful tunnel.
+  /// Reset to 0 in [_subscribeToRelayStatus] when tunnel becomes ready.
+  static int _reconnectAttempt = 0;
+
+  /// Current backoff delay. Doubles on each failure, capped at [_maxBackoff],
+  /// resets to [_minBackoff] on successful tunnel connection.
+  static Duration _currentBackoff = _minBackoff;
+
+  /// Auto-reconnect after tunnel failure with exponential backoff.
+  /// Delay sequence: 2s → 4s → 8s → 16s → 32s → 60s (capped).
+  /// Resets to 2s on successful tunnel connection.
   static Future<void> _reconnectAfterFailure() async {
     _reconnectDebounce?.cancel();
 
-    _reconnectDebounce = Timer(const Duration(seconds: 2), () async {
+    _reconnectAttempt += 1;
+    final delay = _currentBackoff;
+
+    developer.log(
+      'Auto-reconnect in ${delay.inSeconds}s (attempt $_reconnectAttempt)',
+      name: 'ParazitX',
+    );
+    LogBuffer.instance.add(
+      'Auto-reconnect in ${delay.inSeconds}s (attempt $_reconnectAttempt)',
+    );
+
+    // Compute next backoff: double, capped at _maxBackoff.
+    final nextSeconds = delay.inSeconds * 2;
+    _currentBackoff = nextSeconds >= _maxBackoff.inSeconds
+        ? _maxBackoff
+        : Duration(seconds: nextSeconds);
+
+    _reconnectDebounce = Timer(delay, () async {
       if (!_isActive) {
         developer.log('Reconnect aborted: not active', name: 'ParazitX');
         LogBuffer.instance.add('Reconnect aborted: not active');
