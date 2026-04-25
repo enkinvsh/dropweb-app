@@ -38,7 +38,7 @@ class ParazitXManager {
   static Timer? _rotationTimer;
   static StreamSubscription<String>? _statusSub;
   static const _socksPort = 1080;
-  static const _rotationInterval = Duration(minutes: 10);
+  static const _rotationInterval = Duration(minutes: 60);
   static const _sessionRequestTimeout = Duration(seconds: 35);
 
   /// Fallback when subscription does not provide a server list.

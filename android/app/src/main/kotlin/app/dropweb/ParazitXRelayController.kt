@@ -127,11 +127,9 @@ object ParazitXRelayController {
         val json = JSONObject().apply {
             put("joinLink", joinLink)
             put("displayName", "AnonymUser")
-            // "video" mode activates a VP8 keepalive track that stops VK from
-            // kicking us for "idle peer" after ~14s. SOCKS traffic still
-            // flows over the DC "tunnel" channel — video mode doesn't
-            // disable it, it just adds a keepalive on top.
-            put("tunnelMode", "video")
+            // "dc" mode: hybrid - VP8 keepalive for VK SFU + data via DataChannel.
+            // Bypasses VP8 encoding overhead, ~5 Mbps vs ~2-3 Mbps in pure video mode.
+            put("tunnelMode", "dc")
         }
         writeStdin("AUTH:$json")
     }
