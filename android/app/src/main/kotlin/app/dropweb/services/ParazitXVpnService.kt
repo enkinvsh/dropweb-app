@@ -203,11 +203,12 @@ class ParazitXVpnService : VpnService() {
             // tun via the underlying network. Without this, a self-loop
             // forms through SOCKS5 and VK resets the peer within seconds.
             // Also exclude WebView packages so captcha verification can reach localhost.
+            // Note: Do NOT exclude com.android.chrome - that's the full browser!
+            // Only exclude WebView rendering components.
             val vpnExcludedPackages = listOf(
                 packageName,
                 "com.google.android.webview",
                 "com.android.webview",
-                "com.android.chrome",
                 "com.google.android.trichromelibrary",
             )
 
