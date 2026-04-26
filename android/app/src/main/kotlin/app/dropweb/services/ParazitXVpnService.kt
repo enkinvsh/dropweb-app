@@ -184,23 +184,21 @@ class ParazitXVpnService : VpnService() {
     }
 
     private fun applyAllowedRoutes(b: Builder) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            b.addRoute("0.0.0.0", 0)
-            b.excludeRoute(IpPrefix(InetAddress.getByName("127.0.0.0"), 8))
-        } else {
-            // Split tunneling: 0.0.0.0/0 minus 127.0.0.0/8 expressed as 8 prefixes.
-            listOf(
-                "0.0.0.0" to 2,
-                "64.0.0.0" to 3,
-                "96.0.0.0" to 4,
-                "112.0.0.0" to 5,
-                "120.0.0.0" to 6,
-                "124.0.0.0" to 7,
-                "126.0.0.0" to 8,
-                "128.0.0.0" to 1,
-            ).forEach { (addr, prefix) ->
-                b.addRoute(addr, prefix)
-            }
+        // Split tunneling: 0.0.0.0/0 minus 127.0.0.0/8 expressed as 8 prefixes.
+        // This excludes localhost from VPN so WebView can reach captcha proxy.
+        // Note: excludeRoute() on API 33+ was tested but caused establish() to fail
+        // on some devices (Android 16), so we use split routes universally.
+        listOf(
+            "0.0.0.0" to 2,     // 0.0.0.0 - 63.255.255.255
+            "64.0.0.0" to 3,    // 64.0.0.0 - 95.255.255.255
+            "96.0.0.0" to 4,    // 96.0.0.0 - 111.255.255.255
+            "112.0.0.0" to 5,   // 112.0.0.0 - 119.255.255.255
+            "120.0.0.0" to 6,   // 120.0.0.0 - 123.255.255.255
+            "124.0.0.0" to 7,   // 124.0.0.0 - 125.255.255.255
+            "126.0.0.0" to 8,   // 126.0.0.0 - 126.255.255.255
+            "128.0.0.0" to 1,   // 128.0.0.0 - 255.255.255.255
+        ).forEach { (addr, prefix) ->
+            b.addRoute(addr, prefix)
         }
     }
 
