@@ -185,6 +185,27 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "app.dropweb/parazitx_notifications",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "showActionRequired" -> {
+                    val intent = Intent(ParazitXVpnService.ACTION_CAPTCHA_TIMEOUT)
+                        .setPackage(packageName)
+                    sendBroadcast(intent)
+                    result.success(null)
+                }
+                "dismissActionRequired" -> {
+                    val intent = Intent(ParazitXVpnService.ACTION_CAPTCHA_SOLVED)
+                        .setPackage(packageName)
+                    sendBroadcast(intent)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         flutterEngine.plugins.add(ServicePlugin)
         flutterEngine.plugins.add(TilePlugin())
         flutterEngine.plugins.add(VpnPlugin)

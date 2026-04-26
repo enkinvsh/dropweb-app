@@ -47,7 +47,9 @@ class ParazitXVpnService : VpnService() {
     companion object {
         private const val TAG = "ParazitXVpn"
         private const val CHANNEL_ID = "parazitx_vpn"
+        private const val ACTION_CHANNEL_ID = "parazitx_action"
         private const val NOTIFICATION_ID = 0x1789
+        private const val ACTION_NOTIFICATION_ID = NOTIFICATION_ID + 1
         private const val VPN_MTU = 1500
         private const val VPN_ADDRESS = "172.19.0.1"
         private const val VPN_PREFIX = 30
@@ -58,6 +60,16 @@ class ParazitXVpnService : VpnService() {
         const val EXTRA_SOCKS_PORT = "socks_port"
         const val ACTION_STOP = "app.dropweb.parazitx.STOP"
         const val ACTION_QUERY_STATUS = "app.dropweb.parazitx.QUERY_STATUS"
+
+        /**
+         * Captcha auto-solve in HeadlessInAppWebView stalls when the app is
+         * backgrounded (Android throttles JS in hidden webviews). Flutter
+         * fires this broadcast after a short timeout so the user sees a
+         * high-priority notification → tap → app foreground → JS resumes →
+         * captcha solves → [ACTION_CAPTCHA_SOLVED] dismisses the notification.
+         */
+        const val ACTION_CAPTCHA_TIMEOUT = "app.dropweb.parazitx.CAPTCHA_TIMEOUT"
+        const val ACTION_CAPTCHA_SOLVED = "app.dropweb.parazitx.CAPTCHA_SOLVED"
 
         /** Cross-process broadcast for status events. */
         const val BROADCAST_STATUS = "app.dropweb.parazitx.STATUS_BROADCAST"
@@ -79,10 +91,12 @@ class ParazitXVpnService : VpnService() {
     @Volatile private var currentJoinLink: String = ""
 
     private var queryReceiver: BroadcastReceiver? = null
+    private var captchaReceiver: BroadcastReceiver? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
+        ensureNotificationChannels()
         // Listen for status re-query from main process (e.g. app reopened
         // while VPN still running — UI needs to bootstrap its state).
         val receiver = object : BroadcastReceiver() {
@@ -98,6 +112,26 @@ class ParazitXVpnService : VpnService() {
             registerReceiver(receiver, filter)
         }
         queryReceiver = receiver
+
+        val captchaR = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+                when (intent.action) {
+                    ACTION_CAPTCHA_TIMEOUT -> showActionRequiredNotification()
+                    ACTION_CAPTCHA_SOLVED -> dismissActionRequiredNotification()
+                }
+            }
+        }
+        val captchaFilter = IntentFilter().apply {
+            addAction(ACTION_CAPTCHA_TIMEOUT)
+            addAction(ACTION_CAPTCHA_SOLVED)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(captchaR, captchaFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(captchaR, captchaFilter)
+        }
+        captchaReceiver = captchaR
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -297,6 +331,7 @@ class ParazitXVpnService : VpnService() {
     }
 
     private fun stopSelfClean() {
+        dismissActionRequiredNotification()
         if (!isRunning && tunFd == null && !tun2socksStarted) {
             stopForegroundCompat()
             stopSelf()
@@ -362,22 +397,79 @@ class ParazitXVpnService : VpnService() {
             queryReceiver?.let { unregisterReceiver(it) }
         } catch (_: Exception) {}
         queryReceiver = null
+        try {
+            captchaReceiver?.let { unregisterReceiver(it) }
+        } catch (_: Exception) {}
+        captchaReceiver = null
+        dismissActionRequiredNotification()
         stopSelfClean()
         super.onDestroy()
     }
 
-    private fun startForegroundNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = getSystemService(NotificationManager::class.java)
-            if (nm?.getNotificationChannel(CHANNEL_ID) == null) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "ParazitX tunnel",
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply { setShowBadge(false) }
-                nm?.createNotificationChannel(channel)
-            }
+    private fun ensureNotificationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val nm = getSystemService(NotificationManager::class.java) ?: return
+        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "ParazitX tunnel",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply { setShowBadge(false) }
+            nm.createNotificationChannel(channel)
         }
+        if (nm.getNotificationChannel(ACTION_CHANNEL_ID) == null) {
+            val actionChannel = NotificationChannel(
+                ACTION_CHANNEL_ID,
+                "Требуется действие",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Уведомления когда нужно подтвердить соединение"
+                enableVibration(true)
+                enableLights(true)
+                setShowBadge(true)
+            }
+            nm.createNotificationChannel(actionChannel)
+        }
+    }
+
+    private fun showActionRequiredNotification() {
+        ensureNotificationChannels()
+        val openIntent = PendingIntent.getActivity(
+            this,
+            2,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val builder = Notification.Builder(this, ACTION_CHANNEL_ID)
+            .setContentTitle("ParazitX: требуется действие")
+            .setContentText("Нажмите чтобы продолжить соединение")
+            .setSmallIcon(R.mipmap.ic_launcher_foreground)
+            .setContentIntent(openIntent)
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_CALL)
+            // fullScreenIntent wakes the user even on locked screen
+            // (treated like an incoming call). Requires
+            // USE_FULL_SCREEN_INTENT permission in AndroidManifest.
+            .setFullScreenIntent(openIntent, true)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            @Suppress("DEPRECATION")
+            builder.setPriority(Notification.PRIORITY_HIGH)
+        }
+        val nm = getSystemService(NotificationManager::class.java)
+        nm?.notify(ACTION_NOTIFICATION_ID, builder.build())
+    }
+
+    private fun dismissActionRequiredNotification() {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm?.cancel(ACTION_NOTIFICATION_ID)
+    }
+
+    private fun startForegroundNotification() {
+        ensureNotificationChannels()
         val openIntent = PendingIntent.getActivity(
             this,
             0,

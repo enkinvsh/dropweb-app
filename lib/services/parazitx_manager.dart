@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 
@@ -39,6 +40,21 @@ class ParazitXManager {
   static Timer? _rotationTimer;
   static StreamSubscription<String>? _statusSub;
   static const _socksPort = 1080;
+
+  /// Platform channel to ParazitXVpnService for high-priority "Action
+  /// Required" notification when captcha auto-solve stalls in background.
+  static const _notificationChannel =
+      MethodChannel('app.dropweb/parazitx_notifications');
+
+  /// How long the headless WebView gets to auto-click the captcha before
+  /// we surface a heads-up notification.
+  ///
+  /// Foreground: 10s — auto-solve usually wins.
+  /// Background: 2s — Android throttles JS in hidden webviews so auto-solve
+  /// won't progress; surface the notification ASAP so the user can bring
+  /// the app to foreground (or fullScreenIntent wakes them on lock screen).
+  static const _captchaForegroundPromptDelay = Duration(seconds: 10);
+  static const _captchaBackgroundPromptDelay = Duration(seconds: 2);
   // TURN allocation lifetime is 10 minutes (RFC 5766 default) and VK's TURN
   // server doesn't honor refresh requests, while ICE restart doesn't work with
   // the VK SFU. The only reliable solution is to rotate to a new call BEFORE
@@ -283,6 +299,9 @@ class ParazitXManager {
     LogBuffer.instance.add('activate() called, isActive=$_isActive');
     if (_isActive) return null;
 
+    // Register lifecycle observer so background-captcha logic can fire.
+    _ensureLifecycleObserver();
+
     if (_servers.isEmpty) {
       _servers = await _loadServersFromSubscription();
       _servers.shuffle();
@@ -376,7 +395,97 @@ class ParazitXManager {
   static HeadlessInAppWebView? _captchaWebView;
   static String? _solvingCaptchaUrl;
   static Timer? _captchaTimeoutTimer;
+  static Timer? _captchaForegroundPromptTimer;
+  static bool _actionNotificationShown = false;
   static StreamSubscription<String>? _captchaStatusSub;
+
+  /// URL of the captcha currently being auto-solved. Tracked separately
+  /// from [_solvingCaptchaUrl] so the lifecycle observer can restart
+  /// auto-solve when the app returns to foreground (after WebView JS was
+  /// throttled in background).
+  static String? _pendingCaptchaUrl;
+
+  /// Tracks app foreground/background state for captcha prompt timing
+  /// and auto-solve restart logic. Updated by [_ParazitXLifecycleObserver].
+  static bool _isAppInForeground = true;
+
+  /// Singleton lifecycle observer. Lazily registered on first [activate]
+  /// call, unregistered on [deactivate]. Bridges Flutter's app lifecycle
+  /// events into this otherwise-static manager.
+  static _ParazitXLifecycleObserver? _lifecycleObserver;
+
+  static void _ensureLifecycleObserver() {
+    if (_lifecycleObserver != null) return;
+    final observer = _ParazitXLifecycleObserver();
+    _lifecycleObserver = observer;
+    WidgetsBinding.instance.addObserver(observer);
+  }
+
+  static void _removeLifecycleObserver() {
+    final observer = _lifecycleObserver;
+    if (observer == null) return;
+    WidgetsBinding.instance.removeObserver(observer);
+    _lifecycleObserver = null;
+  }
+
+  /// Called by [_ParazitXLifecycleObserver] when app lifecycle changes.
+  /// On returning to foreground with a pending captcha, restart auto-solve
+  /// because the previous WebView was likely throttled by Android.
+  static void _onAppLifecycleStateChanged(AppLifecycleState state) {
+    final wasForeground = _isAppInForeground;
+    _isAppInForeground = state == AppLifecycleState.resumed;
+
+    if (_isAppInForeground && !wasForeground && _pendingCaptchaUrl != null) {
+      developer.log(
+        'App returned to foreground with pending captcha, '
+        'restarting auto-solve',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+        'App foregrounded with pending captcha, restarting auto-solve',
+      );
+      _restartCaptchaAutoSolve();
+    }
+  }
+
+  /// Dispose any in-flight WebView and re-spawn auto-solve for the same
+  /// pending captcha URL. Used when the app comes back to foreground —
+  /// the previous WebView's JS may have been frozen by Android Doze.
+  static void _restartCaptchaAutoSolve() {
+    final url = _pendingCaptchaUrl;
+    if (url == null) return;
+
+    unawaited(() async {
+      // _disposeCaptchaWebView() clears _pendingCaptchaUrl, so re-set it
+      // before re-entering _solveCaptchaAutomatically().
+      await _disposeCaptchaWebView();
+      _pendingCaptchaUrl = url;
+      await _solveCaptchaAutomatically(url);
+    }());
+  }
+
+  static Future<void> _showActionRequiredNotification() async {
+    if (_actionNotificationShown) return;
+    _actionNotificationShown = true;
+    try {
+      await _notificationChannel.invokeMethod<void>('showActionRequired');
+    } on PlatformException catch (e) {
+      developer.log('showActionRequired failed: ${e.message}',
+          name: 'ParazitX');
+      _actionNotificationShown = false;
+    }
+  }
+
+  static Future<void> _dismissActionRequiredNotification() async {
+    if (!_actionNotificationShown) return;
+    _actionNotificationShown = false;
+    try {
+      await _notificationChannel.invokeMethod<void>('dismissActionRequired');
+    } on PlatformException catch (e) {
+      developer.log('dismissActionRequired failed: ${e.message}',
+          name: 'ParazitX');
+    }
+  }
 
   /// Open a hidden InAppWebView, load the captcha proxy URL, and click the
   /// "I'm not a robot" checkbox automatically. The relay running on
@@ -399,6 +508,7 @@ class ParazitXManager {
 
     await _disposeCaptchaWebView();
     _solvingCaptchaUrl = url;
+    _pendingCaptchaUrl = url;
 
     developer.log('Auto-solving captcha: $url', name: 'ParazitX');
     LogBuffer.instance.add('Auto-solving captcha: $url');
@@ -504,6 +614,25 @@ class ParazitXManager {
       }
     });
 
+    _captchaForegroundPromptTimer?.cancel();
+    final promptDelay = _isAppInForeground
+        ? _captchaForegroundPromptDelay
+        : _captchaBackgroundPromptDelay;
+    _captchaForegroundPromptTimer = Timer(promptDelay, () {
+      if (_captchaWebView == null) return;
+      developer.log(
+        'Captcha unresolved after ${promptDelay.inSeconds}s '
+        '(foreground=$_isAppInForeground), '
+        'surfacing action-required notification',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+        'Captcha unresolved >${promptDelay.inSeconds}s '
+        '(foreground=$_isAppInForeground), showing action notification',
+      );
+      unawaited(_showActionRequiredNotification());
+    });
+
     // Hard timeout: 30s. If VK switched to a puzzle or our selectors
     // missed, the visible CaptchaScreen (subscribed to captchaStream)
     // remains as a fallback path for the user.
@@ -528,9 +657,12 @@ class ParazitXManager {
   static Future<void> _disposeCaptchaWebView() async {
     _captchaTimeoutTimer?.cancel();
     _captchaTimeoutTimer = null;
+    _captchaForegroundPromptTimer?.cancel();
+    _captchaForegroundPromptTimer = null;
     await _captchaStatusSub?.cancel();
     _captchaStatusSub = null;
     _solvingCaptchaUrl = null;
+    _pendingCaptchaUrl = null;
     final wv = _captchaWebView;
     _captchaWebView = null;
     if (wv != null) {
@@ -541,6 +673,7 @@ class ParazitXManager {
             name: 'ParazitX');
       }
     }
+    await _dismissActionRequiredNotification();
   }
 
   /// Tear down the VpnService (which tears down relay + tun2socks
@@ -554,6 +687,7 @@ class ParazitXManager {
     await _statusSub?.cancel();
     _statusSub = null;
     await _disposeCaptchaWebView();
+    _removeLifecycleObserver();
     try {
       await ParazitXVpnPlugin.stop();
     } on PlatformException catch (e) {
@@ -711,6 +845,17 @@ class ParazitXManager {
         LogBuffer.instance.add('Reconnect: rotation successful');
       }
     });
+  }
+}
+
+/// Bridges Flutter's [WidgetsBindingObserver] callbacks into the static
+/// [ParazitXManager]. Registered while the tunnel is active; tells the
+/// manager when the app moves between foreground and background so we
+/// can adjust captcha-prompt timing and restart auto-solve after Doze.
+class _ParazitXLifecycleObserver extends WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    ParazitXManager._onAppLifecycleStateChanged(state);
   }
 }
 

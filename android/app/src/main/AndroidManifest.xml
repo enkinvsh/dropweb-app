@@ -19,6 +19,9 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Required for setFullScreenIntent on captcha action notification:
+         lets us wake the screen / show over lockscreen like an incoming call. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- VPN per-app exclusion list — justify in Play submission. -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
