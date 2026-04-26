@@ -25,6 +25,12 @@ import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
+    // Cold start route delivered via Intent extra. Consumed once by Dart via
+    // `getInitialRoute`. Hot/warm start routes are pushed through
+    // [navigationSink] in [onNewIntent].
+    private var initialRoute: String? = null
+    private var navigationSink: EventChannel.EventSink? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppTheme()
 
@@ -35,8 +41,29 @@ class MainActivity : FlutterActivity() {
         // restoration API, so always start fresh.
         super.onCreate(null)
 
+        // Capture deep-link route from notification (or other sender) before
+        // Flutter engine is ready. Dart picks it up via the
+        // `app.dropweb/navigation` MethodChannel on init.
+        initialRoute = intent?.getStringExtra(EXTRA_ROUTE)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.attributes.preferredDisplayModeId = getHighestRefreshRateDisplayMode()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Subsequent launches (activity already in stack — SINGLE_TOP delivers
+        // the new intent here). Forward the route to Dart via EventChannel.
+        // Fall back to caching as `initialRoute` if Dart hasn't subscribed yet
+        // (race during process warm-up).
+        setIntent(intent)
+        val route = intent.getStringExtra(EXTRA_ROUTE) ?: return
+        val sink = navigationSink
+        if (sink != null) {
+            sink.success(route)
+        } else {
+            initialRoute = route
         }
     }
 
@@ -59,8 +86,27 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        
-        // Platform Channel for getting Android ID
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/navigation")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getInitialRoute") {
+                    result.success(initialRoute)
+                    initialRoute = null
+                } else {
+                    result.notImplemented()
+                }
+            }
+
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/navigation/events")
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                    navigationSink = events
+                }
+                override fun onCancel(arguments: Any?) {
+                    navigationSink = null
+                }
+            })
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/device_id")
             .setMethodCallHandler { call, result ->
                 if (call.method == "getAndroidId") {
@@ -215,11 +261,12 @@ class MainActivity : FlutterActivity() {
                     
                     val openIntent = PendingIntent.getActivity(
                         this,
-                        2,
+                        ROUTE_PARAZITX.hashCode(),
                         Intent(this, MainActivity::class.java).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                                 Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            putExtra(EXTRA_ROUTE, ROUTE_PARAZITX)
                         },
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                     )
@@ -268,6 +315,11 @@ class MainActivity : FlutterActivity() {
         // Don't reset runState here - VPN might still be running via serviceEngine
         // The runState is managed by VpnPlugin.handleStart/handleStop
         super.onDestroy()
+    }
+
+    companion object {
+        private const val EXTRA_ROUTE = "route"
+        private const val ROUTE_PARAZITX = "parazitx"
     }
 
     private fun applyAppTheme() {

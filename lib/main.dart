@@ -10,6 +10,7 @@ import 'package:dropweb/models/common.dart';
 import 'package:dropweb/plugins/app.dart';
 import 'package:dropweb/plugins/tile.dart';
 import 'package:dropweb/plugins/vpn.dart';
+import 'package:dropweb/services/deep_link_handler.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,6 +55,10 @@ Future<void> main() async {
     child: Application(),
   ));
   debugPrint("[dropweb] [MAIN] runApp returned");
+
+  if (Platform.isAndroid) {
+    unawaited(DeepLinkHandler.init());
+  }
 }
 
 @pragma('vm:entry-point')
