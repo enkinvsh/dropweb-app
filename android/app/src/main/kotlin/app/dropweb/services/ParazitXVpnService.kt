@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.IpPrefix
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -18,6 +19,7 @@ import androidbind.Androidbind
 import app.dropweb.MainActivity
 import app.dropweb.ParazitXRelayController
 import app.dropweb.R
+import java.net.InetAddress
 
 /**
  * Standalone VpnService for ParazitX mode.
@@ -181,6 +183,27 @@ class ParazitXVpnService : VpnService() {
         }
     }
 
+    private fun applyAllowedRoutes(b: Builder) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            b.addRoute("0.0.0.0", 0)
+            b.excludeRoute(IpPrefix(InetAddress.getByName("127.0.0.0"), 8))
+        } else {
+            // Split tunneling: 0.0.0.0/0 minus 127.0.0.0/8 expressed as 8 prefixes.
+            listOf(
+                "0.0.0.0" to 2,
+                "64.0.0.0" to 3,
+                "96.0.0.0" to 4,
+                "112.0.0.0" to 5,
+                "120.0.0.0" to 6,
+                "124.0.0.0" to 7,
+                "126.0.0.0" to 8,
+                "128.0.0.0" to 1,
+            ).forEach { (addr, prefix) ->
+                b.addRoute(addr, prefix)
+            }
+        }
+    }
+
     private fun establishTunAndStartTun2Socks(socksPort: Int): Boolean {
         val (user, pass) = ParazitXRelayController.getSocksCredentials()
         if (user.isEmpty() || pass.isEmpty()) {
@@ -194,22 +217,18 @@ class ParazitXVpnService : VpnService() {
                 .setSession("ParazitX")
                 .setMtu(VPN_MTU)
                 .addAddress(VPN_ADDRESS, VPN_PREFIX)
-                .addRoute("0.0.0.0", 0)
                 .addDnsServer(VPN_DNS)
                 .addDnsServer(VPN_DNS_FALLBACK)
                 .setBlocking(false)
 
+            // Exclude localhost from VPN routing so WebView can reach local captcha proxy
+            applyAllowedRoutes(builder)
+
             // Self-exclusion: librelay's signaling WebSocket must escape
             // tun via the underlying network. Without this, a self-loop
             // forms through SOCKS5 and VK resets the peer within seconds.
-            // Also exclude WebView packages so captcha verification can reach localhost.
-            // Note: Do NOT exclude com.android.chrome - that's the full browser!
-            // Only exclude WebView rendering components.
             val vpnExcludedPackages = listOf(
                 packageName,
-                "com.google.android.webview",
-                "com.android.webview",
-                "com.google.android.trichromelibrary",
             )
 
             vpnExcludedPackages.forEach { pkg ->
@@ -227,11 +246,14 @@ class ParazitXVpnService : VpnService() {
             }
 
             val pfd = builder.establish()
-                ?: throw IllegalStateException("VpnService.Builder.establish() returned null — permission?")
+            if (pfd == null) {
+                Log.e(TAG, "VPN establish failed - check routes configuration")
+                return false
+            }
             tunFd = pfd
             fd = pfd.detachFd()
         } catch (e: Exception) {
-            Log.e(TAG, "establish failed", e)
+            Log.e(TAG, "VPN establish failed - check routes configuration", e)
             return false
         }
 
