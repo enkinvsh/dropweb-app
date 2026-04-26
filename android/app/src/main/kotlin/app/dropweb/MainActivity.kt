@@ -1,5 +1,9 @@
 package app.dropweb
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -191,15 +195,58 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "showActionRequired" -> {
-                    val intent = Intent(ParazitXVpnService.ACTION_CAPTCHA_TIMEOUT)
-                        .setPackage(packageName)
-                    sendBroadcast(intent)
+                    val nm = getSystemService(NotificationManager::class.java)
+                    
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        if (nm?.getNotificationChannel("parazitx_action") == null) {
+                            val channel = NotificationChannel(
+                                "parazitx_action",
+                                "Требуется действие",
+                                NotificationManager.IMPORTANCE_HIGH
+                            ).apply {
+                                description = "Уведомления когда нужно подтвердить соединение"
+                                enableVibration(true)
+                                enableLights(true)
+                                setShowBadge(true)
+                            }
+                            nm?.createNotificationChannel(channel)
+                        }
+                    }
+                    
+                    val openIntent = PendingIntent.getActivity(
+                        this,
+                        2,
+                        Intent(this, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        },
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                    
+                    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        Notification.Builder(this, "parazitx_action")
+                    } else {
+                        @Suppress("DEPRECATION")
+                        Notification.Builder(this).setPriority(Notification.PRIORITY_HIGH)
+                    }
+                    
+                    builder.apply {
+                        setContentTitle("ParazitX: требуется действие")
+                        setContentText("Нажмите чтобы продолжить соединение")
+                        setSmallIcon(R.mipmap.ic_launcher_foreground)
+                        setContentIntent(openIntent)
+                        setAutoCancel(true)
+                        setCategory(Notification.CATEGORY_CALL)
+                        setFullScreenIntent(openIntent, true)
+                    }
+                    
+                    nm?.notify(0x178A, builder.build())
                     result.success(null)
                 }
                 "dismissActionRequired" -> {
-                    val intent = Intent(ParazitXVpnService.ACTION_CAPTCHA_SOLVED)
-                        .setPackage(packageName)
-                    sendBroadcast(intent)
+                    val nm = getSystemService(NotificationManager::class.java)
+                    nm?.cancel(0x178A)
                     result.success(null)
                 }
                 else -> result.notImplemented()
