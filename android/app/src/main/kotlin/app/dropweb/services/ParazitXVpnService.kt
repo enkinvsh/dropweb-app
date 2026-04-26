@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -201,10 +202,23 @@ class ParazitXVpnService : VpnService() {
             // Self-exclusion: librelay's signaling WebSocket must escape
             // tun via the underlying network. Without this, a self-loop
             // forms through SOCKS5 and VK resets the peer within seconds.
-            try {
-                builder.addDisallowedApplication(packageName)
-            } catch (e: Exception) {
-                Log.e(TAG, "addDisallowedApplication failed", e)
+            // Also exclude WebView packages so captcha verification can reach localhost.
+            val vpnExcludedPackages = listOf(
+                packageName,
+                "com.google.android.webview",
+                "com.android.webview",
+                "com.android.chrome",
+                "com.google.android.trichromelibrary",
+            )
+
+            vpnExcludedPackages.forEach { pkg ->
+                try {
+                    builder.addDisallowedApplication(pkg)
+                } catch (e: PackageManager.NameNotFoundException) {
+                    // Package not installed on this device — skip
+                } catch (e: Exception) {
+                    Log.w(TAG, "addDisallowedApplication($pkg) failed", e)
+                }
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
