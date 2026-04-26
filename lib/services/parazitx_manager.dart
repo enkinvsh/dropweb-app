@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 
 import '../plugins/parazitx_vpn_plugin.dart';
@@ -38,7 +39,11 @@ class ParazitXManager {
   static Timer? _rotationTimer;
   static StreamSubscription<String>? _statusSub;
   static const _socksPort = 1080;
-  static const _rotationInterval = Duration(minutes: 60);
+  // TURN allocation lifetime is 10 minutes (RFC 5766 default) and VK's TURN
+  // server doesn't honor refresh requests, while ICE restart doesn't work with
+  // the VK SFU. The only reliable solution is to rotate to a new call BEFORE
+  // the TURN allocation expires. 8 minutes gives a 2-minute safety margin.
+  static const _rotationInterval = Duration(minutes: 8);
   static const _sessionRequestTimeout = Duration(seconds: 35);
 
   /// Fallback when subscription does not provide a server list.
@@ -327,6 +332,7 @@ class ParazitXManager {
       final captchaUrl = TunnelStatus.captchaUrl(status);
       if (captchaUrl != null) {
         _captchaCtrl.add(captchaUrl);
+        unawaited(_solveCaptchaAutomatically(captchaUrl));
         return;
       }
 
@@ -363,6 +369,180 @@ class ParazitXManager {
     });
   }
 
+  /// Headless WebView used to auto-click VK's "I'm not a robot" checkbox.
+  /// Stays alive while the captcha page is loading, then is disposed once
+  /// the relay accepts the token (or after a hard timeout) so we don't
+  /// leak native resources between calls.
+  static HeadlessInAppWebView? _captchaWebView;
+  static String? _solvingCaptchaUrl;
+  static Timer? _captchaTimeoutTimer;
+  static StreamSubscription<String>? _captchaStatusSub;
+
+  /// Open a hidden InAppWebView, load the captcha proxy URL, and click the
+  /// "I'm not a robot" checkbox automatically. The relay running on
+  /// 127.0.0.1:NNNN intercepts the resulting `captchaNotRobot.check` call
+  /// and proceeds with auth — so we never need to show UI to the user.
+  ///
+  /// The manual visible-WebView flow is kept as a fallback (UI listens to
+  /// [captchaStream] and opens it) in case auto-solve fails or VK switches
+  /// to a puzzle captcha.
+  static Future<void> _solveCaptchaAutomatically(String url) async {
+    // Avoid spinning up a second WebView for the same URL: VK may emit
+    // CAPTCHA: repeatedly until the token is delivered.
+    if (_solvingCaptchaUrl == url && _captchaWebView != null) {
+      developer.log(
+        'Auto-solve already running for $url, skipping',
+        name: 'ParazitX',
+      );
+      return;
+    }
+
+    await _disposeCaptchaWebView();
+    _solvingCaptchaUrl = url;
+
+    developer.log('Auto-solving captcha: $url', name: 'ParazitX');
+    LogBuffer.instance.add('Auto-solving captcha: $url');
+
+    const injectScript = '''
+(function() {
+  if (window.__parazitxAutoClickInstalled) return;
+  window.__parazitxAutoClickInstalled = true;
+
+  var attempts = 0;
+  var maxAttempts = 40; // ~10s at 250ms
+
+  function tryClick() {
+    attempts++;
+    var selectors = [
+      'input[type="checkbox"]',
+      '.vkc__Checkbox__input',
+      '[class*="Checkbox__input"]',
+      '[class*="checkbox"] input',
+      'input[name*="captcha"]',
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var el = document.querySelector(selectors[i]);
+      if (el) {
+        try {
+          el.click();
+          console.log('[parazitx] clicked captcha selector:', selectors[i]);
+          return true;
+        } catch (e) {
+          console.log('[parazitx] click failed:', e);
+        }
+      }
+    }
+    if (attempts < maxAttempts) {
+      setTimeout(tryClick, 250);
+    } else {
+      console.log('[parazitx] gave up auto-click after', attempts, 'tries');
+    }
+    return false;
+  }
+
+  if (document.readyState === 'complete' ||
+      document.readyState === 'interactive') {
+    tryClick();
+  } else {
+    document.addEventListener('DOMContentLoaded', tryClick);
+    window.addEventListener('load', tryClick);
+  }
+})();
+''';
+
+    final webView = HeadlessInAppWebView(
+      initialUrlRequest: URLRequest(url: WebUri(url)),
+      initialSettings: InAppWebViewSettings(
+        javaScriptEnabled: true,
+        domStorageEnabled: true,
+      ),
+      onLoadStop: (controller, _) async {
+        developer.log(
+          'Captcha page loaded, injecting click',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add('Captcha page loaded, injecting click');
+        try {
+          await controller.evaluateJavascript(source: injectScript);
+        } catch (e) {
+          developer.log('Captcha JS inject failed: $e', name: 'ParazitX');
+        }
+      },
+      onReceivedError: (_, __, error) {
+        developer.log(
+          'Captcha WebView error: ${error.description}',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add('Captcha WebView error: ${error.description}');
+      },
+      onConsoleMessage: (_, message) {
+        if (message.message.contains('parazitx')) {
+          developer.log(
+            'Captcha console: ${message.message}',
+            name: 'ParazitX',
+          );
+        }
+      },
+    );
+
+    _captchaWebView = webView;
+
+    // Tear the WebView down as soon as the relay says the captcha was
+    // solved (or the tunnel goes ready / fails). We only listen for the
+    // duration of the auto-solve attempt so we don't fight the main
+    // status subscription.
+    await _captchaStatusSub?.cancel();
+    _captchaStatusSub = VkTunnelPlugin.statusStream.listen((status) {
+      if (status.startsWith('Captcha solved') ||
+          TunnelStatus.isTunnelReady(status) ||
+          TunnelStatus.isFailure(status)) {
+        developer.log(
+          'Captcha resolved by relay (status=$status), disposing WebView',
+          name: 'ParazitX',
+        );
+        unawaited(_disposeCaptchaWebView());
+      }
+    });
+
+    // Hard timeout: 30s. If VK switched to a puzzle or our selectors
+    // missed, the visible CaptchaScreen (subscribed to captchaStream)
+    // remains as a fallback path for the user.
+    _captchaTimeoutTimer = Timer(const Duration(seconds: 30), () {
+      developer.log(
+        'Auto-solve timeout for $url, disposing WebView',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add('Captcha auto-solve timeout');
+      unawaited(_disposeCaptchaWebView());
+    });
+
+    try {
+      await webView.run();
+    } catch (e) {
+      developer.log('Headless WebView run failed: $e', name: 'ParazitX');
+      LogBuffer.instance.add('Headless WebView run failed: $e');
+      await _disposeCaptchaWebView();
+    }
+  }
+
+  static Future<void> _disposeCaptchaWebView() async {
+    _captchaTimeoutTimer?.cancel();
+    _captchaTimeoutTimer = null;
+    await _captchaStatusSub?.cancel();
+    _captchaStatusSub = null;
+    _solvingCaptchaUrl = null;
+    final wv = _captchaWebView;
+    _captchaWebView = null;
+    if (wv != null) {
+      try {
+        await wv.dispose();
+      } catch (e) {
+        developer.log('Failed to dispose captcha WebView: $e',
+            name: 'ParazitX');
+      }
+    }
+  }
+
   /// Tear down the VpnService (which tears down relay + tun2socks
   /// internally) and clear local state.
   static Future<void> deactivate() async {
@@ -373,6 +553,7 @@ class ParazitXManager {
     _currentBackoff = _minBackoff;
     await _statusSub?.cancel();
     _statusSub = null;
+    await _disposeCaptchaWebView();
     try {
       await ParazitXVpnPlugin.stop();
     } on PlatformException catch (e) {
