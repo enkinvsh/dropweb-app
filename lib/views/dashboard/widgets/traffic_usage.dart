@@ -81,9 +81,18 @@ class _TrafficUsageContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final primaryColor = globalState.theme.darken3PrimaryContainer;
     final secondaryColor = globalState.theme.darken2SecondaryContainer;
-    final totalTraffic = ref.watch(totalTrafficProvider);
-    final upTotalTrafficValue = totalTraffic.up;
-    final downTotalTrafficValue = totalTraffic.down;
+    // Watch only the up/down byte values, not the full Traffic object.
+    // `Traffic` carries an `id = DateTime.now().millisecondsSinceEpoch`
+    // that changes every tick, so its `==` was effectively reference
+    // equality and the card rebuilt every 2 s even when the displayed
+    // totals were unchanged. A `(int, int)` record has structural
+    // equality, so this projection rebuilds only when up or down
+    // actually changes.
+    final (upValue, downValue) = ref.watch(
+      totalTrafficProvider.select((t) => (t.up.value, t.down.value)),
+    );
+    final upTotalTrafficValue = TrafficValue(value: upValue);
+    final downTotalTrafficValue = TrafficValue(value: downValue);
     return Padding(
       padding: baseInfoEdgeInsets.copyWith(
         top: 0,
