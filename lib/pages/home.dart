@@ -500,7 +500,8 @@ class CommonNavigationBar extends ConsumerWidget {
         ),
       );
     }
-    final showLabel = ref.watch(appSettingProvider).showLabel;
+    final showLabel =
+        ref.watch(appSettingProvider.select((state) => state.showLabel));
     return Material(
       color: context.colorScheme.surfaceContainer,
       child: Column(
