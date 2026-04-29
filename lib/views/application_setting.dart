@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' hide context;
+import '../services/log_buffer.dart';
 import '../services/log_uploader.dart';
 import '../services/parazitx_manager.dart';
 import '../services/vk_auth_service.dart';
@@ -469,7 +471,6 @@ class ParazitXSectionItem extends ConsumerStatefulWidget {
 class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
   bool _parazitxEnabled = false;
   bool _vkConnected = false;
-  bool _tunnelReady = false;
   bool _captchaOpen = false;
   StreamSubscription<bool>? _readySub;
   StreamSubscription<String>? _captchaSub;
@@ -479,12 +480,10 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
   void initState() {
     super.initState();
     _parazitxEnabled = ParazitXManager.isActive;
-    _tunnelReady = ParazitXManager.isTunnelReady;
     if (_parazitxEnabled) _state = _ParazitXState.active;
     _readySub = ParazitXManager.tunnelReadyStream.listen((ready) {
       if (!mounted) return;
       setState(() {
-        _tunnelReady = ready;
         if (!ready && _parazitxEnabled) {
           // Tunnel dropped — show reconnecting state (manager auto-reconnects)
           _state = _ParazitXState.connecting;
@@ -627,8 +626,18 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
 
   /// Handle the toggle tap with optimistic UI.
   Future<void> _handleToggle(bool value) async {
+    developer.log(
+        '[ParazitX][activation] toggle entry: value=$value state=$_state vkConnected=$_vkConnected',
+        name: 'ParazitX');
+    LogBuffer.instance.add(
+        '[ParazitX][activation] toggle entry: value=$value state=$_state vk=$_vkConnected');
     // Debounce: ignore taps while activation is already in flight.
-    if (_state == _ParazitXState.connecting) return;
+    if (_state == _ParazitXState.connecting) {
+      developer.log(
+          '[ParazitX][activation] toggle: already connecting, ignored',
+          name: 'ParazitX');
+      return;
+    }
 
     if (value) {
       // ── Turning ON ──────────────────────────────────────────────────────
@@ -656,7 +665,17 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
         _state = _ParazitXState.connecting;
       });
 
+      developer.log(
+          '[ParazitX][activation] toggle: calling ParazitXManager.activate()',
+          name: 'ParazitX');
+      LogBuffer.instance
+          .add('[ParazitX][activation] toggle: invoking activate()');
       final error = await ParazitXManager.activate();
+      developer.log(
+          '[ParazitX][activation] toggle: activate() returned error=$error',
+          name: 'ParazitX');
+      LogBuffer.instance
+          .add('[ParazitX][activation] toggle: activate() done error=$error');
       if (!mounted) return;
 
       if (error == null) {

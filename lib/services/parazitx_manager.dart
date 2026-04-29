@@ -64,7 +64,31 @@ class ParazitXManager {
 
   /// Fallback when subscription does not provide a server list.
   /// Port 3478 matches the new callfactory (TURN mimicry).
-  static const _fallbackServers = <String>['31.57.105.213:3478'];
+  /// Points to live pzx-001 canary.
+  static const _fallbackServers = <String>['pzx-001.meybz.asia:3478'];
+
+  /// Canary debug: hard-prefer pzx-001 in front of any subscription /
+  /// fallback list. Subscriptions can carry stale `dropweb-parazitx-servers`
+  /// headers pointing at dead IPs; while we are validating the live pzx-001
+  /// endpoint we want it tried FIRST regardless of what the profile carries.
+  /// Remove this once the subscription pool is verified healthy.
+  static const _canaryPreferredServer = 'pzx-001.meybz.asia:3478';
+
+  /// Returns [servers] deduplicated with [_canaryPreferredServer] in front.
+  /// Pure function so it can be exercised in isolation.
+  static List<String> _withCanaryPreferred(List<String> servers) {
+    final seen = <String>{};
+    final out = <String>[];
+    if (seen.add(_canaryPreferredServer)) {
+      out.add(_canaryPreferredServer);
+    }
+    for (final s in servers) {
+      final trimmed = s.trim();
+      if (trimmed.isEmpty) continue;
+      if (seen.add(trimmed)) out.add(trimmed);
+    }
+    return out;
+  }
 
   /// Yandex.Cloud proxy for TSPU whitelist mode.
   /// Used as fallback when direct IP is blocked.
@@ -102,24 +126,32 @@ class ParazitXManager {
   /// Read the callfactory endpoint pool from the active profile's
   /// provider headers. Falls back to [_fallbackServers] when the header
   /// is missing, empty, or the profile cannot be read.
+  ///
+  /// During canary debugging the result is always passed through
+  /// [_withCanaryPreferred] so [_canaryPreferredServer] is tried FIRST
+  /// even when the subscription header carries stale entries.
   static Future<List<String>> _loadServersFromSubscription() async {
     try {
       final profile = globalState.config.currentProfile;
       if (profile == null) {
         developer.log(
-          'No active profile, using fallback servers',
+          '[ParazitX][activation] no active profile, using fallback',
           name: 'ParazitX',
         );
-        return List<String>.from(_fallbackServers);
+        LogBuffer.instance
+            .add('[ParazitX][activation] no active profile, using fallback');
+        return _withCanaryPreferred(List<String>.from(_fallbackServers));
       }
 
       final raw = profile.providerHeaders[_serversHeaderName];
       if (raw == null || raw.isEmpty) {
         developer.log(
-          'No $_serversHeaderName header, using fallback',
+          '[ParazitX][activation] no $_serversHeaderName header, using fallback',
           name: 'ParazitX',
         );
-        return List<String>.from(_fallbackServers);
+        LogBuffer.instance
+            .add('[ParazitX][activation] no servers header, using fallback');
+        return _withCanaryPreferred(List<String>.from(_fallbackServers));
       }
 
       final servers = raw
@@ -129,20 +161,29 @@ class ParazitXManager {
           .toList();
 
       if (servers.isEmpty) {
-        return List<String>.from(_fallbackServers);
+        developer.log(
+          '[ParazitX][activation] $_serversHeaderName empty after parse, using fallback',
+          name: 'ParazitX',
+        );
+        return _withCanaryPreferred(List<String>.from(_fallbackServers));
       }
 
+      final preferred = _withCanaryPreferred(servers);
       developer.log(
-        'Loaded ${servers.length} server(s) from subscription',
+        '[ParazitX][activation] loaded ${servers.length} server(s) from subscription, canary-preferred=${preferred.length} (head=${preferred.first})',
         name: 'ParazitX',
       );
-      return servers;
+      LogBuffer.instance.add(
+          '[ParazitX][activation] subscription servers=${servers.length}, canary-preferred head=${preferred.first}');
+      return preferred;
     } catch (e) {
       developer.log(
-        'Failed to load servers from subscription: $e',
+        '[ParazitX][activation] failed to load servers from subscription: $e',
         name: 'ParazitX',
       );
-      return List<String>.from(_fallbackServers);
+      LogBuffer.instance.add(
+          '[ParazitX][activation] subscription load failed, using fallback: $e');
+      return _withCanaryPreferred(List<String>.from(_fallbackServers));
     }
   }
 
@@ -159,7 +200,11 @@ class ParazitXManager {
         ? Uri.parse('$server/v1/session')
         : Uri.parse('http://$server/v1/session');
 
-    developer.log('Trying server: $server', name: 'ParazitX');
+    final stopwatch = Stopwatch()..start();
+    developer.log(
+        '[ParazitX][activation] trying server: $server (timeout=${timeout.inSeconds}s)',
+        name: 'ParazitX');
+    LogBuffer.instance.add('[ParazitX][activation] trying server: $server');
 
     final http.Response response;
     try {
@@ -171,15 +216,23 @@ class ParazitXManager {
           )
           .timeout(timeout);
     } catch (e) {
-      developer.log('Server $server request failed: $e', name: 'ParazitX');
+      final elapsed = stopwatch.elapsedMilliseconds;
+      developer.log(
+          '[ParazitX][activation] server $server request failed after ${elapsed}ms: $e',
+          name: 'ParazitX');
+      LogBuffer.instance.add(
+          '[ParazitX][activation] server $server failed: $e (${elapsed}ms)');
       return const _SessionResult.err(ActivateError.networkError);
     }
 
+    final elapsed = stopwatch.elapsedMilliseconds;
     if (response.statusCode == 503) {
       developer.log(
-        'Server $server overloaded (503), trying next',
+        '[ParazitX][activation] server $server overloaded (503) after ${elapsed}ms, trying next',
         name: 'ParazitX',
       );
+      LogBuffer.instance
+          .add('[ParazitX][activation] server $server: 503 (${elapsed}ms)');
       return const _SessionResult.err(ActivateError.serverError);
     }
 
@@ -188,12 +241,20 @@ class ParazitXManager {
       if (respBody.contains('vk unauthorized') ||
           respBody.contains('timeout waiting') ||
           respBody.contains('check cookies')) {
+        developer.log(
+          '[ParazitX][activation] server $server: VK unauthorized (${response.statusCode}) after ${elapsed}ms',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add(
+            '[ParazitX][activation] server $server: VK unauthorized (${elapsed}ms)');
         return const _SessionResult.err(ActivateError.vkUnauthorized);
       }
       developer.log(
-        'Server $server returned ${response.statusCode}: ${response.body}',
+        '[ParazitX][activation] server $server returned ${response.statusCode} after ${elapsed}ms',
         name: 'ParazitX',
       );
+      LogBuffer.instance.add(
+          '[ParazitX][activation] server $server: ${response.statusCode} (${elapsed}ms)');
       return const _SessionResult.err(ActivateError.serverError);
     }
 
@@ -201,64 +262,88 @@ class ParazitXManager {
     try {
       data = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
+      developer.log(
+        '[ParazitX][activation] server $server: JSON decode failed after ${elapsed}ms',
+        name: 'ParazitX',
+      );
       return const _SessionResult.err(ActivateError.serverError);
     }
 
     final joinLink = data['join_link'] as String?;
     if (joinLink == null) {
+      developer.log(
+        '[ParazitX][activation] server $server: missing join_link after ${elapsed}ms',
+        name: 'ParazitX',
+      );
       return const _SessionResult.err(ActivateError.serverError);
     }
 
+    developer.log(
+      '[ParazitX][activation] server $server: SUCCESS (200) after ${elapsed}ms',
+      name: 'ParazitX',
+    );
+    LogBuffer.instance
+        .add('[ParazitX][activation] server $server: OK (${elapsed}ms)');
     return _SessionResult.ok(joinLink, 0);
   }
 
   /// POST encrypted VK cookies to callfactory and return the join_link,
   /// or an [ActivateError] describing what went wrong.
-  /// Strategy: Try direct server with short timeout (3s) for TSPU detection,
-  /// then fall back to YC proxy with longer timeout (30s) if direct fails.
+  /// Strategy: Try loaded servers first (from subscription), then fall back
+  /// to YC proxy with longer timeout if all direct servers fail.
   static Future<_SessionResult> _requestJoinLink() async {
+    final stopwatch = Stopwatch()..start();
+    developer.log(
+      '[ParazitX][activation] _requestJoinLink() started',
+      name: 'ParazitX',
+    );
+    LogBuffer.instance
+        .add('[ParazitX][activation] _requestJoinLink: loading cookies');
+
+    final cookieStopwatch = Stopwatch()..start();
     final cookies = await VkAuthService.loadCookies();
+    final cookieElapsed = cookieStopwatch.elapsedMilliseconds;
     if (cookies == null) {
+      developer.log(
+        '[ParazitX][activation] loadCookies: none (${cookieElapsed}ms) -> noCookies',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance
+          .add('[ParazitX][activation] loadCookies: none (${cookieElapsed}ms)');
       return const _SessionResult.err(ActivateError.noCookies);
     }
 
-    final encrypted = await CryptoService.encryptCookies(cookies);
-    final body = jsonEncode(encrypted);
-
-    // Try direct server first with short timeout (TSPU detection)
-    final directResult = await _tryServer(
-      _fallbackServers[0],
-      body,
-      timeout: const Duration(seconds: 3),
-      isHttps: false,
-    );
-    if (directResult.error == null ||
-        directResult.error == ActivateError.vkUnauthorized) {
-      return directResult;
-    }
-
     developer.log(
-      'Direct connection failed (${directResult.error}), trying YC proxy...',
+      '[ParazitX][activation] loadCookies: ok (${cookieElapsed}ms), encrypting',
       name: 'ParazitX',
     );
+    LogBuffer.instance.add(
+        '[ParazitX][activation] loadCookies ok (${cookieElapsed}ms), encrypting');
 
-    // Fall back to YC proxy with longer timeout
-    final proxyResult = await _tryServer(
-      _ycProxyUrl,
-      body,
-      timeout: const Duration(seconds: 30),
-      isHttps: true,
+    final encryptStopwatch = Stopwatch()..start();
+    final encrypted = await CryptoService.encryptCookies(cookies);
+    final body = jsonEncode(encrypted);
+    final encryptElapsed = encryptStopwatch.elapsedMilliseconds;
+    developer.log(
+      '[ParazitX][activation] encryptCookies: done (${encryptElapsed}ms), starting server attempts',
+      name: 'ParazitX',
     );
-    if (proxyResult.error == null) {
-      return proxyResult;
-    }
+    LogBuffer.instance.add(
+        '[ParazitX][activation] encryptCookies done (${encryptElapsed}ms)');
+    LogBuffer.instance.add(
+        '[ParazitX][activation] trying ${_servers.length} servers, starting at index $_serverIndex');
 
-    // If proxy also fails, try remaining fallback servers
-    var lastError = proxyResult.error ?? ActivateError.networkError;
+    // Try loaded servers first (from subscription or fallback list)
+    var lastError = ActivateError.networkError;
 
     for (var attempt = 0; attempt < _servers.length; attempt++) {
       final idx = (_serverIndex + attempt) % _servers.length;
       final server = _servers[idx];
+
+      developer.log(
+        '[ParazitX][activation] server attempt $attempt/${_servers.length}: idx=$idx server=$server',
+        name: 'ParazitX',
+      );
 
       final result = await _tryServer(
         server,
@@ -268,10 +353,24 @@ class ParazitXManager {
       );
 
       if (result.error == null) {
+        final elapsed = stopwatch.elapsedMilliseconds;
+        developer.log(
+          '[ParazitX][activation] _requestJoinLink SUCCESS via server $server after ${elapsed}ms',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance
+            .add('[ParazitX][activation] _requestJoinLink OK (${elapsed}ms)');
         return _SessionResult.ok(result.joinLink!, idx);
       }
 
       if (result.error == ActivateError.vkUnauthorized) {
+        final elapsed = stopwatch.elapsedMilliseconds;
+        developer.log(
+          '[ParazitX][activation] VK unauthorized from server $server after ${elapsed}ms, aborting',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add(
+            '[ParazitX][activation] VK unauthorized, aborting (${elapsed}ms)');
         return result;
       }
 
@@ -279,11 +378,52 @@ class ParazitXManager {
     }
 
     developer.log(
-      'All fallback attempts failed, lastError=$lastError',
+      '[ParazitX][activation] all ${_servers.length} direct servers failed, trying YC proxy',
       name: 'ParazitX',
     );
+    LogBuffer.instance.add(
+        '[ParazitX][activation] all direct servers failed, trying YC proxy');
+
+    // Fall back to YC proxy with longer timeout
+    final proxyResult = await _tryServer(
+      _ycProxyUrl,
+      body,
+      timeout: const Duration(seconds: 30),
+      isHttps: true,
+    );
+    if (proxyResult.error == null) {
+      final elapsed = stopwatch.elapsedMilliseconds;
+      developer.log(
+        '[ParazitX][activation] _requestJoinLink SUCCESS via YC proxy after ${elapsed}ms',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+          '[ParazitX][activation] _requestJoinLink via YC proxy OK (${elapsed}ms)');
+      return proxyResult;
+    }
+
+    if (proxyResult.error == ActivateError.vkUnauthorized) {
+      final elapsed = stopwatch.elapsedMilliseconds;
+      developer.log(
+        '[ParazitX][activation] VK unauthorized from YC proxy after ${elapsed}ms',
+        name: 'ParazitX',
+      );
+      return proxyResult;
+    }
+
+    final elapsed = stopwatch.elapsedMilliseconds;
+    developer.log(
+      '[ParazitX][activation] all servers failed (direct & proxy) after ${elapsed}ms, lastError=$lastError',
+      name: 'ParazitX',
+    );
+    LogBuffer.instance.add(
+        '[ParazitX][activation] _requestJoinLink FAILED: $lastError (${elapsed}ms)');
     return _SessionResult.err(lastError);
   }
+
+  /// Activation end-to-end timeout. Prevents hanging at any stage.
+  /// Set to 60 seconds to allow for slow networks + server delays.
+  static const _activationTimeout = Duration(seconds: 60);
 
   /// Activate ParazitX mode:
   /// 1. Load stored VK cookies
@@ -295,32 +435,104 @@ class ParazitXManager {
   ///
   /// Returns null on success, or an [ActivateError] describing what went wrong.
   static Future<ActivateError?> activate() async {
-    developer.log('activate() called, isActive=$_isActive', name: 'ParazitX');
-    LogBuffer.instance.add('activate() called, isActive=$_isActive');
-    if (_isActive) return null;
+    final stopwatch = Stopwatch()..start();
+    developer.log(
+        '[ParazitX][activation] activate() called, isActive=$_isActive',
+        name: 'ParazitX');
+    LogBuffer.instance
+        .add('[ParazitX][activation] activate() started, isActive=$_isActive');
+    if (_isActive) {
+      developer.log('[ParazitX][activation] already active, returning null',
+          name: 'ParazitX');
+      return null;
+    }
 
     // Register lifecycle observer so background-captcha logic can fire.
     _ensureLifecycleObserver();
+    developer.log('[ParazitX][activation] lifecycle observer ensured',
+        name: 'ParazitX');
 
+    // Load servers
     if (_servers.isEmpty) {
+      developer.log('[ParazitX][activation] loading servers from subscription',
+          name: 'ParazitX');
       _servers = await _loadServersFromSubscription();
-      _servers.shuffle();
+      // Canary debug: keep [_canaryPreferredServer] pinned at index 0.
+      // Shuffle only the tail so the canary endpoint is always tried first.
+      if (_servers.length > 2 && _servers.first == _canaryPreferredServer) {
+        final head = _servers.first;
+        final tail = _servers.sublist(1)..shuffle();
+        _servers = <String>[head, ...tail];
+      }
       _serverIndex = 0;
+      developer.log(
+          '[ParazitX][activation] server list resolved: count=${_servers.length} head=${_servers.isEmpty ? "<none>" : _servers.first}',
+          name: 'ParazitX');
+      LogBuffer.instance.add(
+          '[ParazitX][activation] servers resolved: count=${_servers.length} head=${_servers.isEmpty ? "<none>" : _servers.first}');
+    } else {
+      developer.log(
+          '[ParazitX][activation] reusing cached servers: count=${_servers.length} head=${_servers.first} idx=$_serverIndex',
+          name: 'ParazitX');
     }
 
-    final session = await _requestJoinLink();
+    // Request join link with timeout guard
+    developer.log(
+        '[ParazitX][activation] requesting join link (timeout=${_activationTimeout.inSeconds}s)',
+        name: 'ParazitX');
+    LogBuffer.instance.add(
+        '[ParazitX][activation] requesting join link, timeout=${_activationTimeout.inSeconds}s');
+
+    final _SessionResult session;
+    try {
+      session = await _requestJoinLink().timeout(
+        _activationTimeout,
+        onTimeout: () {
+          developer.log(
+              '[ParazitX][activation] join link request TIMED OUT after ${_activationTimeout.inSeconds}s',
+              name: 'ParazitX');
+          LogBuffer.instance.add(
+              '[ParazitX][activation] join link TIMEOUT (${_activationTimeout.inSeconds}s exceeded)');
+          return const _SessionResult.err(ActivateError.networkError);
+        },
+      );
+    } catch (e) {
+      developer.log('[ParazitX][activation] join link request threw: $e',
+          name: 'ParazitX');
+      LogBuffer.instance.add('[ParazitX][activation] join link threw: $e');
+      return ActivateError.networkError;
+    }
+
     if (session.error != null) {
-      LogBuffer.instance.add('activate failed: ${session.error}');
+      final elapsed = stopwatch.elapsedMilliseconds;
+      developer.log(
+          '[ParazitX][activation] session error=${session.error} after ${elapsed}ms',
+          name: 'ParazitX');
+      LogBuffer.instance.add(
+          '[ParazitX][activation] activate failed: ${session.error} (${elapsed}ms)');
       return session.error;
     }
 
     final joinLink = session.joinLink!;
     _currentJoinLink = joinLink;
     _serverIndex = session.serverIndex!;
+    developer.log(
+        '[ParazitX][activation] join link received, subscribing to relay status',
+        name: 'ParazitX');
+    LogBuffer.instance.add('[ParazitX][activation] join link ok, subscribing');
 
     // Subscribe BEFORE start so we don't miss the first CONNECTING status
     // (the service broadcasts synchronously on startForegroundService).
     _subscribeToRelayStatus();
+    developer.log('[ParazitX][activation] relay status subscribed',
+        name: 'ParazitX');
+
+    // Start VPN service
+    final pluginStopwatch = Stopwatch()..start();
+    developer.log(
+        '[ParazitX][activation] plugin.start: BEFORE (socksPort=$_socksPort)',
+        name: 'ParazitX');
+    LogBuffer.instance.add('[ParazitX][activation] plugin.start: BEFORE');
 
     try {
       await ParazitXVpnPlugin.start(
@@ -328,16 +540,29 @@ class ParazitXManager {
         socksPort: _socksPort,
       );
     } on PlatformException catch (e) {
-      developer.log('vpn start failed: ${e.code} ${e.message}',
+      final ms = pluginStopwatch.elapsedMilliseconds;
+      developer.log(
+          '[ParazitX][activation] plugin.start: FAILED (${ms}ms) code=${e.code}, message=${e.message}',
           name: 'ParazitX');
-      LogBuffer.instance.add('vpn start failed: ${e.code} ${e.message}');
+      LogBuffer.instance.add(
+          '[ParazitX][activation] plugin.start FAILED (${ms}ms): ${e.code} ${e.message}');
       await _statusSub?.cancel();
       _statusSub = null;
       return ActivateError.tunnelError;
     }
+    developer.log(
+        '[ParazitX][activation] plugin.start: AFTER ok (${pluginStopwatch.elapsedMilliseconds}ms)',
+        name: 'ParazitX');
+    LogBuffer.instance.add(
+        '[ParazitX][activation] plugin.start: AFTER ok (${pluginStopwatch.elapsedMilliseconds}ms)');
 
     _isActive = true;
     _startRotationTimer();
+    final elapsed = stopwatch.elapsedMilliseconds;
+    developer.log('[ParazitX][activation] activate() succeeded in ${elapsed}ms',
+        name: 'ParazitX');
+    LogBuffer.instance
+        .add('[ParazitX][activation] activate SUCCESS (${elapsed}ms total)');
     return null;
   }
 
