@@ -44,10 +44,34 @@ class _StartButtonState extends ConsumerState<StartButton>
       CurvedAnimation(parent: _breatheController, curve: Lumina.luminaCurve),
     );
 
+    // Seed initial breathe state from globalState (matches previous behavior).
     final initialRunning = globalState.appState.runTime != null;
     if (initialRunning || globalState.config.currentProfileId == null) {
       _breatheController.repeat(reverse: true);
     }
+
+    // Listen to running/profile state changes OUTSIDE build so we never
+    // schedule controller mutations from build(). addPostFrameCallback inside
+    // build was queuing a sync per rebuild — moving to listenManual means the
+    // controller is touched only when the relevant boolean state actually
+    // changes.
+    ref.listenManual<bool>(
+      runTimeProvider.select((state) => state != null),
+      (_, running) {
+        if (!mounted) return;
+        final hasProfile = ref
+            .read(startButtonSelectorStateProvider.select((s) => s.hasProfile));
+        _syncBreathe(running: running, hasProfile: hasProfile);
+      },
+    );
+    ref.listenManual<bool>(
+      startButtonSelectorStateProvider.select((s) => s.hasProfile),
+      (_, hasProfile) {
+        if (!mounted) return;
+        final running = ref.read(runTimeProvider) != null;
+        _syncBreathe(running: running, hasProfile: hasProfile);
+      },
+    );
   }
 
   void _syncBreathe({required bool running, required bool hasProfile}) {
@@ -100,17 +124,14 @@ class _StartButtonState extends ConsumerState<StartButton>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(startButtonSelectorStateProvider);
-    // Watch runTimeProvider so external VPN stops (QS tile, notification, revoke) flip the icon.
-    final isStart = ref.watch(runTimeProvider) != null;
+    // Watch boolean running state only — was watching raw int timestamp,
+    // which forced a rebuild on every runTimeProvider tick (every second
+    // while connected) even though the icon depends only on null/not-null.
+    final isStart = ref.watch(runTimeProvider.select((state) => state != null));
     if (!state.isInit) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
     final hasProfile = state.hasProfile;
-    // AnimationController mutations must be post-frame — running them in build = ANR loop.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _syncBreathe(running: isStart, hasProfile: hasProfile);
-    });
 
     return AnimatedBuilder(
       animation: _pressController,
@@ -124,38 +145,40 @@ class _StartButtonState extends ConsumerState<StartButton>
         onTapCancel: () => _pressController.reverse(),
         onTap: hasProfile ? handleSwitchStart : _handleAddProfile,
         child: Center(
-          child: AnimatedBuilder(
-            animation: _breatheAnimation,
-            builder: (_, __) {
-              return Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: (isStart && hasProfile) || !hasProfile
-                      ? [
-                          BoxShadow(
-                            color: colorScheme.primary
-                                .withValues(alpha: _breatheAnimation.value),
-                            blurRadius: !hasProfile ? 12 : 8,
-                            spreadRadius: !hasProfile ? 2 : 1,
-                          ),
-                        ]
-                      : [],
-                ),
-                child: HugeIcon(
-                  icon: !hasProfile
-                      ? HugeIcons.strokeRoundedAdd01
-                      : isStart
-                          ? HugeIcons.strokeRoundedStop
-                          : HugeIcons.strokeRoundedPlugSocket,
-                  size: 26,
-                  color: !hasProfile
-                      ? colorScheme.primary
-                      : isStart
-                          ? colorScheme.primary
-                          : Colors.white.withValues(alpha: 0.5),
-                ),
-              );
-            },
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _breatheAnimation,
+              builder: (_, __) {
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: (isStart && hasProfile) || !hasProfile
+                        ? [
+                            BoxShadow(
+                              color: colorScheme.primary
+                                  .withValues(alpha: _breatheAnimation.value),
+                              blurRadius: !hasProfile ? 12 : 8,
+                              spreadRadius: !hasProfile ? 2 : 1,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: HugeIcon(
+                    icon: !hasProfile
+                        ? HugeIcons.strokeRoundedAdd01
+                        : isStart
+                            ? HugeIcons.strokeRoundedStop
+                            : HugeIcons.strokeRoundedPlugSocket,
+                    size: 26,
+                    color: !hasProfile
+                        ? colorScheme.primary
+                        : isStart
+                            ? colorScheme.primary
+                            : Colors.white.withValues(alpha: 0.5),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
