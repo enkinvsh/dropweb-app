@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AndroidManager extends ConsumerStatefulWidget {
-
   const AndroidManager({
     super.key,
     required this.child,
@@ -21,13 +20,16 @@ class _AndroidContainerState extends ConsumerState<AndroidManager> {
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    ref.listenManual(
-      appSettingProvider.select((state) => state.hidden),
-      (prev, next) {
-        app?.updateExcludeFromRecents(next);
-      },
-      fireImmediately: true
-    );
+    // Phone-only product: lock to portraitUp. Manifest also pins
+    // android:screenOrientation="portrait" on MainActivity, which Android
+    // treats as portraitUp-only — listing portraitDown here would be a lie.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    ref.listenManual(appSettingProvider.select((state) => state.hidden),
+        (prev, next) {
+      app?.updateExcludeFromRecents(next);
+    }, fireImmediately: true);
   }
 
   @override

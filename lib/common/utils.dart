@@ -230,9 +230,10 @@ class Utils {
   }
 
   ViewMode getViewMode(double viewWidth) {
-    if (viewWidth <= maxMobileWidth) return ViewMode.mobile;
-    if (viewWidth <= maxLaptopWidth) return ViewMode.laptop;
-    return ViewMode.desktop;
+    // Product requirement: always use mobile layout mode, regardless of screen width.
+    // This ensures a consistent bottom mobile nav + connect button UX across all devices.
+    // Desktop/laptop enum values retained for compatibility (no downstream cleanup needed).
+    return ViewMode.mobile;
   }
 
   int getProxiesColumns(double viewWidth, ProxiesLayout proxiesLayout) {
