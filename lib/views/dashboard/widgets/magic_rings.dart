@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Fullscreen expanding rings from the connect button's exact screen position.
 ///
 /// Reads [connectButtonCenter] (set by _ConnectCircle via GlobalKey).
-/// 4 rings, 8s cycle, expand to cover the full screen diagonal.
+/// 2 rings, 14s cycle, expand to cover the full screen diagonal.
 class MagicRingsOverlay extends ConsumerStatefulWidget {
   const MagicRingsOverlay({super.key});
 
@@ -64,9 +64,16 @@ class _MagicRingsOverlayState extends ConsumerState<MagicRingsOverlay>
               return AnimatedBuilder(
                 animation: _controller,
                 builder: (context, _) {
+                  // Convert global button center -> local overlay coords.
+                  // If the overlay's render box is not yet attached or has
+                  // no size, do NOT fall back to global coords (that would
+                  // paint rings at a wildly wrong position for one frame).
+                  // Skip the frame instead — the next build will succeed.
                   final box = context.findRenderObject() as RenderBox?;
-                  final localCenter =
-                      box != null ? box.globalToLocal(btnCenter) : btnCenter;
+                  if (box == null || !box.hasSize || !box.attached) {
+                    return const SizedBox.shrink();
+                  }
+                  final localCenter = box.globalToLocal(btnCenter);
                   return CustomPaint(
                     size: Size.infinite,
                     painter: _FullscreenRingsPainter(
