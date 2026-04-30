@@ -631,6 +631,8 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
         name: 'ParazitX');
     LogBuffer.instance.add(
         '[ParazitX][activation] toggle entry: value=$value state=$_state vk=$_vkConnected');
+    debugPrint(
+        '[ParazitX][activation] _handleToggle value=$value state=$_state vk=$_vkConnected');
     // Debounce: ignore taps while activation is already in flight.
     if (_state == _ParazitXState.connecting) {
       developer.log(
@@ -670,12 +672,15 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
           name: 'ParazitX');
       LogBuffer.instance
           .add('[ParazitX][activation] toggle: invoking activate()');
+      debugPrint('[ParazitX][activation] _handleToggle -> activate()');
       final error = await ParazitXManager.activate();
       developer.log(
           '[ParazitX][activation] toggle: activate() returned error=$error',
           name: 'ParazitX');
       LogBuffer.instance
           .add('[ParazitX][activation] toggle: activate() done error=$error');
+      debugPrint(
+          '[ParazitX][activation] _handleToggle activate() returned error=$error');
       if (!mounted) return;
 
       if (error == null) {

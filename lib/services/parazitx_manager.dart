@@ -13,6 +13,7 @@ import '../plugins/parazitx_vpn_plugin.dart';
 import '../plugins/vk_tunnel_plugin.dart';
 import 'crypto_service.dart';
 import 'log_buffer.dart';
+import 'parazitx_manifest.dart';
 import 'vk_auth_service.dart';
 
 /// Typed activation failure reasons.
@@ -41,6 +42,12 @@ class ParazitXManager {
   static StreamSubscription<String>? _statusSub;
   static const _socksPort = 1080;
 
+  /// Tun MTU used for both initial activation and rotation. Defaults to
+  /// the safe ParazitX baseline (1280) which fits inside WebRTC
+  /// DataChannel/TURN path MTU without fragmentation. Native side
+  /// validates and clamps; out-of-range values fall back to 1280.
+  static const _tunMtu = ParazitXVpnPlugin.defaultMtu;
+
   /// Platform channel to ParazitXVpnService for high-priority "Action
   /// Required" notification when captcha auto-solve stalls in background.
   static const _notificationChannel =
@@ -61,44 +68,59 @@ class ParazitXManager {
   // the TURN allocation expires. 8 minutes gives a 2-minute safety margin.
   static const _rotationInterval = Duration(minutes: 8);
   static const _sessionRequestTimeout = Duration(seconds: 35);
+  static const _manifestFetchTimeout = Duration(seconds: 10);
 
-  /// Fallback when subscription does not provide a server list.
-  /// Port 3478 matches the new callfactory (TURN mimicry).
-  /// Points to live pzx-001 canary.
-  static const _fallbackServers = <String>['pzx-001.meybz.asia:3478'];
+  /// Per-attempt timeout for HTTPS signaling-relay calls. Kept tighter
+  /// than the direct-backend timeout so a misbehaving relay doesn't eat
+  /// the whole activation budget — relays are a fallback, not the
+  /// happy path.
+  static const _relayRequestTimeout = Duration(seconds: 15);
 
-  /// Canary debug: hard-prefer pzx-001 in front of any subscription /
-  /// fallback list. Subscriptions can carry stale `dropweb-parazitx-servers`
-  /// headers pointing at dead IPs; while we are validating the live pzx-001
-  /// endpoint we want it tried FIRST regardless of what the profile carries.
-  /// Remove this once the subscription pool is verified healthy.
-  static const _canaryPreferredServer = 'pzx-001.meybz.asia:3478';
+  /// Default Dropweb-operated manifest endpoint. This is a *registry*
+  /// URL — the response body lists callfactory nodes; no node hostnames
+  /// are compiled into the client. Self-hosted Remnawave deployments can
+  /// override this via the [_manifestHeaderName] subscription header to
+  /// point at their own manifest.
+  ///
+  /// Operators wanting an entirely-self-hosted experience should also
+  /// set [_serversHeaderName] in their subscription response so the
+  /// client never falls back to the Dropweb registry.
+  static const _defaultManifestUrl =
+      'https://sub.dropweb.org/parazitx/manifest.json';
 
-  /// Returns [servers] deduplicated with [_canaryPreferredServer] in front.
-  /// Pure function so it can be exercised in isolation.
-  static List<String> _withCanaryPreferred(List<String> servers) {
-    final seen = <String>{};
-    final out = <String>[];
-    if (seen.add(_canaryPreferredServer)) {
-      out.add(_canaryPreferredServer);
-    }
-    for (final s in servers) {
-      final trimmed = s.trim();
-      if (trimmed.isEmpty) continue;
-      if (seen.add(trimmed)) out.add(trimmed);
-    }
-    return out;
-  }
-
-  /// Yandex.Cloud proxy for TSPU whitelist mode.
-  /// Used as fallback when direct IP is blocked.
-  static const String _ycProxyUrl =
-      'https://d5da461207asfg6i1lmt.628pfjdx.apigw.yandexcloud.net';
-
-  /// Name of the subscription HTTP header that lists callfactory endpoints.
+  /// Subscription HTTP header that lists callfactory `host:port` endpoints
+  /// directly (highest priority — used as-is, no manifest fetch performed).
+  ///
   /// Must use the `dropweb-` prefix — the profile loader only accepts
   /// dropweb-* provider headers (see Profile.fetchFile in models/profile.dart).
   static const _serversHeaderName = 'dropweb-parazitx-servers';
+
+  /// Subscription HTTP header that overrides the manifest registry URL.
+  /// Lets self-hosted Remnawave operators publish their own manifest
+  /// without forking the client. Falls back to [_defaultManifestUrl] when
+  /// absent.
+  static const _manifestHeaderName = 'dropweb-parazitx-manifest';
+
+  /// Subscription HTTP header that lists HTTPS signaling-relay URLs as
+  /// an operator override of the manifest's `signaling_relays` block.
+  /// Comma-separated; values must be absolute HTTPS URLs. When present
+  /// it fully replaces the manifest-derived relay list (highest
+  /// priority — same shape as [_serversHeaderName] vs the manifest).
+  ///
+  /// A relay is signaling-only — it forwards the `/v1/session` request
+  /// to a backend node specified by the `X-Dropweb-Backend` header.
+  /// Media stays peer-to-peer with VK once the join-link is in hand.
+  static const _relaysHeaderName = 'dropweb-parazitx-relays';
+
+  /// Header used by the dialer to tell a signaling relay which backend
+  /// `host:port` to forward the request to.
+  static const _relayBackendHeaderName = 'X-Dropweb-Backend';
+
+  /// Errors that mean "this server is alive but refused us"; do not
+  /// fall through to relays for these — the backend already has a
+  /// definitive verdict.
+  static bool _shouldTryRelaysOnError(ActivateError err) =>
+      err == ActivateError.networkError || err == ActivateError.serverError;
 
   /// Ordered list of `host:port` endpoints for /v1/session requests.
   /// Populated from the subscription header on first [activate] call,
@@ -110,6 +132,11 @@ class ParazitXManager {
   /// Used as the starting point for rotation/fallback loops so we stick
   /// to a proven endpoint until it fails.
   static int _serverIndex = 0;
+
+  /// Configured signaling relays in priority order. Populated alongside
+  /// [_servers] in [activate]; first the subscription header is consulted,
+  /// then the manifest's `signaling_relays`. Cleared on [deactivate].
+  static List<_RelayCandidate> _relays = const <_RelayCandidate>[];
 
   static final StreamController<bool> _tunnelReadyCtrl =
       StreamController<bool>.broadcast();
@@ -123,68 +150,385 @@ class ParazitXManager {
 
   static bool get isActive => _isActive;
 
-  /// Read the callfactory endpoint pool from the active profile's
-  /// provider headers. Falls back to [_fallbackServers] when the header
-  /// is missing, empty, or the profile cannot be read.
+  /// Resolve the ordered callfactory endpoint pool plus signaling-relay
+  /// fallback list used by [_requestJoinLink].
   ///
-  /// During canary debugging the result is always passed through
-  /// [_withCanaryPreferred] so [_canaryPreferredServer] is tried FIRST
-  /// even when the subscription header carries stale entries.
-  static Future<List<String>> _loadServersFromSubscription() async {
+  /// Server discovery order (each step short-circuits on the first
+  /// non-empty server result):
+  ///   1. Subscription header [_serversHeaderName] — explicit `host:port`
+  ///      list provided by the operator's panel (Remnawave / self-hosted).
+  ///      Highest priority because it lets operators bypass any registry.
+  ///   2. Manifest registry — fetched from the URL in
+  ///      [_manifestHeaderName] when present, otherwise from
+  ///      [_defaultManifestUrl]. Compatible nodes are sorted by
+  ///      [ParazitXNodeSelector.selectNode] semantics (highest weight,
+  ///      then id) and emitted as `host:port` strings.
+  ///
+  /// Signaling-relay discovery is layered on top:
+  ///   * subscription header [_relaysHeaderName] (if present) is the
+  ///     authoritative override and replaces any manifest relays;
+  ///   * otherwise the relay list comes from the same manifest fetch
+  ///     used to discover servers, scoped to the chosen backend node
+  ///     when possible.
+  ///
+  /// No node hostnames are compiled into the client. Callers must treat an
+  /// empty server result as "activation cannot proceed" — the manager
+  /// surfaces this to the user as [ActivateError.networkError] rather
+  /// than silently pinning a hardcoded server.
+  static Future<_DiscoveryResult> _loadServersFromSubscription() async {
+    final fromHeader = _serversFromSubscriptionHeader();
+    final headerRelays = _relaysFromSubscriptionHeader();
+
+    if (fromHeader.isNotEmpty) {
+      developer.log(
+        '[ParazitX][activation] using ${fromHeader.length} server(s) from subscription header (head=${fromHeader.first})',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+          '[ParazitX][activation] subscription header servers=${fromHeader.length} head=${fromHeader.first}');
+      debugPrint(
+          '[ParazitX][activation] header-servers count=${fromHeader.length} head=${fromHeader.first}');
+
+      // Header relays explicitly set: total operator trust, skip manifest.
+      if (headerRelays.isNotEmpty) {
+        developer.log(
+          '[ParazitX][activation] using ${headerRelays.length} relay(s) from subscription header',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add(
+            '[ParazitX][activation] subscription header relays=${headerRelays.length}');
+        debugPrint(
+            '[ParazitX][activation] header-relays count=${headerRelays.length}');
+        return _DiscoveryResult(servers: fromHeader, relays: headerRelays);
+      }
+
+      // Header servers but NO header relays: still consult the manifest
+      // for signaling relays (header servers stay authoritative — manifest
+      // never overrides operator-supplied servers in this path).
+      //
+      // This covers the common Remnawave deployment where the operator
+      // pins backend nodes via `dropweb-parazitx-servers` but expects the
+      // Dropweb-published manifest to provide the TSPU-resilient
+      // signaling-relay fallback. Without this fetch the client would
+      // never attempt a relay even though one is published.
+      final manifestUrl = _resolveManifestUrl();
+      developer.log(
+        '[ParazitX][activation] header servers + no header relays; fetching manifest $manifestUrl for signaling relays only',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+          '[ParazitX][activation] header servers, fetching manifest for relays only ($manifestUrl)');
+      debugPrint(
+          '[ParazitX][activation] header-servers + no header-relays -> fetch manifest for relays: $manifestUrl');
+
+      final manifestResult = await _fetchManifest(manifestUrl);
+      final scopedRelays =
+          _manifestRelaysForHeaderServers(manifestResult, fromHeader);
+      if (scopedRelays.isNotEmpty) {
+        developer.log(
+          '[ParazitX][activation] derived ${scopedRelays.length} signaling relay(s) from manifest for header servers',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add(
+            '[ParazitX][activation] manifest-derived relays for header servers: ${scopedRelays.length}');
+        debugPrint(
+            '[ParazitX][activation] manifest-derived relays for header servers: ${scopedRelays.length}');
+      } else {
+        developer.log(
+          '[ParazitX][activation] manifest yielded no usable relays for header servers',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add(
+            '[ParazitX][activation] manifest yielded no relays for header servers');
+        debugPrint(
+            '[ParazitX][activation] manifest yielded no relays for header servers');
+      }
+      return _DiscoveryResult(servers: fromHeader, relays: scopedRelays);
+    }
+
+    final manifestUrl = _resolveManifestUrl();
+    final manifestResult = await _fetchManifest(manifestUrl);
+    final fromManifest = manifestResult.servers;
+
+    // Header relays still win over manifest relays even when servers
+    // were discovered via manifest.
+    final relays = headerRelays.isNotEmpty
+        ? headerRelays
+        : manifestResult.relaysForFirstServer();
+
+    if (fromManifest.isNotEmpty) {
+      developer.log(
+        '[ParazitX][activation] using ${fromManifest.length} server(s) from manifest $manifestUrl (head=${fromManifest.first})',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+          '[ParazitX][activation] manifest servers=${fromManifest.length} head=${fromManifest.first}');
+      debugPrint(
+          '[ParazitX][activation] manifest-servers count=${fromManifest.length} head=${fromManifest.first}');
+      if (relays.isNotEmpty) {
+        developer.log(
+          '[ParazitX][activation] using ${relays.length} signaling relay(s) (source=${headerRelays.isNotEmpty ? "header" : "manifest"})',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add(
+            '[ParazitX][activation] relays=${relays.length} source=${headerRelays.isNotEmpty ? "header" : "manifest"}');
+        debugPrint(
+            '[ParazitX][activation] relays=${relays.length} source=${headerRelays.isNotEmpty ? "header" : "manifest"}');
+      }
+      return _DiscoveryResult(servers: fromManifest, relays: relays);
+    }
+
+    developer.log(
+      '[ParazitX][activation] no subscription header servers and manifest yielded none; activation will fail',
+      name: 'ParazitX',
+    );
+    LogBuffer.instance.add(
+        '[ParazitX][activation] no servers discovered (header empty, manifest=$manifestUrl)');
+    debugPrint(
+        '[ParazitX][activation] no servers discovered (header empty, manifest=$manifestUrl)');
+    return _DiscoveryResult(servers: const <String>[], relays: relays);
+  }
+
+  /// Parse the `dropweb-parazitx-relays` provider header into a relay
+  /// candidate list. Values must be absolute `https://` URLs;
+  /// non-HTTPS or malformed entries are dropped silently.
+  static List<_RelayCandidate> _relaysFromSubscriptionHeader() {
     try {
       final profile = globalState.config.currentProfile;
-      if (profile == null) {
-        developer.log(
-          '[ParazitX][activation] no active profile, using fallback',
-          name: 'ParazitX',
-        );
-        LogBuffer.instance
-            .add('[ParazitX][activation] no active profile, using fallback');
-        return _withCanaryPreferred(List<String>.from(_fallbackServers));
+      if (profile == null) return const <_RelayCandidate>[];
+      final raw = profile.providerHeaders[_relaysHeaderName];
+      if (raw == null || raw.isEmpty) return const <_RelayCandidate>[];
+      final out = <_RelayCandidate>[];
+      var i = 0;
+      for (final part in raw.split(',')) {
+        final trimmed = part.trim();
+        if (trimmed.isEmpty) continue;
+        final uri = Uri.tryParse(trimmed);
+        if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+          developer.log(
+            '[ParazitX][activation] dropping non-HTTPS relay header entry: $trimmed',
+            name: 'ParazitX',
+          );
+          continue;
+        }
+        // Subscription-header relays predate the manifest's `kind`
+        // field and were always assumed to be passthrough relays
+        // (they need an X-Dropweb-Backend header). Keep that contract
+        // for headers; operators that want session-style relays must
+        // declare them in the manifest where `kind` is explicit.
+        out.add(_RelayCandidate(
+          id: 'header-$i:${uri.host}',
+          url: trimmed,
+          kind: kParazitXRelayKindHttpsPassthrough,
+        ));
+        i++;
       }
+      return List.unmodifiable(out);
+    } catch (e) {
+      developer.log(
+        '[ParazitX][activation] relays header parse failed: $e',
+        name: 'ParazitX',
+      );
+      return const <_RelayCandidate>[];
+    }
+  }
 
+  /// Parse the `dropweb-parazitx-servers` provider header into a normalized
+  /// `host:port` list. Returns empty when no profile, no header, or the
+  /// header parses to nothing usable.
+  static List<String> _serversFromSubscriptionHeader() {
+    try {
+      final profile = globalState.config.currentProfile;
+      if (profile == null) return const <String>[];
       final raw = profile.providerHeaders[_serversHeaderName];
-      if (raw == null || raw.isEmpty) {
-        developer.log(
-          '[ParazitX][activation] no $_serversHeaderName header, using fallback',
-          name: 'ParazitX',
-        );
-        LogBuffer.instance
-            .add('[ParazitX][activation] no servers header, using fallback');
-        return _withCanaryPreferred(List<String>.from(_fallbackServers));
-      }
-
+      if (raw == null || raw.isEmpty) return const <String>[];
       final servers = raw
           .split(',')
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
-          .toList();
-
-      if (servers.isEmpty) {
-        developer.log(
-          '[ParazitX][activation] $_serversHeaderName empty after parse, using fallback',
-          name: 'ParazitX',
-        );
-        return _withCanaryPreferred(List<String>.from(_fallbackServers));
-      }
-
-      final preferred = _withCanaryPreferred(servers);
-      developer.log(
-        '[ParazitX][activation] loaded ${servers.length} server(s) from subscription, canary-preferred=${preferred.length} (head=${preferred.first})',
-        name: 'ParazitX',
-      );
-      LogBuffer.instance.add(
-          '[ParazitX][activation] subscription servers=${servers.length}, canary-preferred head=${preferred.first}');
-      return preferred;
+          .toList(growable: false);
+      return servers;
     } catch (e) {
       developer.log(
-        '[ParazitX][activation] failed to load servers from subscription: $e',
+        '[ParazitX][activation] subscription header parse failed: $e',
         name: 'ParazitX',
       );
-      LogBuffer.instance.add(
-          '[ParazitX][activation] subscription load failed, using fallback: $e');
-      return _withCanaryPreferred(List<String>.from(_fallbackServers));
+      return const <String>[];
     }
+  }
+
+  /// Resolve the manifest URL: profile-provided override (per-operator
+  /// self-hosted manifest) or the Dropweb default registry.
+  static String _resolveManifestUrl() {
+    try {
+      final profile = globalState.config.currentProfile;
+      final override = profile?.providerHeaders[_manifestHeaderName];
+      if (override != null && override.isNotEmpty) {
+        final trimmed = override.trim();
+        if (trimmed.isNotEmpty) return trimmed;
+      }
+    } catch (_) {}
+    return _defaultManifestUrl;
+  }
+
+  /// Fetch [manifestUrl] and return the compatible servers (`host:port`
+  /// strings) plus a parsed [ParazitXManifest] for downstream lookups
+  /// (e.g. `signaling_relays`).
+  ///
+  /// Network/parse/timeout failures collapse to an empty result; the
+  /// caller is responsible for surfacing the resulting absence-of-servers
+  /// as a user-visible activation failure.
+  static Future<_ManifestFetchResult> _fetchManifest(String manifestUrl) async {
+    final Uri uri;
+    try {
+      uri = Uri.parse(manifestUrl);
+    } catch (e) {
+      developer.log(
+        '[ParazitX][activation] manifest URL parse failed: $manifestUrl ($e)',
+        name: 'ParazitX',
+      );
+      return _ManifestFetchResult.empty;
+    }
+
+    final http.Response response;
+    try {
+      response = await http.get(uri).timeout(_manifestFetchTimeout);
+    } catch (e) {
+      developer.log(
+        '[ParazitX][activation] manifest fetch failed: $uri ($e)',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance
+          .add('[ParazitX][activation] manifest fetch failed: $e');
+      return _ManifestFetchResult.empty;
+    }
+
+    if (response.statusCode != 200) {
+      developer.log(
+        '[ParazitX][activation] manifest HTTP ${response.statusCode} from $uri',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance
+          .add('[ParazitX][activation] manifest HTTP ${response.statusCode}');
+      return _ManifestFetchResult.empty;
+    }
+
+    final ParazitXManifest manifest;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('manifest root is not a JSON object');
+      }
+      manifest = ParazitXManifest.fromJson(decoded);
+    } catch (e) {
+      developer.log(
+        '[ParazitX][activation] manifest parse failed: $e',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance
+          .add('[ParazitX][activation] manifest parse failed: $e');
+      return _ManifestFetchResult.empty;
+    }
+
+    final compatible = manifest.compatibleNodes;
+    if (compatible.isEmpty) {
+      return _ManifestFetchResult(
+        servers: const <String>[],
+        manifest: manifest,
+        sortedNodes: const <ParazitXNode>[],
+      );
+    }
+
+    final sorted = [...compatible]..sort((a, b) {
+        final byWeight = b.weight.compareTo(a.weight);
+        if (byWeight != 0) return byWeight;
+        return a.id.compareTo(b.id);
+      });
+
+    final seen = <String>{};
+    final out = <String>[];
+    for (final n in sorted) {
+      final endpoint = '${n.host}:${n.port}';
+      if (seen.add(endpoint)) out.add(endpoint);
+    }
+    return _ManifestFetchResult(
+      servers: out,
+      manifest: manifest,
+      sortedNodes: sorted,
+    );
+  }
+
+  /// Resolve manifest signaling relays for an operator-supplied
+  /// `dropweb-parazitx-servers` header list.
+  ///
+  /// Two paths are folded into one result:
+  ///   1. Node-scoped relays: when a manifest node's `host:port` exactly
+  ///      matches one of [headerServers], its `relaysForNode(node.id)`
+  ///      list applies. Header servers may collide with manifest nodes
+  ///      (operators using the same canary as Dropweb publishes); this
+  ///      path lets manifest-published relays enrich the dial path.
+  ///   2. Standalone session relays: relays of kind `https-session` are
+  ///      always usable because they pick a backend themselves. Even
+  ///      when their `applies_to` whitelist is scoped to nodes the
+  ///      header doesn't reference, they remain a valid fallback —
+  ///      they never need [_relayBackendHeaderName].
+  ///
+  /// Duplicates (same id/url/kind triple) are collapsed in declaration
+  /// priority order: node-scoped first, then session-only.
+  static List<_RelayCandidate> _manifestRelaysForHeaderServers(
+    _ManifestFetchResult manifestResult,
+    List<String> headerServers,
+  ) {
+    final manifest = manifestResult.manifest;
+    if (manifest == null) return const <_RelayCandidate>[];
+
+    final headerSet = headerServers.toSet();
+    final out = <_RelayCandidate>[];
+    final seen = <String>{};
+
+    void addRelay(ParazitXSignalingRelay r) {
+      final key = '${r.id}|${r.url}|${r.kind}';
+      if (!seen.add(key)) return;
+      out.add(_RelayCandidate(id: r.id, url: r.url, kind: r.kind));
+    }
+
+    // Path 1: relays for nodes that match one of the header servers
+    // (operator pinned a Dropweb-published node by host:port).
+    for (final node in manifest.nodes) {
+      final endpoint = '${node.host}:${node.port}';
+      if (!headerSet.contains(endpoint)) continue;
+      for (final r in manifest.relaysForNode(node.id)) {
+        addRelay(r);
+      }
+    }
+
+    // Path 2: standalone session relays — manifest-declared relays of
+    // kind `https-session` are dialable without a backend match because
+    // the relay URL itself is the session endpoint. Include even when
+    // `applies_to` is node-scoped to a node the header didn't list.
+    // The HTTPS-only / kind-supported filter is enforced by
+    // `relaysForNode`; here we consult `signalingRelays` directly to
+    // bypass `applies_to` scoping for the session-kind subset only.
+    for (final r in manifest.signalingRelays) {
+      if (r.kind != kParazitXRelayKindHttpsSession) continue;
+      if (!_isManifestRelayUsable(r)) continue;
+      addRelay(r);
+    }
+
+    return List.unmodifiable(out);
+  }
+
+  /// Mirror of the manifest-side HTTPS/kind filter, applied here when we
+  /// reach into `manifest.signalingRelays` directly (bypassing
+  /// `relaysForNode`'s scope check). Keeps a single bad relay entry
+  /// from poisoning the candidate list.
+  static bool _isManifestRelayUsable(ParazitXSignalingRelay r) {
+    if (!kParazitXSupportedRelayKinds.contains(r.kind)) return false;
+    final uri = Uri.tryParse(r.url.trim());
+    if (uri == null) return false;
+    if (uri.scheme != 'https') return false;
+    if (uri.host.isEmpty) return false;
+    return true;
   }
 
   /// Try to obtain session from a single server endpoint.
@@ -289,8 +633,12 @@ class ParazitXManager {
 
   /// POST encrypted VK cookies to callfactory and return the join_link,
   /// or an [ActivateError] describing what went wrong.
-  /// Strategy: Try loaded servers first (from subscription), then fall back
-  /// to YC proxy with longer timeout if all direct servers fail.
+  ///
+  /// Iterates the resolved server pool (subscription header → manifest)
+  /// starting at [_serverIndex] so a previously-working endpoint stays
+  /// sticky. Returns the first 200 with a join_link, short-circuits on
+  /// [ActivateError.vkUnauthorized], or surfaces the last error if every
+  /// server failed.
   static Future<_SessionResult> _requestJoinLink() async {
     final stopwatch = Stopwatch()..start();
     developer.log(
@@ -299,6 +647,8 @@ class ParazitXManager {
     );
     LogBuffer.instance
         .add('[ParazitX][activation] _requestJoinLink: loading cookies');
+    debugPrint(
+        '[ParazitX][activation] _requestJoinLink() start servers=${_servers.length} relays=${_relays.length}');
 
     final cookieStopwatch = Stopwatch()..start();
     final cookies = await VkAuthService.loadCookies();
@@ -377,48 +727,242 @@ class ParazitXManager {
       lastError = result.error ?? ActivateError.networkError;
     }
 
-    developer.log(
-      '[ParazitX][activation] all ${_servers.length} direct servers failed, trying YC proxy',
-      name: 'ParazitX',
-    );
-    LogBuffer.instance.add(
-        '[ParazitX][activation] all direct servers failed, trying YC proxy');
-
-    // Fall back to YC proxy with longer timeout
-    final proxyResult = await _tryServer(
-      _ycProxyUrl,
-      body,
-      timeout: const Duration(seconds: 30),
-      isHttps: true,
-    );
-    if (proxyResult.error == null) {
-      final elapsed = stopwatch.elapsedMilliseconds;
-      developer.log(
-        '[ParazitX][activation] _requestJoinLink SUCCESS via YC proxy after ${elapsed}ms',
-        name: 'ParazitX',
-      );
-      LogBuffer.instance.add(
-          '[ParazitX][activation] _requestJoinLink via YC proxy OK (${elapsed}ms)');
-      return proxyResult;
-    }
-
-    if (proxyResult.error == ActivateError.vkUnauthorized) {
-      final elapsed = stopwatch.elapsedMilliseconds;
-      developer.log(
-        '[ParazitX][activation] VK unauthorized from YC proxy after ${elapsed}ms',
-        name: 'ParazitX',
-      );
-      return proxyResult;
+    // All direct backend dials failed (or there were no servers).
+    // Fall through to signaling relays only when the failure mode is a
+    // network/server problem. vkUnauthorized would have already
+    // returned above; we never reach the relay loop after a definitive
+    // backend rejection.
+    if (_relays.isNotEmpty && _shouldTryRelaysOnError(lastError)) {
+      final relayResult = await _tryRelays(body, lastError);
+      if (relayResult != null) {
+        // _tryRelays returns a non-null result either on success
+        // (positive ok) or on a definitive failure that should be
+        // surfaced (e.g. relay-reported vkUnauthorized).
+        return relayResult;
+      }
+      // null = relays exhausted without a definitive result; keep
+      // lastError below.
     }
 
     final elapsed = stopwatch.elapsedMilliseconds;
+    if (_servers.isEmpty && _relays.isEmpty) {
+      developer.log(
+        '[ParazitX][activation] no servers available after ${elapsed}ms',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+          '[ParazitX][activation] _requestJoinLink: no servers (${elapsed}ms)');
+      return const _SessionResult.err(ActivateError.networkError);
+    }
+
     developer.log(
-      '[ParazitX][activation] all servers failed (direct & proxy) after ${elapsed}ms, lastError=$lastError',
+      '[ParazitX][activation] all ${_servers.length} servers + ${_relays.length} relay(s) failed after ${elapsed}ms, lastError=$lastError',
       name: 'ParazitX',
     );
     LogBuffer.instance.add(
         '[ParazitX][activation] _requestJoinLink FAILED: $lastError (${elapsed}ms)');
     return _SessionResult.err(lastError);
+  }
+
+  /// Try each configured signaling relay in priority order. Used as a
+  /// last-ditch fallback after every direct backend dial in [_servers]
+  /// returned a network/server error — *and* as the only path when no
+  /// backend nodes were discovered but session-kind relays are
+  /// available (the relay infrastructure itself is the session
+  /// endpoint, no backend required).
+  ///
+  /// Returns:
+  ///   * [_SessionResult.ok] on the first relay that responds with 200 +
+  ///     join_link; the [_SessionResult.serverIndex] is set to the
+  ///     server index of the backend the relay forwarded to (so the
+  ///     stickiness logic still works after a relayed activation),
+  ///     or `0` when there is no backend pool (pure session-relay
+  ///     deployment).
+  ///   * [_SessionResult.err] with [ActivateError.vkUnauthorized] on
+  ///     the first relay that propagates that response — same
+  ///     short-circuit semantics as direct dials.
+  ///   * `null` when every relay failed with a non-definitive error;
+  ///     the caller falls back to surfacing [lastError].
+  static Future<_SessionResult?> _tryRelays(
+    String body,
+    ActivateError lastError,
+  ) async {
+    final hasServers = _servers.isNotEmpty;
+    final backendForRelay =
+        hasServers ? _servers[_serverIndex % _servers.length] : null;
+
+    // Filter relays we can actually dial in the current backend
+    // configuration: passthrough relays need a backend host to forward
+    // to, so they're unusable when [_servers] is empty.
+    final dialable = _relays
+        .where((r) => !r.requiresBackendHeader || backendForRelay != null)
+        .toList(growable: false);
+    if (dialable.isEmpty) return null;
+
+    developer.log(
+      '[ParazitX][activation] direct dials failed ($lastError); trying ${dialable.length} signaling relay(s) backend=${backendForRelay ?? "<none>"}',
+      name: 'ParazitX',
+    );
+    LogBuffer.instance.add(
+        '[ParazitX][activation] relay fallback: ${dialable.length} relay(s), backend=${backendForRelay ?? "<none>"}');
+    debugPrint(
+        '[ParazitX][activation] _tryRelays: ${dialable.length} relay(s) lastError=$lastError backend=${backendForRelay ?? "<none>"}');
+
+    for (var i = 0; i < dialable.length; i++) {
+      final relay = dialable[i];
+      final relayHost = Uri.tryParse(relay.url)?.host ?? '<unparseable>';
+      developer.log(
+        '[ParazitX][activation] relay attempt ${i + 1}/${dialable.length}: id=${relay.id} kind=${relay.kind} host=$relayHost',
+        name: 'ParazitX',
+      );
+
+      final result = await _tryRelay(
+        relay: relay,
+        backend: relay.requiresBackendHeader ? backendForRelay : null,
+        body: body,
+      );
+
+      if (result.error == null) {
+        developer.log(
+          '[ParazitX][activation] relay SUCCESS via id=${relay.id} host=$relayHost',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance.add(
+            '[ParazitX][activation] relay OK id=${relay.id} host=$relayHost');
+        return _SessionResult.ok(
+          result.joinLink!,
+          hasServers ? _serverIndex % _servers.length : 0,
+        );
+      }
+
+      if (result.error == ActivateError.vkUnauthorized) {
+        developer.log(
+          '[ParazitX][activation] relay id=${relay.id} returned vkUnauthorized; aborting',
+          name: 'ParazitX',
+        );
+        LogBuffer.instance
+            .add('[ParazitX][activation] relay vkUnauthorized id=${relay.id}');
+        return result;
+      }
+    }
+
+    developer.log(
+      '[ParazitX][activation] all ${dialable.length} relay(s) failed',
+      name: 'ParazitX',
+    );
+    return null;
+  }
+
+  /// Issue a `/v1/session` POST through a signaling relay.
+  ///
+  /// When [backend] is non-null, the dialer attaches
+  /// `X-Dropweb-Backend: host:port` and the relay is expected to
+  /// forward the request to that backend over HTTP, returning the
+  /// backend's response verbatim
+  /// ([kParazitXRelayKindHttpsPassthrough] semantics).
+  ///
+  /// When [backend] is null, no forwarding header is sent: the relay
+  /// URL itself is the session endpoint
+  /// ([kParazitXRelayKindHttpsSession] semantics — e.g. a Yandex API
+  /// Gateway that fronts an internal callfactory pool and selects a
+  /// backend on its own).
+  static Future<_SessionResult> _tryRelay({
+    required _RelayCandidate relay,
+    required String? backend,
+    required String body,
+  }) async {
+    final base = Uri.tryParse(relay.url);
+    if (base == null) {
+      developer.log(
+        '[ParazitX][activation] relay url unparseable: id=${relay.id}',
+        name: 'ParazitX',
+      );
+      return const _SessionResult.err(ActivateError.networkError);
+    }
+    // Append /v1/session to whatever the operator set as the relay
+    // path. We collapse a trailing slash so we don't end up with
+    // `//v1/session`.
+    final basePath = base.path.endsWith('/')
+        ? base.path.substring(0, base.path.length - 1)
+        : base.path;
+    final uri = base.replace(path: '$basePath/v1/session');
+    final relayHost = base.host;
+
+    final stopwatch = Stopwatch()..start();
+    developer.log(
+      '[ParazitX][activation] dialing relay id=${relay.id} host=$relayHost (timeout=${_relayRequestTimeout.inSeconds}s)',
+      name: 'ParazitX',
+    );
+    LogBuffer.instance.add(
+        '[ParazitX][activation] relay dial id=${relay.id} host=$relayHost');
+    debugPrint(
+        '[ParazitX][activation] _tryRelay id=${relay.id} kind=${relay.kind} host=$relayHost backend=${backend ?? "<none>"}');
+
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      if (backend != null) _relayBackendHeaderName: backend,
+    };
+
+    final http.Response response;
+    try {
+      response = await http
+          .post(uri, headers: headers, body: body)
+          .timeout(_relayRequestTimeout);
+    } catch (e) {
+      final elapsed = stopwatch.elapsedMilliseconds;
+      developer.log(
+        '[ParazitX][activation] relay id=${relay.id} request failed after ${elapsed}ms: $e',
+        name: 'ParazitX',
+      );
+      LogBuffer.instance.add(
+          '[ParazitX][activation] relay id=${relay.id} failed (${elapsed}ms)');
+      return const _SessionResult.err(ActivateError.networkError);
+    }
+
+    final elapsed = stopwatch.elapsedMilliseconds;
+    if (response.statusCode != 200) {
+      final respBody = response.body.toLowerCase();
+      if (respBody.contains('vk unauthorized') ||
+          respBody.contains('timeout waiting') ||
+          respBody.contains('check cookies')) {
+        developer.log(
+          '[ParazitX][activation] relay id=${relay.id} reported vkUnauthorized (${response.statusCode}) after ${elapsed}ms',
+          name: 'ParazitX',
+        );
+        return const _SessionResult.err(ActivateError.vkUnauthorized);
+      }
+      developer.log(
+        '[ParazitX][activation] relay id=${relay.id} returned ${response.statusCode} after ${elapsed}ms',
+        name: 'ParazitX',
+      );
+      return const _SessionResult.err(ActivateError.serverError);
+    }
+
+    final Map<String, dynamic> data;
+    try {
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      developer.log(
+        '[ParazitX][activation] relay id=${relay.id} JSON decode failed after ${elapsed}ms',
+        name: 'ParazitX',
+      );
+      return const _SessionResult.err(ActivateError.serverError);
+    }
+
+    final joinLink = data['join_link'] as String?;
+    if (joinLink == null) {
+      developer.log(
+        '[ParazitX][activation] relay id=${relay.id} missing join_link after ${elapsed}ms',
+        name: 'ParazitX',
+      );
+      return const _SessionResult.err(ActivateError.serverError);
+    }
+
+    developer.log(
+      '[ParazitX][activation] relay id=${relay.id} SUCCESS (200) after ${elapsed}ms',
+      name: 'ParazitX',
+    );
+    return _SessionResult.ok(joinLink, 0);
   }
 
   /// Activation end-to-end timeout. Prevents hanging at any stage.
@@ -441,6 +985,7 @@ class ParazitXManager {
         name: 'ParazitX');
     LogBuffer.instance
         .add('[ParazitX][activation] activate() started, isActive=$_isActive');
+    debugPrint('[ParazitX][activation] activate() called isActive=$_isActive');
     if (_isActive) {
       developer.log('[ParazitX][activation] already active, returning null',
           name: 'ParazitX');
@@ -452,27 +997,27 @@ class ParazitXManager {
     developer.log('[ParazitX][activation] lifecycle observer ensured',
         name: 'ParazitX');
 
-    // Load servers
+    // Resolve server pool + signaling relays: subscription-header
+    // overrides → manifest → empty (causes _requestJoinLink to fail
+    // with networkError).
     if (_servers.isEmpty) {
-      developer.log('[ParazitX][activation] loading servers from subscription',
+      developer.log(
+          '[ParazitX][activation] resolving server pool (header → manifest)',
           name: 'ParazitX');
-      _servers = await _loadServersFromSubscription();
-      // Canary debug: keep [_canaryPreferredServer] pinned at index 0.
-      // Shuffle only the tail so the canary endpoint is always tried first.
-      if (_servers.length > 2 && _servers.first == _canaryPreferredServer) {
-        final head = _servers.first;
-        final tail = _servers.sublist(1)..shuffle();
-        _servers = <String>[head, ...tail];
-      }
+      final discovery = await _loadServersFromSubscription();
+      _servers = discovery.servers;
+      _relays = discovery.relays;
       _serverIndex = 0;
       developer.log(
-          '[ParazitX][activation] server list resolved: count=${_servers.length} head=${_servers.isEmpty ? "<none>" : _servers.first}',
+          '[ParazitX][activation] server list resolved: count=${_servers.length} head=${_servers.isEmpty ? "<none>" : _servers.first} relays=${_relays.length}',
           name: 'ParazitX');
       LogBuffer.instance.add(
-          '[ParazitX][activation] servers resolved: count=${_servers.length} head=${_servers.isEmpty ? "<none>" : _servers.first}');
+          '[ParazitX][activation] servers resolved: count=${_servers.length} head=${_servers.isEmpty ? "<none>" : _servers.first} relays=${_relays.length}');
+      debugPrint(
+          '[ParazitX][activation] resolved: servers=${_servers.length} head=${_servers.isEmpty ? "<none>" : _servers.first} relays=${_relays.length}');
     } else {
       developer.log(
-          '[ParazitX][activation] reusing cached servers: count=${_servers.length} head=${_servers.first} idx=$_serverIndex',
+          '[ParazitX][activation] reusing cached servers: count=${_servers.length} head=${_servers.first} idx=$_serverIndex relays=${_relays.length}',
           name: 'ParazitX');
     }
 
@@ -530,14 +1075,16 @@ class ParazitXManager {
     // Start VPN service
     final pluginStopwatch = Stopwatch()..start();
     developer.log(
-        '[ParazitX][activation] plugin.start: BEFORE (socksPort=$_socksPort)',
+        '[ParazitX][activation] plugin.start: BEFORE (socksPort=$_socksPort, mtu=$_tunMtu)',
         name: 'ParazitX');
-    LogBuffer.instance.add('[ParazitX][activation] plugin.start: BEFORE');
+    LogBuffer.instance
+        .add('[ParazitX][activation] plugin.start: BEFORE (mtu=$_tunMtu)');
 
     try {
       await ParazitXVpnPlugin.start(
         joinLink: joinLink,
         socksPort: _socksPort,
+        mtu: _tunMtu,
       );
     } on PlatformException catch (e) {
       final ms = pluginStopwatch.elapsedMilliseconds;
@@ -921,6 +1468,7 @@ class ParazitXManager {
     _isActive = false;
     _currentJoinLink = null;
     _servers = [];
+    _relays = const <_RelayCandidate>[];
     _serverIndex = 0;
     if (_tunnelReady) {
       _tunnelReady = false;
@@ -981,6 +1529,7 @@ class ParazitXManager {
       await ParazitXVpnPlugin.start(
         joinLink: newJoinLink,
         socksPort: _socksPort,
+        mtu: _tunMtu,
       );
       _currentJoinLink = newJoinLink;
       _serverIndex = session.serverIndex!;
@@ -1081,6 +1630,85 @@ class _ParazitXLifecycleObserver extends WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     ParazitXManager._onAppLifecycleStateChanged(state);
+  }
+}
+
+/// Internal description of a signaling-relay candidate the dialer can
+/// fall back to when direct backend dialing fails.
+///
+/// `url` is an absolute HTTPS endpoint; `id` is a stable label used in
+/// logs (manifest id when available, host of the URL when the operator
+/// supplied a raw URL via subscription header).
+///
+/// `kind` mirrors [ParazitXSignalingRelay.kind] and decides whether the
+/// dialer must include the `X-Dropweb-Backend` forwarding header
+/// ([kParazitXRelayKindHttpsPassthrough]) or treat the relay URL itself
+/// as the session endpoint ([kParazitXRelayKindHttpsSession]).
+class _RelayCandidate {
+  const _RelayCandidate({
+    required this.id,
+    required this.url,
+    required this.kind,
+  });
+  final String id;
+  final String url;
+  final String kind;
+
+  /// True when the dialer must attach an `X-Dropweb-Backend: host:port`
+  /// header so the relay knows where to forward the request. Session
+  /// relays handle backend selection on their own and reject (or just
+  /// ignore) the header.
+  bool get requiresBackendHeader => kind == kParazitXRelayKindHttpsPassthrough;
+}
+
+/// Aggregate of the data discovery returns: server endpoints
+/// (`host:port`) plus signaling relays scoped to the chosen backend.
+class _DiscoveryResult {
+  const _DiscoveryResult({
+    required this.servers,
+    required this.relays,
+  });
+  final List<String> servers;
+  final List<_RelayCandidate> relays;
+}
+
+/// Aggregate of a manifest fetch: caller-friendly server list plus the
+/// parsed manifest so downstream code can look up scoped data
+/// (e.g. signaling relays for the first chosen node).
+class _ManifestFetchResult {
+  const _ManifestFetchResult({
+    required this.servers,
+    required this.manifest,
+    required this.sortedNodes,
+  });
+
+  static const empty = _ManifestFetchResult(
+    servers: <String>[],
+    manifest: null,
+    sortedNodes: <ParazitXNode>[],
+  );
+
+  final List<String> servers;
+  final ParazitXManifest? manifest;
+
+  /// Compatible nodes in selection priority order (weight desc, id asc).
+  /// Used to scope manifest signaling relays to the *primary* node we'd
+  /// dial first; relays whose `applies_to` doesn't include that node
+  /// still work for the others because `relaysForFirstServer` folds the
+  /// same priority over them.
+  final List<ParazitXNode> sortedNodes;
+
+  /// Resolve the list of relays that apply to whichever backend node
+  /// the dialer would try first. Empty when no manifest, no relays, or
+  /// no compatible nodes.
+  List<_RelayCandidate> relaysForFirstServer() {
+    final m = manifest;
+    if (m == null || sortedNodes.isEmpty) return const <_RelayCandidate>[];
+    final primary = sortedNodes.first;
+    return m
+        .relaysForNode(primary.id)
+        .map((r) => _RelayCandidate(id: r.id, url: r.url, kind: r.kind))
+        .toList(growable: false);
   }
 }
 
