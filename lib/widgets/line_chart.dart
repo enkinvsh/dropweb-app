@@ -1,11 +1,24 @@
 import 'dart:ui';
 import 'package:dropweb/common/color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+@immutable
 class Point {
   const Point(this.x, this.y);
   final double x;
   final double y;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Point &&
+          runtimeType == other.runtimeType &&
+          x == other.x &&
+          y == other.y;
+
+  @override
+  int get hashCode => x.hashCode ^ y.hashCode;
 }
 
 class LineChart extends StatefulWidget {
@@ -45,7 +58,11 @@ class _LineChartState extends State<LineChart>
   @override
   void didUpdateWidget(LineChart oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.points != points) {
+    // Compare by value, not list identity. Upstream callers (e.g. the
+    // dashboard `_SpeedChart`) allocate a new list every traffic tick,
+    // so identity comparison would restart the animation even when the
+    // underlying point values did not change.
+    if (!listEquals(widget.points, points)) {
       prevPoints = points;
       points = widget.points;
       _controller.forward(from: 0);
@@ -209,8 +226,8 @@ class LineChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant LineChartPainter oldDelegate) =>
       oldDelegate.progress != progress ||
-      oldDelegate.prevPoints != prevPoints ||
-      oldDelegate.points != points ||
+      !listEquals(oldDelegate.prevPoints, prevPoints) ||
+      !listEquals(oldDelegate.points, points) ||
       oldDelegate.color != color ||
       oldDelegate.gradient != gradient;
 }

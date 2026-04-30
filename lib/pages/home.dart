@@ -208,13 +208,18 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle>
   final _key = GlobalKey();
 
   void _reportPosition() {
+    if (!mounted) return;
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
+    if (box == null || !box.attached || !box.hasSize) return;
     final center =
         box.localToGlobal(Offset(box.size.width / 2, box.size.height / 2));
     if (connectButtonCenter.value != center) {
       connectButtonCenter.value = center;
     }
+  }
+
+  void _schedulePostFrameReport() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reportPosition());
   }
 
   @override
@@ -225,19 +230,21 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle>
     // within a stable layout, so the old per-frame tracking loop was pure
     // waste (it was burning 2-4 ms every frame on findRenderObject +
     // localToGlobal + notifier writes).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _reportPosition();
-    });
+    _schedulePostFrameReport();
+
+    // Profile availability toggles the nav-row in [_BottomBarWithConnect],
+    // which shifts the connect button horizontally. Re-anchor the rings
+    // origin whenever profile presence changes.
+    ref.listenManual<bool>(
+      profilesProvider.select((profiles) => profiles.isNotEmpty),
+      (_, __) => _schedulePostFrameReport(),
+    );
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _reportPosition();
-    });
+    _schedulePostFrameReport();
   }
 
   /// Window resize on desktop / orientation change on mobile shifts the
@@ -245,10 +252,15 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle>
   /// callback to re-anchor the rings origin.
   @override
   void didChangeMetrics() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _reportPosition();
-    });
+    _schedulePostFrameReport();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ConnectCircle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Any rebuild of the parent could shift the button (e.g. theme switch
+    // changes border thickness, padding, etc). Cheap to re-report.
+    _schedulePostFrameReport();
   }
 
   @override
@@ -488,7 +500,8 @@ class CommonNavigationBar extends ConsumerWidget {
         ),
       );
     }
-    final showLabel = ref.watch(appSettingProvider).showLabel;
+    final showLabel =
+        ref.watch(appSettingProvider.select((state) => state.showLabel));
     return Material(
       color: context.colorScheme.surfaceContainer,
       child: Column(

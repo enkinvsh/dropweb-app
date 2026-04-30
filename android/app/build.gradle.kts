@@ -62,11 +62,17 @@ android {
 
     packaging {
         jniLibs {
-            // MUST be false for 16KB page size alignment. Legacy packaging
-            // extracts .so at install time which breaks 16KB alignment.
-            // Google Play requires this as of Nov 2025 for apps targeting
-            // Android 15+.
-            useLegacyPackaging = false
+            // Must be TRUE to extract libparazitx-relay.so onto disk, where
+            // Android 10+ SELinux still allows exec() for our own package.
+            // With useLegacyPackaging=false the .so stays inside the APK zip
+            // and ProcessBuilder.start() fails with EACCES.
+            //
+            // 16KB page alignment (required by Google Play for Android 15+)
+            // is preserved by building each .so with `-Wl,-z,max-page-size=16384`
+            // at the NDK/Go level, not by the packaging flag. The mihomo/clash
+            // core libs already ship aligned; the bundled relay binary is
+            // verified aligned.
+            useLegacyPackaging = true
         }
     }
 
@@ -113,6 +119,7 @@ configurations.all {
 }
 
 dependencies {
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
     implementation(project(":core"))
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.appcompat:appcompat:1.6.1")

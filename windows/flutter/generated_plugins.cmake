@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   dynamic_color
   file_selector_windows
+  flutter_inappwebview_windows
   flutter_js
   flutter_secure_storage_windows
   hotkey_manager_windows

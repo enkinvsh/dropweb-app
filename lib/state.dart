@@ -660,6 +660,7 @@ class GlobalState {
       }
     }
     rawConfig["rule"] = rules;
+
     return rawConfig;
   }
 

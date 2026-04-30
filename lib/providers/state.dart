@@ -66,7 +66,8 @@ GroupsState currentGroupsState(Ref ref) {
 
 @riverpod
 NavigationItemsState navigationsState(Ref ref) {
-  final openLogs = ref.watch(appSettingProvider).openLogs;
+  final openLogs =
+      ref.watch(appSettingProvider.select((state) => state.openLogs));
   final hasProxies = ref.watch(
       currentGroupsStateProvider.select((state) => state.value.isNotEmpty));
   return NavigationItemsState(
@@ -98,7 +99,8 @@ NavigationItemsState currentNavigationsState(Ref ref) {
 CoreState coreState(Ref ref) {
   final vpnProps = ref.watch(vpnSettingProvider);
   final currentProfile = ref.watch(currentProfileProvider);
-  final onlyStatisticsProxy = ref.watch(appSettingProvider).onlyStatisticsProxy;
+  final onlyStatisticsProxy = ref
+      .watch(appSettingProvider.select((state) => state.onlyStatisticsProxy));
   return CoreState(
     vpnProps: vpnProps,
     onlyStatisticsProxy: onlyStatisticsProxy,
@@ -154,12 +156,23 @@ ProxyState proxyState(Ref ref) {
 @riverpod
 TrayState trayState(Ref ref) {
   final isStart = ref.watch(runTimeProvider.select((state) => state != null));
-  final networkProps = ref.watch(networkSettingProvider);
-  final clashConfig = ref.watch(
-    patchClashConfigProvider,
+  final systemProxy = ref.watch(
+    networkSettingProvider.select((state) => state.systemProxy),
   );
-  final appSetting = ref.watch(
-    appSettingProvider,
+  final mode = ref.watch(
+    patchClashConfigProvider.select((state) => state.mode),
+  );
+  final mixedPort = ref.watch(
+    patchClashConfigProvider.select((state) => state.mixedPort),
+  );
+  final tunEnable = ref.watch(
+    patchClashConfigProvider.select((state) => state.tun.enable),
+  );
+  final autoLaunch = ref.watch(
+    appSettingProvider.select((state) => state.autoLaunch),
+  );
+  final locale = ref.watch(
+    appSettingProvider.select((state) => state.locale),
   );
   final groups = ref
       .watch(
@@ -174,13 +187,13 @@ TrayState trayState(Ref ref) {
   final globalModeEnabled = ref.watch(globalModeEnabledProvider);
 
   return TrayState(
-    mode: clashConfig.mode,
-    port: clashConfig.mixedPort,
-    autoLaunch: appSetting.autoLaunch,
-    systemProxy: networkProps.systemProxy,
-    tunEnable: clashConfig.tun.enable,
+    mode: mode,
+    port: mixedPort,
+    autoLaunch: autoLaunch,
+    systemProxy: systemProxy,
+    tunEnable: tunEnable,
     isStart: isStart,
-    locale: appSetting.locale,
+    locale: locale,
     brightness: brightness,
     groups: groups,
     selectedMap: selectedMap,
@@ -206,7 +219,7 @@ HomeState homeState(Ref ref) {
   final pageLabel = ref.watch(currentPageLabelProvider);
   final navigationItems = ref.watch(currentNavigationsStateProvider).value;
   final viewMode = ref.watch(viewModeProvider);
-  final locale = ref.watch(appSettingProvider).locale;
+  final locale = ref.watch(appSettingProvider.select((state) => state.locale));
   return HomeState(
     pageLabel: pageLabel,
     navigationItems: navigationItems,
@@ -398,7 +411,8 @@ bool isCurrentPage(
 
 @riverpod
 String getRealTestUrl(Ref ref, [String? testUrl]) {
-  final currentTestUrl = ref.watch(appSettingProvider).testUrl;
+  final currentTestUrl =
+      ref.watch(appSettingProvider.select((state) => state.testUrl));
   return testUrl.getSafeValue(currentTestUrl);
 }
 

@@ -325,8 +325,9 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
     final colorScheme = context.colorScheme;
     return Consumer(
       builder: (_, ref, __) {
-        final unfoldSet = ref.watch(unfoldSetProvider);
-        final shouldExpand = unfoldSet.contains(groupName);
+        final shouldExpand = ref.watch(
+          unfoldSetProvider.select((set) => set.contains(groupName)),
+        );
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (shouldExpand && !_expansibleController.isExpanded) {
@@ -342,7 +343,7 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
             child: Expansible(
               controller: _expansibleController,
               headerBuilder: (context, animation) => GestureDetector(
-                onTap: () => _toggleExpansion(unfoldSet),
+                onTap: () => _toggleExpansion(ref.read(unfoldSetProvider)),
                 child: Container(
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerLow.opacity80,
@@ -411,7 +412,8 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
                           ] else
                             const SizedBox(width: 4),
                           IconButton.filledTonal(
-                            onPressed: () => _toggleExpansion(unfoldSet),
+                            onPressed: () =>
+                                _toggleExpansion(ref.read(unfoldSetProvider)),
                             icon: CommonExpandIcon(expand: isExpand),
                           ),
                         ],

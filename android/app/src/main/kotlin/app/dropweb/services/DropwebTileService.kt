@@ -1,5 +1,9 @@
 package app.dropweb.services
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
@@ -15,98 +19,139 @@ class DropwebTileService : TileService() {
 
     companion object {
         private const val TAG = "DropwebTileService"
+
+        // Cached so the tile renders correctly the moment Quick Settings
+        // opens, before the QUERY_STATUS rebroadcast round-trip completes.
+        @Volatile
+        private var lastParazitxStatus: String = "disconnected"
     }
 
-    private val observer = Observer<RunState> { runState ->
-        Log.d(TAG, "Observer: runState changed to $runState")
-        updateTile(runState)
+    private val mihomoObserver = Observer<RunState> { _ ->
+        refreshTile()
     }
 
-    private fun updateTile(runState: RunState) {
-        Log.d(TAG, "updateTile called: runState=$runState")
-        if (qsTile != null) {
-            // Check if there's an active profile first
-            val hasProfile = GlobalState.hasActiveProfile()
-            Log.d(TAG, "hasProfile=$hasProfile")
-            
-            qsTile.state = if (!hasProfile) {
-                // No profile selected - tile unavailable
-                Log.d(TAG, "Setting tile to UNAVAILABLE (no profile)")
-                Tile.STATE_UNAVAILABLE
-            } else {
-                // Profile exists - show state based on VPN status
-                val state = when (runState) {
-                    RunState.START -> Tile.STATE_ACTIVE
-                    RunState.PENDING -> Tile.STATE_UNAVAILABLE
-                    RunState.STOP -> Tile.STATE_INACTIVE
-                }
-                Log.d(TAG, "Setting tile state based on runState: $state")
-                state
-            }
-            qsTile.updateTile()
-        } else {
-            Log.w(TAG, "qsTile is null, cannot update")
+    // ParazitXVpnService runs in `:parazitx` (separate process so FGS policy
+    // can't freeze librelay). Status comes in as a package-scoped broadcast.
+    private val parazitxReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            val status = intent.getStringExtra(ParazitXVpnService.EXTRA_STATUS)
+                ?: return
+            Log.d(TAG, "parazitx status: $status")
+            lastParazitxStatus = status
+            refreshTile()
         }
+    }
+    private var parazitxReceiverRegistered: Boolean = false
+
+    private fun parazitxActive(status: String): Boolean = when (status) {
+        "TUNNEL_CONNECTED", "TUNNEL_ACTIVE" -> true
+        else -> false
+    }
+
+    private fun parazitxConnecting(status: String): Boolean {
+        if (status.isEmpty()) return false
+        if (status == "disconnected") return false
+        if (status == "TUNNEL_LOST") return false
+        if (status.startsWith("ERROR:")) return false
+        if (parazitxActive(status)) return false
+        return true
+    }
+
+    private fun refreshTile() {
+        val tile = qsTile ?: return
+
+        val parazitxStatus = lastParazitxStatus
+        val parazitxOn = parazitxActive(parazitxStatus)
+        val parazitxBusy = parazitxConnecting(parazitxStatus)
+        val mihomoState = GlobalState.runState.value
+        val hasProfile = GlobalState.hasActiveProfile()
+
+        // Android only allows one VpnService at a time, so when ParazitX
+        // owns the VPN slot, mihomo state is irrelevant for tile display.
+        tile.state = when {
+            parazitxOn -> Tile.STATE_ACTIVE
+            parazitxBusy -> Tile.STATE_UNAVAILABLE
+            !hasProfile -> Tile.STATE_UNAVAILABLE
+            else -> when (mihomoState) {
+                RunState.START -> Tile.STATE_ACTIVE
+                RunState.PENDING -> Tile.STATE_UNAVAILABLE
+                RunState.STOP, null -> Tile.STATE_INACTIVE
+            }
+        }
+        tile.updateTile()
     }
 
     override fun onStartListening() {
-        Log.d(TAG, "onStartListening called")
         super.onStartListening()
+
+        // Register receiver BEFORE asking for status, otherwise the
+        // rebroadcast can race ahead of our registration.
+        if (!parazitxReceiverRegistered) {
+            val filter = IntentFilter(ParazitXVpnService.BROADCAST_STATUS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(parazitxReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                registerReceiver(parazitxReceiver, filter)
+            }
+            parazitxReceiverRegistered = true
+        }
+
         GlobalState.syncStatus()
-        val currentState = GlobalState.runState.value
-        Log.d(TAG, "Current runState: $currentState")
-        currentState?.let { updateTile(it) }
-        GlobalState.runState.observeForever(observer)
-        Log.d(TAG, "Observer attached")
+        GlobalState.runState.observeForever(mihomoObserver)
+        ParazitXVpnController.queryStatus(applicationContext)
+
+        refreshTile()
     }
 
     override fun onStopListening() {
-        Log.d(TAG, "onStopListening called")
-        GlobalState.runState.removeObserver(observer)
+        GlobalState.runState.removeObserver(mihomoObserver)
+        if (parazitxReceiverRegistered) {
+            try {
+                unregisterReceiver(parazitxReceiver)
+            } catch (_: Exception) {
+            }
+            parazitxReceiverRegistered = false
+        }
         super.onStopListening()
     }
 
     override fun onClick() {
-        Log.d(TAG, "onClick called, current tile state: ${qsTile?.state}")
-        
-        // Use unlockAndRun to prevent service from being killed during long operations
         unlockAndRun {
-            Log.d(TAG, "Inside unlockAndRun")
-            when (qsTile?.state) {
-                Tile.STATE_INACTIVE -> {
-                    Log.d(TAG, "Tile INACTIVE -> calling handleStart()")
-                    GlobalState.handleStart()
+            val parazitxStatus = lastParazitxStatus
+            val parazitxOn = parazitxActive(parazitxStatus)
+            val parazitxBusy = parazitxConnecting(parazitxStatus)
+
+            when {
+                parazitxOn -> {
+                    // Tile can stop ParazitX but not start it: starting
+                    // requires the VK login flow + VPN consent activity
+                    // result, which can only run from MainActivity.
+                    ParazitXVpnController.stop(applicationContext)
                 }
-                Tile.STATE_ACTIVE -> {
-                    Log.d(TAG, "Tile ACTIVE -> calling handleStop()")
-                    GlobalState.handleStop()
+                parazitxBusy -> {
+                    // Mid-handshake: ignore taps to avoid tearing down
+                    // the tunnel while it's still establishing.
                 }
-                Tile.STATE_UNAVAILABLE -> {
-                    // Tile is unavailable (no profile or pending operation) - ignore click
-                    Log.d(TAG, "Tile UNAVAILABLE -> ignoring click")
-                }
-                else -> {
-                    // qsTile is null, try to toggle anyway
-                    Log.d(TAG, "Tile state null -> calling handleToggle()")
-                    GlobalState.handleToggle()
+                else -> when (qsTile?.state) {
+                    Tile.STATE_INACTIVE -> GlobalState.handleStart()
+                    Tile.STATE_ACTIVE -> GlobalState.handleStop()
+                    Tile.STATE_UNAVAILABLE -> Unit
+                    else -> GlobalState.handleToggle()
                 }
             }
         }
     }
 
-    override fun onTileRemoved() {
-        Log.d(TAG, "onTileRemoved called")
-        super.onTileRemoved()
-    }
-
-    override fun onTileAdded() {
-        Log.d(TAG, "onTileAdded called")
-        super.onTileAdded()
-    }
-
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy called")
-        GlobalState.runState.removeObserver(observer)
+        GlobalState.runState.removeObserver(mihomoObserver)
+        if (parazitxReceiverRegistered) {
+            try {
+                unregisterReceiver(parazitxReceiver)
+            } catch (_: Exception) {
+            }
+            parazitxReceiverRegistered = false
+        }
         super.onDestroy()
     }
 }

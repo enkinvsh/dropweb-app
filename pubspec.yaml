@@ -1,7 +1,7 @@
 name: dropweb
 description: Multi-platform VPN client based on mihomo core. Open-source and ad-free.
 publish_to: "none"
-version: 0.6.0-beta3+2026042201
+version: 0.6.4+2026042901
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -73,8 +73,10 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   cached_network_image: ^3.4.1
   crypto: ^3.0.7
+  cryptography: ^2.7.0
   hugeicons: ^1.1.6
   flutter_secure_storage: ^10.0.0
+  flutter_inappwebview: ^6.1.5
 
 dev_dependencies:
   flutter_test:

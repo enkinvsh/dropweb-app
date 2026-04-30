@@ -1,11 +1,11 @@
 import 'dart:math';
 
 import 'package:dropweb/common/common.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 @immutable
 class DonutChartData {
-
   const DonutChartData({
     required double value,
     required this.color,
@@ -31,7 +31,6 @@ class DonutChartData {
 }
 
 class DonutChart extends StatefulWidget {
-
   const DonutChart({
     super.key,
     required this.data,
@@ -62,7 +61,12 @@ class _DonutChartState extends State<DonutChart>
   @override
   void didUpdateWidget(DonutChart oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.data != widget.data) {
+    // Compare by value (DonutChartData has structural equality), not by
+    // list identity. The traffic-usage parent allocates a fresh list of
+    // DonutChartData every traffic tick — identity comparison would
+    // restart the animation even when the underlying values are
+    // unchanged (idle connection, same up/down totals).
+    if (!listEquals(oldWidget.data, widget.data)) {
       _oldData = oldWidget.data;
       _animationController.forward(from: 0);
     }
@@ -76,19 +80,18 @@ class _DonutChartState extends State<DonutChart>
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) => CustomPaint(
+        animation: _animationController,
+        builder: (context, child) => CustomPaint(
           painter: DonutChartPainter(
             _oldData,
             widget.data,
             _animationController.value,
           ),
         ),
-    );
+      );
 }
 
 class DonutChartPainter extends CustomPainter {
-
   DonutChartPainter(this.oldData, this.newData, this.progress);
   final List<DonutChartData> oldData;
   final List<DonutChartData> newData;
@@ -107,9 +110,16 @@ class DonutChartPainter extends CustomPainter {
     return pow(base, value - 1).toDouble();
   }
 
-  List<DonutChartData> get interpolatedData {
+  // Compute interpolated data lazily but exactly ONCE per painter instance.
+  // Previously this was a getter, so any caller (e.g. `paint` itself, or any
+  // future call site) would re-run the log/pow loop and re-allocate the
+  // result list every time it was read. With `late final`, the first read
+  // memoises the result on the painter instance.
+  late final List<DonutChartData> interpolatedData = _computeInterpolatedData();
+
+  List<DonutChartData> _computeInterpolatedData() {
     if (oldData.length != newData.length) return newData;
-    final interpolatedData = List.generate(newData.length, (index) {
+    return List.generate(newData.length, (index) {
       final oldValue = oldData[index].value;
       final newValue = newData[index].value;
       final logOldValue = _logTransform(oldValue);
@@ -124,8 +134,6 @@ class DonutChartPainter extends CustomPainter {
         color: newData[index].color,
       );
     });
-
-    return interpolatedData;
   }
 
   @override
@@ -171,7 +179,8 @@ class DonutChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(DonutChartPainter oldDelegate) => oldDelegate.progress != progress ||
-        oldDelegate.oldData != oldData ||
-        oldDelegate.newData != newData;
+  bool shouldRepaint(DonutChartPainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      !listEquals(oldDelegate.oldData, oldData) ||
+      !listEquals(oldDelegate.newData, newData);
 }

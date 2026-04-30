@@ -1,14 +1,23 @@
+import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/providers/config.dart';
+import 'package:dropweb/providers/providers.dart' show runTimeProvider;
 import 'package:dropweb/state.dart';
 import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' hide context;
+import '../services/log_buffer.dart';
+import '../services/log_uploader.dart';
+import '../services/parazitx_manager.dart';
+import '../services/vk_auth_service.dart';
+import 'captcha_screen.dart';
+import 'vk_login_screen.dart';
 
 class OpenLogsFolderItem extends ConsumerWidget {
   const OpenLogsFolderItem({super.key});
@@ -434,6 +443,390 @@ class AutoCheckUpdateItem extends ConsumerWidget {
   }
 }
 
+class _UserCancelled implements Exception {}
+
+/// Internal state-machine for the ParazitX section.
+enum _ParazitXState {
+  /// VK session not present — toggle is OFF, prompt to log in.
+  notLoggedIn,
+
+  /// VK session exists, tunnel is inactive.
+  loggedIn,
+
+  /// Optimistic toggle already moved to ON; activate() running in background.
+  connecting,
+
+  /// Tunnel is up and routing traffic.
+  active,
+}
+
+class ParazitXSectionItem extends ConsumerStatefulWidget {
+  const ParazitXSectionItem({super.key});
+
+  @override
+  ConsumerState<ParazitXSectionItem> createState() =>
+      _ParazitXSectionItemState();
+}
+
+class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
+  bool _parazitxEnabled = false;
+  bool _vkConnected = false;
+  bool _captchaOpen = false;
+  StreamSubscription<bool>? _readySub;
+  StreamSubscription<String>? _captchaSub;
+  _ParazitXState _state = _ParazitXState.notLoggedIn;
+
+  @override
+  void initState() {
+    super.initState();
+    _parazitxEnabled = ParazitXManager.isActive;
+    if (_parazitxEnabled) _state = _ParazitXState.active;
+    _readySub = ParazitXManager.tunnelReadyStream.listen((ready) {
+      if (!mounted) return;
+      setState(() {
+        if (!ready && _parazitxEnabled) {
+          // Tunnel dropped — show reconnecting state (manager auto-reconnects)
+          _state = _ParazitXState.connecting;
+        } else if (ready && _parazitxEnabled) {
+          // Tunnel reconnected — show active state
+          _state = _ParazitXState.active;
+        }
+      });
+    });
+    _captchaSub = ParazitXManager.captchaStream.listen(_openCaptcha);
+    _checkVkSession();
+  }
+
+  @override
+  void dispose() {
+    _readySub?.cancel();
+    _captchaSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _openCaptcha(String url) async {
+    if (_captchaOpen || !mounted) return;
+    _captchaOpen = true;
+    try {
+      await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => CaptchaScreen(proxyUrl: url)),
+      );
+      // ParazitXPage listens for tunnelReady and does the popUntil-isFirst.
+    } finally {
+      _captchaOpen = false;
+    }
+  }
+
+  Future<void> _checkVkSession() async {
+    final connected = await VkAuthService.hasValidSession();
+    if (!mounted) return;
+    setState(() {
+      _vkConnected = connected;
+      if (ParazitXManager.isActive) {
+        _state = _ParazitXState.active;
+        _parazitxEnabled = true;
+      } else if (connected) {
+        _state = _ParazitXState.loggedIn;
+      } else {
+        _state = _ParazitXState.notLoggedIn;
+      }
+    });
+  }
+
+  String get _subtitle {
+    switch (_state) {
+      case _ParazitXState.notLoggedIn:
+        return 'Войдите в VK для активации';
+      case _ParazitXState.loggedIn:
+        return 'VK: сессия подключена';
+      case _ParazitXState.connecting:
+        return 'Подключение…';
+      case _ParazitXState.active:
+        return 'Активен • VK туннель';
+    }
+  }
+
+  /// Show a SnackBar with a human-readable message for [error].
+  void _showErrorSnackBar(ActivateError error) {
+    if (!mounted) return;
+    String msg;
+    SnackBarAction? action;
+    switch (error) {
+      case ActivateError.noCookies:
+        msg = 'Войдите в VK сначала';
+      case ActivateError.networkError:
+        msg = 'Нет соединения с сервером';
+      case ActivateError.serverError:
+        msg = 'Ошибка сервера, попробуйте позже';
+      case ActivateError.vkUnauthorized:
+        msg = 'VK-сессия истекла — войдите заново';
+        action = SnackBarAction(
+          label: 'Войти',
+          onPressed: _openVkLogin,
+        );
+      case ActivateError.tunnelError:
+        msg = 'Ошибка запуска туннеля';
+    }
+    ScaffoldMessenger.of(this.context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        action: action,
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  /// Open [VkLoginScreen] and update state when the user logs in.
+  Future<void> _openVkLogin() async {
+    final success = await Navigator.push<bool>(
+      this.context,
+      MaterialPageRoute(builder: (_) => const VkLoginScreen()),
+    );
+    if (success == true && mounted) {
+      setState(() {
+        _vkConnected = true;
+        _state = _ParazitXState.loggedIn;
+      });
+    }
+  }
+
+  /// Ask the user to stop the mihomo VPN, then actually stop it and wait
+  /// until [runTimeProvider] reports the tunnel closed. Returns once mihomo
+  /// is fully down (or after a timeout, to avoid hanging the toggle).
+  Future<void> _confirmStopMihomoAndWait() async {
+    final confirmed = await showDialog<bool>(
+      context: this.context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Основной VPN будет выключен'),
+        content: const Text(
+          'ParazitX требует отдельного VPN-туннеля. Основной VPN будет '
+          'остановлен перед активацией ParazitX.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Продолжить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) throw _UserCancelled();
+    await globalState.appController.updateStatus(false);
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (ref.read(runTimeProvider) != null &&
+        DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
+  /// Handle the toggle tap with optimistic UI.
+  Future<void> _handleToggle(bool value) async {
+    developer.log(
+        '[ParazitX][activation] toggle entry: value=$value state=$_state vkConnected=$_vkConnected',
+        name: 'ParazitX');
+    LogBuffer.instance.add(
+        '[ParazitX][activation] toggle entry: value=$value state=$_state vk=$_vkConnected');
+    debugPrint(
+        '[ParazitX][activation] _handleToggle value=$value state=$_state vk=$_vkConnected');
+    // Debounce: ignore taps while activation is already in flight.
+    if (_state == _ParazitXState.connecting) {
+      developer.log(
+          '[ParazitX][activation] toggle: already connecting, ignored',
+          name: 'ParazitX');
+      return;
+    }
+
+    if (value) {
+      // ── Turning ON ──────────────────────────────────────────────────────
+      if (!_vkConnected) {
+        await _openVkLogin();
+        // After returning, check if login succeeded.
+        if (!mounted || !_vkConnected) return;
+      }
+
+      // Android allows only one VpnService at a time. If mihomo is running,
+      // stop it and wait for teardown before bringing ParazitXVpnService up.
+      final mihomoRunning = ref.read(runTimeProvider) != null;
+      if (mihomoRunning) {
+        try {
+          await _confirmStopMihomoAndWait();
+        } on _UserCancelled {
+          return;
+        }
+        if (!mounted) return;
+      }
+
+      // Optimistic: move the toggle immediately so the user has feedback.
+      setState(() {
+        _parazitxEnabled = true;
+        _state = _ParazitXState.connecting;
+      });
+
+      developer.log(
+          '[ParazitX][activation] toggle: calling ParazitXManager.activate()',
+          name: 'ParazitX');
+      LogBuffer.instance
+          .add('[ParazitX][activation] toggle: invoking activate()');
+      debugPrint('[ParazitX][activation] _handleToggle -> activate()');
+      final error = await ParazitXManager.activate();
+      developer.log(
+          '[ParazitX][activation] toggle: activate() returned error=$error',
+          name: 'ParazitX');
+      LogBuffer.instance
+          .add('[ParazitX][activation] toggle: activate() done error=$error');
+      debugPrint(
+          '[ParazitX][activation] _handleToggle activate() returned error=$error');
+      if (!mounted) return;
+
+      if (error == null) {
+        // Success
+        setState(() => _state = _ParazitXState.active);
+      } else {
+        // Rollback
+        setState(() {
+          _parazitxEnabled = false;
+          _state = _vkConnected
+              ? _ParazitXState.loggedIn
+              : _ParazitXState.notLoggedIn;
+        });
+        _showErrorSnackBar(error);
+      }
+    } else {
+      // ── Turning OFF ─────────────────────────────────────────────────────
+      await ParazitXManager.deactivate();
+      if (mounted) {
+        setState(() {
+          _parazitxEnabled = false;
+          _state = _vkConnected
+              ? _ParazitXState.loggedIn
+              : _ParazitXState.notLoggedIn;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isConnecting = _state == _ParazitXState.connecting;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListItem.switchItem(
+          title: const Text('Обход whitelist (β)'),
+          subtitle: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_subtitle),
+              if (isConnecting) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
+            ],
+          ),
+          delegate: SwitchDelegate(
+            value: _parazitxEnabled,
+            // onChanged is always non-null — we debounce internally in
+            // _handleToggle. Passing null would grey-out the switch and
+            // cause the "frozen toggle" UX bug.
+            onChanged: _handleToggle,
+          ),
+        ),
+        if (_vkConnected) ...[
+          const Divider(height: 0),
+          ListItem(
+            title: const Text('Выйти из VK'),
+            leading: const Icon(Icons.logout),
+            onTap: () async {
+              // Capture before async gaps.
+              final messenger = ScaffoldMessenger.of(context);
+              // Deactivate tunnel BEFORE clearing cookies so the rotation
+              // timer stops and the SOCKS5 port is freed.
+              if (ParazitXManager.isActive) {
+                await ParazitXManager.deactivate();
+              }
+              await VkAuthService.clearCookies();
+              if (mounted) {
+                setState(() {
+                  _vkConnected = false;
+                  _parazitxEnabled = false;
+                  _state = _ParazitXState.notLoggedIn;
+                });
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Вы вышли из VK')),
+                );
+              }
+            },
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class SendParazitXLogsItem extends StatefulWidget {
+  const SendParazitXLogsItem({super.key});
+
+  @override
+  State<SendParazitXLogsItem> createState() => _SendParazitXLogsItemState();
+}
+
+class _SendParazitXLogsItemState extends State<SendParazitXLogsItem> {
+  bool _sending = false;
+
+  Future<void> _send() async {
+    if (_sending) return;
+    setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await LogUploader.send();
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (result.isOk) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Отправлено, ID: ${result.id}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Не удалось отправить: ${result.error}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListItem(
+      title: const Text('📤 Отправить логи ParazitX'),
+      subtitle: const Text('Для диагностики проблем'),
+      leading: _sending
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : HugeIcon(icon: HugeIcons.strokeRoundedUpload01, size: 24),
+      trailing: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, size: 16),
+      onTap: _sending ? null : _send,
+    );
+  }
+}
+
 class ApplicationSettingView extends StatelessWidget {
   const ApplicationSettingView({super.key});
 
@@ -464,6 +857,12 @@ class ApplicationSettingView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 16),
           child: OpenLogsFolderItem(),
+        ),
+      ],
+      if (Platform.isAndroid) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: SendParazitXLogsItem(),
         ),
       ],
       Padding(

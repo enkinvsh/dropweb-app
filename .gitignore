@@ -80,3 +80,5 @@ signing.properties
 # OpenCode local config
 .opencode/
 opencode.json
+# Sisyphus orchestration scratch
+.sisyphus/
