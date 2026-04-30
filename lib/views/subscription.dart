@@ -114,17 +114,15 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
 
 /// Refresh handler for the Profiles list pull-to-refresh.
 ///
-/// If [current] is non-null, refreshes ONLY that profile — this is what the
-/// user expects when they pull-to-refresh while viewing/owning a single
-/// active subscription. Falls back to refreshing every profile when no
-/// current profile exists (first-time setup, profile just deleted, etc.).
-///
-/// File-type profiles cannot be refreshed (no remote source). The Future
-/// returns immediately so the [RefreshIndicator] doesn't spin forever.
+/// If [current] is a remote profile, refreshes ONLY that profile — this is
+/// what the user expects when they pull-to-refresh while viewing the
+/// active subscription. When the current profile is local-file (or absent),
+/// we fall back to refreshing every other remote profile so the gesture
+/// always has a visible effect; if every profile is local-file, we surface
+/// a short tip instead of letting the indicator vanish silently.
 Future<void> _refreshProfiles(BuildContext context, [Profile? current]) async {
   final controller = globalState.appController;
-  if (current != null) {
-    if (current.type == ProfileType.file) return;
+  if (current != null && current.type != ProfileType.file) {
     controller.setProfile(current.copyWith(isUpdating: true));
     try {
       await controller.updateProfile(current);
@@ -143,14 +141,21 @@ Future<void> _refreshProfiles(BuildContext context, [Profile? current]) async {
     return;
   }
   final profiles = globalState.config.profiles;
+  final remote =
+      profiles.where((p) => p.type != ProfileType.file).toList(growable: false);
+  if (remote.isEmpty) {
+    if (context.mounted) {
+      context.showNotifier('Локальный профиль — обновление не требуется.');
+    }
+    return;
+  }
   final messages = <String>[];
   // ROBUSTNESS: `eagerError: false` — if one profile's update throws, the
   // others should still complete. Default Future.wait fails the whole
   // group on the first error, which previously meant a single broken
   // subscription could leave the rest stuck in `isUpdating=true`.
   await Future.wait(
-    profiles.map((profile) async {
-      if (profile.type == ProfileType.file) return;
+    remote.map((profile) async {
       controller.setProfile(profile.copyWith(isUpdating: true));
       try {
         await controller.updateProfile(profile);
