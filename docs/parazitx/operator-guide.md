@@ -9,6 +9,14 @@ the source of user exit nodes (Hysteria2 / Hysteria / etc.) — ParazitX
 just helps the client establish a tunnel session through VK Calls
 infrastructure when direct outbound access is blocked.
 
+> **Russian-network deployments require an `https-session` relay.** End
+> users behind ТСПУ whitelists cannot reach a raw `node:3478` endpoint —
+> only the VK Calls dataplane and a narrow allowlist of ASNs (Yandex,
+> VK, etc.) survive. The relay is what carries `/v1/session` and
+> `/v1/logs` past the whitelist. The node + relay are a pair; deploying
+> one without the other gives you a node that can't be activated from
+> Russia. See [Yandex Cloud signaling relay](#yandex-cloud-signaling-relay-required-for-russian-networks).
+
 ## Components
 
 | Component | Repo | Purpose |
@@ -127,11 +135,25 @@ Then point users at it via:
 
 Unknown kinds are ignored. Non-HTTPS or hostless URLs are dropped.
 
-## Yandex Cloud (optional, useful inside Russia)
+## Yandex Cloud signaling relay (required for Russian networks)
 
-Yandex API Gateway is in many Russian network whitelists. If you want a
-TSPU-resilient signaling path, deploy `enkinvsh/parazitx/yc-proxy` and
-publish its URL as an `https-session` relay in your manifest.
+Russian carrier whitelists drop direct HTTPS to `node:3478`. The only
+predictable HTTPS surface that survives ТСПУ filtering is Yandex API
+Gateway under `apigw.yandexcloud.net`, because the whole `*.yandexcloud.net`
+zone sits in the whitelist alongside VK and a few other domestic
+hosts.
+
+Concretely: a Dropweb client inside Russia cannot start a ParazitX
+session unless `/v1/session` (and `/v1/logs`) are served from an
+`https-session` relay reachable through this whitelist. Deploying a
+node without a Yandex API Gateway in front of it is fine for development
+or non-RU users, but it produces a node that fails on activation for
+the actual target audience. Treat the relay as a hard dependency of
+the node, not an extra.
+
+Deploy `enkinvsh/parazitx/yc-proxy` and publish the resulting function
+URL as an `https-session` entry in `signaling_relays`, scoped via
+`applies_to` to the node ids it sits in front of.
 
 The function:
 
@@ -160,28 +182,37 @@ Then add it to your manifest as `kind: "https-session"`. See
 the canonical Dropweb manifest at
 `https://sub.dropweb.org/parazitx/manifest.json` for a working example.
 
-## Subscription template — Remnawave
+## Subscription headers — Remnawave
 
-Add the headers you need to your Remnawave host template. Examples:
+Per-tenant pinning is done in the Remnawave admin panel, not in any
+YAML on disk: the headers below are ordinary HTTP response headers that
+Remnawave attaches when the client fetches `/api/sub/<token>`. Configure
+them via **Internal Squads** → **Hosts** → host config (or your panel's
+equivalent "custom response headers" field) on the hosts that should
+ship ParazitX overrides.
 
-```yaml
-# Pin a backend server, let the client pick relays from the manifest
-provider_headers:
-  dropweb-parazitx-servers: pzx-eu-1.example.com:3478
+Recognised header names:
 
-# Pin everything explicitly, skip the manifest entirely
-provider_headers:
-  dropweb-parazitx-servers: pzx-eu-1.example.com:3478,pzx-eu-2.example.com:3478
-  dropweb-parazitx-relays:  https://relay-1.example.com,https://relay-2.example.com
+| Header | Meaning |
+|---|---|
+| `dropweb-parazitx-servers` | `host:port[,host:port,…]` — operator-pinned backend node list. Authoritative; manifest will not override it. |
+| `dropweb-parazitx-relays`  | `https://relay[,https://relay,…]` — pinned signaling relays. When set, manifest relays are ignored entirely. |
+| `dropweb-parazitx-manifest`| Override URL of the registry manifest. |
 
-# Use only your own manifest
-provider_headers:
-  dropweb-parazitx-manifest: https://registry.example.com/parazitx.json
-```
+Typical patterns:
 
-Headers are picked up from the active profile every time the user toggles
-ParazitX, so subscription updates apply on the next activation without
-reinstall.
+- **Pin a backend, let manifest supply relays.** Set
+  `dropweb-parazitx-servers` only. The client will fetch the default
+  manifest, take its `signaling_relays`, and scope them to the pinned
+  server via `applies_to` matching.
+- **Pin everything.** Set both `dropweb-parazitx-servers` and
+  `dropweb-parazitx-relays`; the manifest is skipped.
+- **Use a private manifest.** Set `dropweb-parazitx-manifest` and let
+  it carry both `nodes` and `signaling_relays`.
+
+Headers are read from the active profile on every ParazitX activation,
+so admin edits apply on the next toggle without an app reinstall or
+profile re-import.
 
 ## Log uploading
 
@@ -198,19 +229,24 @@ in-app log collection from end users.
 
 ## Smoke test checklist
 
-After standing up a node and publishing the manifest:
+After standing up a node, deploying its YC relay, and publishing the
+manifest:
 
 1. `curl -s http://node:3478/health` returns `status: ok`.
-2. Manifest URL serves valid JSON with at least one enabled node.
-3. Install a Dropweb build, import a Remnawave profile that uses your
+2. `curl -s https://<your-function>.apigw.yandexcloud.net/health`
+   returns the same payload, proving the relay reaches the node.
+3. Manifest URL serves valid JSON with at least one enabled node and
+   at least one `https-session` relay scoped to it via `applies_to`.
+4. Install a Dropweb build, import a Remnawave profile that uses your
    headers (or no headers + your manifest).
-4. Toggle ParazitX. logcat should show:
+5. Toggle ParazitX **on a Russian network** (or simulate one). logcat
+   should show:
    - `[ParazitX][activation] resolved: servers=N relays=M`
    - `=== DC TUNNEL CONNECTED ===`
    - `MTU: 1280`, `sessionId=ParazitX`
-5. Tap "Send ParazitX logs". A new file should appear under
+6. Tap "Send ParazitX logs". A new file should appear under
    `/var/log/parazitx/<token>/` on the receiving node within seconds.
-6. Verify some sites load through the tunnel.
+7. Verify some sites load through the tunnel.
 
 If any step fails, check `journalctl -u callfactory --since '5 minutes ago'`
 on the node and `adb logcat -d | grep ParazitX` on the device first.
