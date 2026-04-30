@@ -24,10 +24,6 @@ class _VkLoginScreenState extends State<VkLoginScreen> {
   /// False only while [clearFirst] cookie wipe is in progress.
   bool _ready = false;
 
-  /// True when the page looked like a logged-in VK page but
-  /// extractCookies() returned null (no remixsid found).
-  bool _cookieError = false;
-
   InAppWebViewController? _controller;
 
   @override
@@ -47,7 +43,6 @@ class _VkLoginScreenState extends State<VkLoginScreen> {
   Future<void> _resetSession() async {
     setState(() {
       _ready = false;
-      _cookieError = false;
     });
     await VkAuthService.clearCookies();
     if (!mounted) return;
@@ -72,7 +67,7 @@ class _VkLoginScreenState extends State<VkLoginScreen> {
         title: const Text('Войти в VK'),
         actions: [
           IconButton(
-            tooltip: 'Сбросить сессию',
+            tooltip: 'Обновить вход',
             icon: const Icon(Icons.refresh),
             onPressed: _resetSession,
           ),
@@ -87,109 +82,67 @@ class _VkLoginScreenState extends State<VkLoginScreen> {
             ),
         ],
       ),
-      body: Stack(
-        children: [
-          InAppWebView(
-            onWebViewCreated: (c) => _controller = c,
-            initialUrlRequest: URLRequest(
-              // no_mobile=1 forces VK to stay on desktop (vk.com) instead of
-              // redirecting to m.vk.com. Mobile session cookies include
-              // remixmdevice/remixmvk-fp markers that make web_token fail
-              // with "unauthorized" when used from a desktop-UA server.
-              url: WebUri('https://vk.com/login?no_mobile=1'),
-            ),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              domStorageEnabled: true,
-              thirdPartyCookiesEnabled: true,
-              sharedCookiesEnabled: true,
-              // MUST match the UA used by the server-side headless-vk-creator;
-              // VK fingerprint-binds the session to the UA, so a mismatch
-              // causes web_token to fail with "unauthorized".
-              userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/135.0.0.0 Safari/537.36',
-            ),
-            onLoadStart: (controller, url) => setState(() {
-              _isLoading = true;
-              _cookieError = false;
-            }),
-            onLoadStop: (controller, url) async {
-              setState(() => _isLoading = false);
+      body: InAppWebView(
+        onWebViewCreated: (c) => _controller = c,
+        initialUrlRequest: URLRequest(
+          // no_mobile=1 forces VK to stay on desktop (vk.com) instead of
+          // redirecting to m.vk.com. Mobile session cookies include
+          // remixmdevice/remixmvk-fp markers that make web_token fail
+          // with "unauthorized" when used from a desktop-UA server.
+          url: WebUri('https://vk.com/login?no_mobile=1'),
+        ),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          domStorageEnabled: true,
+          thirdPartyCookiesEnabled: true,
+          sharedCookiesEnabled: true,
+          // MUST match the UA used by the server-side headless-vk-creator;
+          // VK fingerprint-binds the session to the UA, so a mismatch
+          // causes web_token to fail with "unauthorized".
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+              'AppleWebKit/537.36 (KHTML, like Gecko) '
+              'Chrome/135.0.0.0 Safari/537.36',
+        ),
+        onLoadStart: (controller, url) => setState(() {
+          _isLoading = true;
+        }),
+        onLoadStop: (controller, url) async {
+          setState(() => _isLoading = false);
 
-              final currentUrl = url?.toString() ?? '';
-              debugPrint('[VkLogin] onLoadStop url=$currentUrl');
+          final currentUrl = url?.toString() ?? '';
+          debugPrint('[VkLogin] onLoadStop url=$currentUrl');
 
-              // Accept any VK post-login page (desktop OR mobile).
-              // Fighting VK's mobile-detection caused an infinite redirect
-              // loop. We take whatever cookies VK gives us and move on.
-              final isLoggedIn = (currentUrl.startsWith('https://vk.com/') ||
-                      currentUrl.startsWith('https://m.vk.com/')) &&
-                  !currentUrl.contains('/login') &&
-                  !currentUrl.contains('login.php');
-              if (!isLoggedIn) return;
+          // Accept any VK post-login page (desktop OR mobile).
+          // Fighting VK's mobile-detection caused an infinite redirect
+          // loop. We take whatever cookies VK gives us and move on.
+          final isLoggedIn = (currentUrl.startsWith('https://vk.com/') ||
+                  currentUrl.startsWith('https://m.vk.com/')) &&
+              !currentUrl.contains('/login') &&
+              !currentUrl.contains('login.php');
+          if (!isLoggedIn) return;
 
-              // Capture context-dependent objects before async gaps.
-              final nav = Navigator.of(context);
+          // Capture context-dependent objects before async gaps.
+          final nav = Navigator.of(context);
 
-              // Let VK finish any XHR that sets additional cookies
-              // (httoken, remixgp etc. are often set via AJAX after load).
-              await Future<void>.delayed(const Duration(milliseconds: 1500));
-              if (!mounted) return;
+          // Let VK finish any XHR that sets additional cookies
+          // (httoken, remixgp etc. are often set via AJAX after load).
+          await Future<void>.delayed(const Duration(milliseconds: 1500));
+          if (!mounted) return;
 
-              final cookies = await VkAuthService.extractCookies();
-              debugPrint(
-                '[VkLogin] extracted cookies: ${cookies?.length ?? 0} chars, '
-                'count=${cookies?.split('; ').length ?? 0}',
-              );
+          final cookies = await VkAuthService.extractCookies();
+          debugPrint(
+            '[VkLogin] extracted cookies: ${cookies?.length ?? 0} chars, '
+            'count=${cookies?.split('; ').length ?? 0}',
+          );
 
-              if (!mounted) return;
-              if (cookies != null) {
-                nav.pop(true);
-              } else {
-                // Session page loaded but remixsid wasn't in cookies.
-                // Show inline error — do NOT close the screen.
-                setState(() => _cookieError = true);
-              }
-            },
-          ),
-
-          // Inline error banner when cookie extraction failed.
-          if (_cookieError)
-            Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Куки не получены, попробуйте снова',
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _resetSession,
-                        child: const Text('Обновить'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
+          if (!mounted) return;
+          if (cookies != null) {
+            nav.pop(true);
+          }
+          // Else: cookies missing — keep the screen open without any
+          // intrusive overlay. The user can retry via the AppBar refresh
+          // button ("Обновить вход").
+        },
       ),
     );
   }

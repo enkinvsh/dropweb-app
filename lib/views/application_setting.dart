@@ -17,6 +17,7 @@ import '../services/log_uploader.dart';
 import '../services/parazitx_manager.dart';
 import '../services/vk_auth_service.dart';
 import 'captcha_screen.dart';
+import 'parazitx/primary_cta.dart';
 import 'vk_login_screen.dart';
 
 class OpenLogsFolderItem extends ConsumerWidget {
@@ -460,8 +461,29 @@ enum _ParazitXState {
   active,
 }
 
+/// Visual layout for [ParazitXSectionItem].
+///
+/// The activation widget owns one source of truth for VK login, captcha,
+/// mihomo-stop dialog, optimistic toggle and error snackbars. Two
+/// surfaces consume that logic:
+///
+/// * [settingsTile] — list/switch row used inside `ApplicationSettingView`.
+///   Subtitle copy and trailing logout row preserved.
+/// * [primaryCta] — single full-width primary button used on the
+///   standalone `VK Звонки` page hero. No switch row, no logout link
+///   (logout lives in settings only on this surface).
+enum ParazitXSectionLayout {
+  settingsTile,
+  primaryCta,
+}
+
 class ParazitXSectionItem extends ConsumerStatefulWidget {
-  const ParazitXSectionItem({super.key});
+  const ParazitXSectionItem({
+    super.key,
+    this.layout = ParazitXSectionLayout.settingsTile,
+  });
+
+  final ParazitXSectionLayout layout;
 
   @override
   ConsumerState<ParazitXSectionItem> createState() =>
@@ -542,7 +564,7 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
       case _ParazitXState.connecting:
         return 'Подключение…';
       case _ParazitXState.active:
-        return 'Активен • VK туннель';
+        return 'Режим стабильности активен';
     }
   }
 
@@ -565,7 +587,7 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
           onPressed: _openVkLogin,
         );
       case ActivateError.tunnelError:
-        msg = 'Ошибка запуска туннеля';
+        msg = 'Не удалось включить режим стабильности';
     }
     ScaffoldMessenger.of(this.context).showSnackBar(
       SnackBar(
@@ -598,10 +620,10 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
     final confirmed = await showDialog<bool>(
       context: this.context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Основной VPN будет выключен'),
+        title: const Text('Основное подключение будет выключено'),
         content: const Text(
-          'ParazitX требует отдельного VPN-туннеля. Основной VPN будет '
-          'остановлен перед активацией ParazitX.',
+          'Для режима стабильности VK Звонков нужен отдельный локальный '
+          'VPN-канал. Основной VPN будет остановлен перед включением режима.',
         ),
         actions: [
           TextButton(
@@ -712,13 +734,22 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
 
   @override
   Widget build(BuildContext context) {
+    switch (widget.layout) {
+      case ParazitXSectionLayout.settingsTile:
+        return _buildSettingsTile(context);
+      case ParazitXSectionLayout.primaryCta:
+        return _buildPrimaryCta(context);
+    }
+  }
+
+  Widget _buildSettingsTile(BuildContext context) {
     final isConnecting = _state == _ParazitXState.connecting;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ListItem.switchItem(
-          title: const Text('Обход whitelist (β)'),
+          title: const Text('Режим стабильности VK Звонков'),
           subtitle: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -770,6 +801,52 @@ class _ParazitXSectionItemState extends ConsumerState<ParazitXSectionItem> {
         ],
       ],
     );
+  }
+
+  /// Calm, banking-grade single-button CTA used on the standalone VK
+  /// Звонки page. Reuses the same activation logic as the settings
+  /// tile — never duplicate `_handleToggle`, the captcha listener, the
+  /// mihomo-stop dialog, or the optimistic flow.
+  Widget _buildPrimaryCta(BuildContext context) {
+    // Source-of-truth override: `_state` is owned by this widget and
+    // updated via `_checkVkSession`/`_handleToggle`/`_readySub`. None of
+    // those refresh when `ParazitXManager.isActive` flips while we are
+    // mounted but mid-`_checkVkSession` (cookies-loading async gap), or
+    // when the page remounts after a hot restart between activation
+    // success and the next `tunnelReadyStream` event. In those windows
+    // `_state` stays at `loggedIn` while the manager already considers
+    // the mode on. Pure UI override — no semantics changed: the CTA
+    // simply mirrors the manager when the manager disagrees.
+    final effectiveState =
+        ParazitXManager.isActive ? _ParazitXState.active : _state;
+    switch (effectiveState) {
+      case _ParazitXState.notLoggedIn:
+        return PrimaryCta(
+          label: 'Войти и включить',
+          supportingText: 'Нужна сессия VK.',
+          onPressed: () => _handleToggle(true),
+        );
+      case _ParazitXState.loggedIn:
+        return PrimaryCta(
+          label: 'Включить режим',
+          supportingText: 'Сессия VK подключена.',
+          onPressed: () => _handleToggle(true),
+        );
+      case _ParazitXState.connecting:
+        return const PrimaryCta(
+          label: 'Подключаем...',
+          supportingText: 'Обычно до 15 секунд.',
+          onPressed: null,
+          showProgress: true,
+        );
+      case _ParazitXState.active:
+        return PrimaryCta(
+          label: 'Отключить',
+          supportingText: 'Режим активен.',
+          tonal: true,
+          onPressed: () => _handleToggle(false),
+        );
+    }
   }
 }
 

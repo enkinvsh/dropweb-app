@@ -2,13 +2,15 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:dropweb/enum/enum.dart' show PageLabel;
-import 'package:dropweb/l10n/l10n.dart';
 import 'package:dropweb/plugins/vk_tunnel_plugin.dart';
 import 'package:dropweb/services/log_buffer.dart';
 import 'package:dropweb/services/parazitx_manager.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/views/application_setting.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:dropweb/views/parazitx/footer_diagnostics.dart';
+import 'package:dropweb/views/parazitx/hero_state_card.dart';
+import 'package:dropweb/views/parazitx/vk_calls_state.dart';
+import 'package:dropweb/views/parazitx/vk_calls_status_view.dart';
 import 'package:flutter/material.dart';
 
 class ParazitXPage extends StatefulWidget {
@@ -16,67 +18,6 @@ class ParazitXPage extends StatefulWidget {
 
   @override
   State<ParazitXPage> createState() => _ParazitXPageState();
-}
-
-/// User-visible representation of an internal tunnel status string.
-///
-/// Maps the 6+ raw phases emitted by librelay to 4 user-facing states
-/// modelled after NordVPN/ExpressVPN: idle, working, protected, error.
-@immutable
-class _StatusView {
-  const _StatusView({
-    required this.text,
-    required this.color,
-    required this.showProgress,
-  });
-
-  final String text;
-  final Color color;
-  final bool showProgress;
-}
-
-_StatusView _mapStatus(String status) {
-  if (TunnelStatus.isFailure(status)) {
-    final msg = status.startsWith('ERROR:')
-        ? status.substring('ERROR:'.length).trim()
-        : 'Ошибка подключения';
-    return _StatusView(
-      text: msg.isEmpty ? 'Ошибка подключения' : msg,
-      color: Colors.red,
-      showProgress: false,
-    );
-  }
-  if (TunnelStatus.isTunnelReady(status)) {
-    return const _StatusView(
-      text: 'Защищено',
-      color: Colors.green,
-      showProgress: false,
-    );
-  }
-  if (status.startsWith('CAPTCHA:') ||
-      status.toLowerCase().contains('captcha')) {
-    return const _StatusView(
-      text: 'Проверка...',
-      color: Colors.amber,
-      showProgress: true,
-    );
-  }
-  if (status.isEmpty ||
-      status == TunnelStatus.ready ||
-      status == 'disconnected') {
-    return const _StatusView(
-      text: 'Нажмите для подключения',
-      color: Colors.grey,
-      showProgress: false,
-    );
-  }
-  // Default: any other progress phase ("Getting ...", "CONNECTING",
-  // "Auth complete", "Fetching config...", etc.) — connecting bucket.
-  return const _StatusView(
-    text: 'Подключение...',
-    color: Colors.amber,
-    showProgress: true,
-  );
 }
 
 class _ParazitXPageState extends State<ParazitXPage> {
@@ -97,7 +38,12 @@ class _ParazitXPageState extends State<ParazitXPage> {
   @override
   void initState() {
     super.initState();
-    if (ParazitXManager.isTunnelReady) {
+    // Seed from the manager's authoritative active flag so the hero card
+    // doesn't briefly render "Подключаем" / idle copy when the page is
+    // rebuilt while the tunnel is already up. `isTunnelReady` is the
+    // strongest signal, but `isActive` (no failure) is also enough to
+    // render the protected view via the build-time override below.
+    if (ParazitXManager.isTunnelReady || ParazitXManager.isActive) {
       _rawStatus = TunnelStatus.tunnelConnected;
     }
     _statusSub = VkTunnelPlugin.statusStream.listen(_onStatus);
@@ -200,10 +146,23 @@ class _ParazitXPageState extends State<ParazitXPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final view = _mapStatus(_rawStatus);
+    // Source of truth for the hero card: prefer `ParazitXManager.isActive`
+    // over the raw status. After a hot restart (or any time the page
+    // remounts before the next TUNNEL_CONNECTED arrives), `_rawStatus`
+    // can be empty or stale `CONNECTING`, which maps to idle/connecting
+    // copy — yet the manager already considers the mode active. Showing
+    // "Подключаем" while the CTA reflects the steady state ("Включить
+    // режим" / "Сессия VK подключена.") is the visible mismatch users
+    // see. When the manager says active and the latest status is not a
+    // failure, render the protected view directly.
+    var view = mapTunnelStatusToView(_rawStatus);
+    if (ParazitXManager.isActive &&
+        !TunnelStatus.isFailure(_rawStatus) &&
+        view.state != VkCallsState.protected) {
+      view = mapTunnelStatusToView(TunnelStatus.tunnelConnected);
+    }
     return Scaffold(
-      appBar: AppBar(title: Text(l.parazitx)),
+      appBar: AppBar(title: const Text('VK Звонки')),
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -211,9 +170,22 @@ class _ParazitXPageState extends State<ParazitXPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _ConnectionStatusBanner(view: view),
-                const ListHeader(title: 'VK Звонки'),
-                const ParazitXSectionItem(),
+                HeroStateCard(
+                  state: view.state,
+                  headline: view.headline,
+                  detail: view.detail,
+                ),
+                // Activation logic stays inside ParazitXSectionItem —
+                // VK login, captcha listener, mihomo-stop dialog,
+                // optimistic toggle, error snackbars, deactivate. The
+                // standalone page renders the primary-CTA layout: one
+                // full-width button, no settings switch row.
+                const ParazitXSectionItem(
+                  layout: ParazitXSectionLayout.primaryCta,
+                ),
+                const FooterDiagnostics(
+                  line: 'Локальный VPN-канал для VK Звонков.',
+                ),
               ],
             ),
           ),
@@ -267,81 +239,6 @@ class _ParazitXPageState extends State<ParazitXPage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// NordVPN-style status banner: animated text crossfade + optional
-/// indeterminate progress bar.
-///
-/// The banner is the only place the user sees "what is happening" while
-/// the tunnel comes up. Internal phases ("Getting anonymous token...",
-/// "Auth complete", etc.) are collapsed into 4 user-facing buckets by
-/// [_mapStatus]. This is the same pattern NordVPN/ExpressVPN use:
-/// idle / connecting / connected / error — never expose protocol jargon.
-class _ConnectionStatusBanner extends StatelessWidget {
-  const _ConnectionStatusBanner({required this.view});
-
-  final _StatusView view;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: view.color,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: view.color.withValues(alpha: 0.5),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: Text(
-                    view.text,
-                    key: ValueKey<String>('parazitx-status-text:${view.text}'),
-                    style: TextStyle(
-                      color: view.color,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: view.showProgress
-                ? LinearProgressIndicator(
-                    key: const ValueKey<String>('parazitx-status-progress'),
-                    minHeight: 2,
-                    color: view.color,
-                    backgroundColor: view.color.withValues(alpha: 0.15),
-                  )
-                : const SizedBox(
-                    key: ValueKey<String>('parazitx-status-no-progress'),
-                    height: 2,
-                  ),
-          ),
-        ],
       ),
     );
   }
