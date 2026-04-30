@@ -198,6 +198,11 @@ class MainActivity : FlutterActivity() {
                         val args = call.arguments as? Map<String, Any?> ?: emptyMap()
                         val joinLink = args["joinLink"] as? String ?: ""
                         val port = (args["socksPort"] as? Number)?.toInt() ?: 1080
+                        // MTU from Dart side. Service clamps to a sane range
+                        // and falls back to its safe default if missing /
+                        // out-of-range, so we just forward whatever we got.
+                        val mtu = (args["mtu"] as? Number)?.toInt()
+                            ?: ParazitXVpnService.DEFAULT_MTU
                         if (joinLink.isEmpty()) {
                             result.error(
                                 "BAD_ARGS",
@@ -214,7 +219,7 @@ class MainActivity : FlutterActivity() {
                         // Impeller's EGL state on Pixel 10 (black screen).
                         appPlugin.requestVpnPermission {
                             val started = ParazitXVpnController.start(
-                                applicationContext, port, joinLink,
+                                applicationContext, port, joinLink, mtu,
                             )
                             if (started) result.success(null)
                             else result.error(

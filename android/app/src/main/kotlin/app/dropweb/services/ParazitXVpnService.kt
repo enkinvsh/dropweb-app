@@ -50,7 +50,14 @@ class ParazitXVpnService : VpnService() {
         private const val ACTION_CHANNEL_ID = "parazitx_action"
         private const val NOTIFICATION_ID = 0x1789
         private const val ACTION_NOTIFICATION_ID = NOTIFICATION_ID + 1
-        private const val VPN_MTU = 1500
+
+        // MTU bounds for the tun. 576 is the IPv4 minimum guaranteed by
+        // RFC 791; 1500 is the standard Ethernet MTU. Anything outside
+        // this range is rejected and replaced with DEFAULT_MTU.
+        const val DEFAULT_MTU = 1280
+        private const val MIN_MTU = 576
+        private const val MAX_MTU = 1500
+
         private const val VPN_ADDRESS = "172.19.0.1"
         private const val VPN_PREFIX = 30
         private const val VPN_DNS = "1.1.1.1"
@@ -58,8 +65,27 @@ class ParazitXVpnService : VpnService() {
 
         const val EXTRA_JOIN_LINK = "join_link"
         const val EXTRA_SOCKS_PORT = "socks_port"
+        const val EXTRA_MTU = "mtu"
         const val ACTION_STOP = "app.dropweb.parazitx.STOP"
         const val ACTION_QUERY_STATUS = "app.dropweb.parazitx.QUERY_STATUS"
+
+        /**
+         * Clamp an incoming MTU to [MIN_MTU]..[MAX_MTU]; out-of-range
+         * (including 0/negative) falls back to [DEFAULT_MTU]. Logs the
+         * outcome so on-device debugging can see what actually hit
+         * VpnService.Builder / tun2socks.
+         */
+        fun sanitizeMtu(requested: Int): Int {
+            val safe = if (requested in MIN_MTU..MAX_MTU) requested else DEFAULT_MTU
+            if (safe != requested) {
+                Log.w(
+                    TAG,
+                    "sanitizeMtu: requested=$requested out of range " +
+                        "[$MIN_MTU..$MAX_MTU], using $safe",
+                )
+            }
+            return safe
+        }
 
         /**
          * Captcha auto-solve in HeadlessInAppWebView stalls when the app is
@@ -87,6 +113,7 @@ class ParazitXVpnService : VpnService() {
     private var tun2socksThread: Thread? = null
     @Volatile private var tun2socksStarted: Boolean = false
     @Volatile private var currentSocksPort: Int = 1080
+    @Volatile private var currentMtu: Int = DEFAULT_MTU
     @Volatile private var currentStatus: String = "disconnected"
     @Volatile private var currentJoinLink: String = ""
 
@@ -144,6 +171,8 @@ class ParazitXVpnService : VpnService() {
 
         val joinLink = intent?.getStringExtra(EXTRA_JOIN_LINK).orEmpty()
         val port = intent?.getIntExtra(EXTRA_SOCKS_PORT, 1080) ?: 1080
+        val rawMtu = intent?.getIntExtra(EXTRA_MTU, DEFAULT_MTU) ?: DEFAULT_MTU
+        val mtu = sanitizeMtu(rawMtu)
 
         if (joinLink.isEmpty()) {
             Log.e(TAG, "onStartCommand: missing joinLink")
@@ -152,7 +181,10 @@ class ParazitXVpnService : VpnService() {
         }
 
         currentSocksPort = port
+        currentMtu = mtu
         currentJoinLink = joinLink
+
+        Log.i(TAG, "onStartCommand: socksPort=$port mtu=$mtu (raw=$rawMtu)")
 
         // Foreground notification MUST be posted before any long work,
         // otherwise startForegroundService → no startForeground within 5s
@@ -203,7 +235,7 @@ class ParazitXVpnService : VpnService() {
         if ((status == "TUNNEL_CONNECTED" || status == "TUNNEL_ACTIVE") &&
             !tun2socksStarted
         ) {
-            val started = establishTunAndStartTun2Socks(currentSocksPort)
+            val started = establishTunAndStartTun2Socks(currentSocksPort, currentMtu)
             if (!started) {
                 updateStatus("ERROR:establish failed")
                 stopSelfClean()
@@ -236,18 +268,20 @@ class ParazitXVpnService : VpnService() {
         }
     }
 
-    private fun establishTunAndStartTun2Socks(socksPort: Int): Boolean {
+    private fun establishTunAndStartTun2Socks(socksPort: Int, mtu: Int): Boolean {
         val (user, pass) = ParazitXRelayController.getSocksCredentials()
         if (user.isEmpty() || pass.isEmpty()) {
             Log.e(TAG, "establish: missing SOCKS credentials")
             return false
         }
 
+        val effectiveMtu = sanitizeMtu(mtu)
+
         val fd: Int
         try {
             val builder = Builder()
                 .setSession("ParazitX")
-                .setMtu(VPN_MTU)
+                .setMtu(effectiveMtu)
                 .addAddress(VPN_ADDRESS, VPN_PREFIX)
                 .addDnsServer(VPN_DNS)
                 .addDnsServer(VPN_DNS_FALLBACK)
@@ -289,13 +323,17 @@ class ParazitXVpnService : VpnService() {
             return false
         }
 
-        Log.i(TAG, "tun established fd=$fd, starting tun2socks → 127.0.0.1:$socksPort")
+        Log.i(
+            TAG,
+            "tun established fd=$fd mtu=$effectiveMtu, " +
+                "starting tun2socks → 127.0.0.1:$socksPort",
+        )
 
         tun2socksThread = Thread({
             try {
                 Androidbind.startTun2Socks(
                     fd.toLong(),
-                    VPN_MTU.toLong(),
+                    effectiveMtu.toLong(),
                     socksPort.toLong(),
                     user,
                     pass,
@@ -526,6 +564,7 @@ object ParazitXVpnController {
         ctx: Context,
         socksPort: Int,
         joinLink: String,
+        mtu: Int = ParazitXVpnService.DEFAULT_MTU,
     ): Boolean {
         if (VpnService.prepare(ctx) != null) {
             Log.w(TAG, "VPN not prepared — caller must show consent dialog")
@@ -534,6 +573,7 @@ object ParazitXVpnController {
         val intent = Intent(ctx, ParazitXVpnService::class.java)
             .putExtra(ParazitXVpnService.EXTRA_JOIN_LINK, joinLink)
             .putExtra(ParazitXVpnService.EXTRA_SOCKS_PORT, socksPort)
+            .putExtra(ParazitXVpnService.EXTRA_MTU, mtu)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ctx.startForegroundService(intent)
         } else {
