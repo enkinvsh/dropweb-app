@@ -247,6 +247,10 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
             primaryColors: List.from(
               state.primaryColors,
             )..add(res),
+            // Auto-select the freshly added color so the user's "Apply"
+            // immediately reflects on the rest of the UI without an
+            // extra tap on the swatch.
+            primaryColor: res,
           ),
         );
   }
@@ -557,8 +561,94 @@ class _PaletteDialog extends StatefulWidget {
   State<_PaletteDialog> createState() => _PaletteDialogState();
 }
 
+/// Parse a user-entered HEX color string into an opaque ARGB int.
+///
+/// Accepts (case-insensitive, surrounding whitespace tolerated):
+/// * `#RRGGBB` / `RRGGBB`
+/// * `#RGB` / `RGB` (each digit doubled, e.g. `0F0` -> `00FF00`)
+///
+/// Alpha is forced to `0xFF`. Returns `null` for invalid input.
+int? parseHexColor(String input) {
+  final trimmed = input.trim();
+  if (trimmed.isEmpty) return null;
+  final stripped = trimmed.startsWith('#') ? trimmed.substring(1) : trimmed;
+  final hexRe = RegExp(r'^[0-9A-Fa-f]+$');
+  if (!hexRe.hasMatch(stripped)) return null;
+  String six;
+  if (stripped.length == 6) {
+    six = stripped;
+  } else if (stripped.length == 3) {
+    final r = stripped[0];
+    final g = stripped[1];
+    final b = stripped[2];
+    six = '$r$r$g$g$b$b';
+  } else {
+    return null;
+  }
+  final rgb = int.tryParse(six, radix: 16);
+  if (rgb == null) return null;
+  return 0xFF000000 | rgb;
+}
+
 class _PaletteDialogState extends State<_PaletteDialog> {
   final _controller = ValueNotifier<ui.Color>(Colors.transparent);
+  final _hexController = TextEditingController();
+  bool _hexValid = true;
+  // True when we are mutating the text field from a palette change so we
+  // don't echo the value back into the palette and fight the user mid-drag.
+  bool _syncingFromPalette = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hexController.text = _controller.value.hex;
+    _controller.addListener(_onPaletteChanged);
+    _hexController.addListener(_onHexChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onPaletteChanged);
+    _hexController.removeListener(_onHexChanged);
+    _hexController.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onPaletteChanged() {
+    final hex = _controller.value.hex;
+    if (_hexController.text.toUpperCase() == hex) return;
+    _syncingFromPalette = true;
+    _hexController.value = TextEditingValue(
+      text: hex,
+      selection: TextSelection.collapsed(offset: hex.length),
+    );
+    _syncingFromPalette = false;
+    if (!_hexValid) {
+      setState(() => _hexValid = true);
+    }
+  }
+
+  void _onHexChanged() {
+    if (_syncingFromPalette) return;
+    final parsed = parseHexColor(_hexController.text);
+    final valid = parsed != null;
+    if (valid) {
+      final color = ui.Color(parsed);
+      if (color != _controller.value) {
+        _controller.value = color;
+      }
+    }
+    if (valid != _hexValid) {
+      setState(() => _hexValid = valid);
+    }
+  }
+
+  void _handleConfirm() {
+    final parsed = parseHexColor(_hexController.text);
+    if (parsed == null) return;
+    Navigator.of(context).pop(parsed);
+  }
 
   @override
   Widget build(BuildContext context) => CommonDialog(
@@ -571,9 +661,7 @@ class _PaletteDialogState extends State<_PaletteDialog> {
             child: Text(appLocalizations.cancel),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(_controller.value.toARGB32());
-            },
+            onPressed: _hexValid ? _handleConfirm : null,
             child: Text(appLocalizations.confirm),
           ),
         ],
@@ -590,7 +678,22 @@ class _PaletteDialogState extends State<_PaletteDialog> {
               ),
             ),
             const SizedBox(
-              height: 24,
+              height: 16,
+            ),
+            TextField(
+              controller: _hexController,
+              textCapitalization: TextCapitalization.characters,
+              autocorrect: false,
+              maxLength: 7,
+              decoration: InputDecoration(
+                labelText: 'HEX',
+                hintText: '#22C55E',
+                counterText: '',
+                errorText: _hexValid ? null : 'Введите HEX цвет',
+              ),
+            ),
+            const SizedBox(
+              height: 16,
             ),
             ValueListenableBuilder(
               valueListenable: _controller,
@@ -599,7 +702,7 @@ class _PaletteDialogState extends State<_PaletteDialog> {
                 child: FilledButton(
                   onPressed: () {},
                   child: Text(
-                    _controller.value.hex,
+                    color.hex,
                   ),
                 ),
               ),
