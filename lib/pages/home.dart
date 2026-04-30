@@ -129,20 +129,31 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
   @override
   Widget build(BuildContext context) {
     final navigationItems = ref.watch(currentNavigationsStateProvider).value;
+    final isMobile = ref.watch(isMobileViewProvider);
     return PageView.builder(
       controller: _pageController,
-      physics: const NeverScrollableScrollPhysics(),
+      // Mobile: horizontal swipe between dashboard ↔ tools (settings).
+      // Non-mobile: navigation lives in the sidebar — swipe stays disabled.
+      physics: isMobile
+          ? const PageScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       itemCount: navigationItems.length,
-      // onPageChanged: (index) {
-      //   debouncer.call(DebounceTag.pageChange, () {
-      //     WidgetsBinding.instance.addPostFrameCallback((_) {
-      //       if (_pageIndex != index) {
-      //         final pageLabel = navigationItems[index].label;
-      //         _toPage(pageLabel, true);
-      //       }
-      //     });
-      //   });
-      // },
+      onPageChanged: !isMobile
+          ? null
+          : (index) {
+              if (index < 0 || index >= navigationItems.length) return;
+              final newLabel = navigationItems[index].label;
+              // Guard against the swipe → toPage → animate → onPageChanged
+              // → toPage feedback loop: only push the new label up if it
+              // actually differs from what the provider currently holds.
+              final currentLabel = ref.read(currentPageLabelProvider);
+              if (currentLabel == newLabel) return;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                if (ref.read(currentPageLabelProvider) == newLabel) return;
+                globalState.appController.toPage(newLabel);
+              });
+            },
       itemBuilder: (_, index) {
         final navigationItem = navigationItems[index];
         return KeepScope(
