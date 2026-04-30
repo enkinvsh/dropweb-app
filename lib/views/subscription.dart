@@ -114,15 +114,23 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
 
 /// Refresh handler for the Profiles list pull-to-refresh.
 ///
-/// If [current] is a remote profile, refreshes ONLY that profile — this is
-/// what the user expects when they pull-to-refresh while viewing the
-/// active subscription. When the current profile is local-file (or absent),
-/// we fall back to refreshing every other remote profile so the gesture
-/// always has a visible effect; if every profile is local-file, we surface
-/// a short tip instead of letting the indicator vanish silently.
+/// If [current] is non-null, refreshes ONLY that profile — this is what
+/// the user expects when they pull-to-refresh while viewing the active
+/// subscription. Falls back to refreshing every profile when no current
+/// profile is selected (first-time setup, profile just deleted, etc.).
+///
+/// IMPORTANT: do NOT branch on `Profile.type`. After the URL-encryption
+/// migration, `profile.url` is stripped to `''` in memory and the real
+/// URL lives in the encrypted store; `Profile.update()` resolves it
+/// lazily. The `type` getter therefore reports `ProfileType.file` for
+/// every URL subscription post-migration, and an `if file → return`
+/// guard would silently no-op every refresh on real users (the bug we
+/// just fixed). If a profile genuinely has no URL anywhere, [update]
+/// throws and we surface the failure through the same path as any other
+/// error.
 Future<void> _refreshProfiles(BuildContext context, [Profile? current]) async {
   final controller = globalState.appController;
-  if (current != null && current.type != ProfileType.file) {
+  if (current != null) {
     controller.setProfile(current.copyWith(isUpdating: true));
     try {
       await controller.updateProfile(current);
@@ -141,21 +149,13 @@ Future<void> _refreshProfiles(BuildContext context, [Profile? current]) async {
     return;
   }
   final profiles = globalState.config.profiles;
-  final remote =
-      profiles.where((p) => p.type != ProfileType.file).toList(growable: false);
-  if (remote.isEmpty) {
-    if (context.mounted) {
-      context.showNotifier('Локальный профиль — обновление не требуется.');
-    }
-    return;
-  }
   final messages = <String>[];
   // ROBUSTNESS: `eagerError: false` — if one profile's update throws, the
   // others should still complete. Default Future.wait fails the whole
   // group on the first error, which previously meant a single broken
   // subscription could leave the rest stuck in `isUpdating=true`.
   await Future.wait(
-    remote.map((profile) async {
+    profiles.map((profile) async {
       controller.setProfile(profile.copyWith(isUpdating: true));
       try {
         await controller.updateProfile(profile);
