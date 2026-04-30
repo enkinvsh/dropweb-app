@@ -1,3 +1,421 @@
+## v0.6.5
+
+- release(v0.6.5): VK Звонки UX overhaul + theme HEX picker
+
+- - Lumina-aligned VK Звонки screen with primary CTA, widened state
+-   indication (idle/syncing/verification/connecting/protected/error),
+-   Google Play- and RU-law-safe copy
+- - HEX input on the custom theme color dialog with #RRGGBB / RRGGBB /
+-   #RGB / RGB validation
+- - Horizontal swipe between dashboard and tools on mobile
+- - Pull-to-refresh on the Profiles tab now updates the current profile
+-   regardless of ProfileType (post-migration url-stripping bug)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(subscription): pull-to-refresh updates current profile regardless of ProfileType
+
+- After URL-encryption migration `Profile.url` is stripped to '' in
+- memory and the real URL lives in the encrypted store, so the
+- `url.isEmpty ? file : url` getter reports `ProfileType.file` for
+- every URL subscription post-migration. The earlier "if file → return"
+- guard therefore silently no-op'd every refresh on real users, which
+- the user reported as a broken pull-to-refresh on the Profiles tab.
+
+- Drop the `type` branch entirely. `Profile.update()` resolves the URL
+- lazily from secure storage and throws if it genuinely doesn't exist —
+- the same error path we already surface through `globalState.showMessage`.
+- File-only profiles surface a clean error rather than swallowing the
+- gesture.
+
+- fix(subscription): pull-to-refresh works for file-type current profile
+
+- When the current profile is local-file (no remote source), the early
+- return left the RefreshIndicator briefly spinning with no visible
+- effect — the user reported pulling on the Profiles tab and the UI
+- just snapped back. Now we fall back to refreshing every other remote
+- profile, and surface a short notifier when every profile is local
+- instead of letting the gesture vanish silently.
+
+- feat(home, subscription): horizontal swipe between dashboard and tools, smarter pull-to-refresh
+
+- - Mobile only: `_HomePageView.PageView` switches from
+-   `NeverScrollableScrollPhysics` to `PageScrollPhysics` so users can
+-   swipe between dashboard and settings. `onPageChanged` syncs
+-   `currentPageLabelProvider` via `globalState.appController.toPage`
+-   in a post-frame callback, with a guard against the
+-   swipe -> toPage -> animate -> onPageChanged feedback loop.
+-   Desktop/tablet stay sidebar-driven; physics fall back to
+-   `NeverScrollableScrollPhysics`.
+
+- - `SubscriptionPage` pull-to-refresh now updates the currently open
+-   profile when one exists, so swiping down on the profile screen
+-   refreshes the active subscription instead of crawling through every
+-   saved profile. Multi-profile fallback is preserved when there is no
+-   current profile (first-time setup, just-deleted active, etc.).
+-   File-type profiles short-circuit to avoid an infinite spinner; errors
+-   reset `isUpdating` and surface through `globalState.showMessage`
+-   exactly like the batch path.
+
+- feat(theme): HEX input in custom palette dialog
+
+- Add an opaque-only HEX input to the theme color picker:
+- - accept #RRGGBB / RRGGBB / #RGB / RGB, case-insensitive, trimmed,
+-   alpha forced to 0xFF
+- - live two-way sync between the palette and the text field, guarded
+-   against feedback loops mid-drag
+- - confirm disabled while invalid; "Введите HEX цвет" inline error
+- - newly added custom color is auto-selected as primaryColor so apply
+-   reflects everywhere without a second tap on the swatch
+
+- Pure parseHexColor helper is exported for testing and covered by 11
+- unit cases.
+
+- feat(vk-calls): Lumina-aligned VK Звонки screen with primary CTA
+
+- Redesign the ParazitX page as a Google Play- and RU-law-safe "VK
+- Звонки" screen: hero state card, full-width primary CTA, footer
+- diagnostics, no settings switch row on the standalone page. Widen
+- status indication into idle / syncing / verification / connecting /
+- protected / error and override hero from ParazitXManager.isActive so
+- it stays consistent with the CTA after hot restart. Drop the
+- obstructive cookie banner from VkLoginScreen and the redundant
+- "Параметры" panel. Sanitize visible copy: no internal/transport
+- jargon, no bypass/whitelist wording.
+
+- Surfaces use Lumina.glass / radii / curve and inherit theme colors.
+- The standalone page renders ParazitXSectionItem in a new primaryCta
+- layout while settings keep the switch tile, sharing all activation
+- logic.
+
+- Merge pull request #2 from enkinvsh/feat/parazitx
+
+- feat(parazitx): manifest-driven discovery, configurable MTU, log uploader fallback
+- docs(parazitx): relay build and self-hosted operator guide
+
+- feat(parazitx): log uploader uses manifest signaling relays when subscription headers absent
+
+- feat(parazitx): manifest-driven server and signaling-relay discovery without hardcoded endpoints
+
+- feat(parazitx): make VpnService MTU configurable with safe default 1280
+
+- feat(parazitx): manifest signaling_relays model with https-session and https-passthrough kinds
+
+- chore: ignore .sisyphus orchestration scratch
+
+- fix(parazitx): stabilize tunnel handoff overlay
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(parazitx): prefer canary backend during activation
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(parazitx): add canary manifest utilities
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- perf: localize magic rings repaint area
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- perf: move dashboard animation sync out of build
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- perf: avoid chart animation churn
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- perf: reduce navigation and proxy rebuilds
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- perf: narrow derived state watches
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- Update changelog
+
+## v0.6.4
+
+- release(v0.6.4): mobile-only parazitx build
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat: force mobile portrait layout
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix: anchor magic rings to connect button
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat: deep navigation + visual status feedback
+
+- 1. Deep navigation from notification tap:
+-    - Intent extra 'route' → EventChannel → Flutter navigation
+-    - Handles cold start (onCreate) and warm start (onNewIntent)
+-    - Tap notification → navigates to ParazitX page
+
+- 2. Visual connection status (NordVPN-style):
+-    - 4 user-visible states: idle/connecting/verifying/protected/error
+-    - Animated crossfade (200ms) + color-coded dot
+-    - Progress indicator during connection phases
+-    - No technical jargon exposed to user
+
+- fix: show notification directly from MainActivity (cross-process fix)
+
+- Broadcasts from main process don't reach VpnService in :parazitx process
+- due to RECEIVER_NOT_EXPORTED. Show notification directly via
+- NotificationManager instead.
+
+- feat: predictive captcha notification with background-aware timing
+
+- - Add WidgetsBindingObserver to detect foreground/background state
+- - Show notification after 2s in background (WebView throttled anyway)
+- - Keep 10s delay in foreground (auto-solve usually works)
+- - Restart auto-solve when app returns to foreground with pending captcha
+- - Add fullScreenIntent for locked screen notifications (like incoming call)
+- - Add USE_FULL_SCREEN_INTENT permission in AndroidManifest
+
+- fix: use split routes universally for localhost VPN bypass
+
+- excludeRoute() on API 33+ was tested but caused establish() to fail
+- on Android 16 (SDK 36). Split tunneling with 8 CIDR routes works
+- on all Android versions.
+
+- Routes cover 0.0.0.0/0 minus 127.0.0.0/8, allowing WebView to reach
+- localhost captcha proxy while VPN is active.
+
+- fix: exclude localhost from VPN routing (Oracle-reviewed)
+
+- - Remove useless WebView package exclusions (they run in-process)
+- - Add applyAllowedRoutes() helper:
+-   - API 33+: excludeRoute(IpPrefix) for 127.0.0.0/8
+-   - API <33: 8 CIDR routes covering 0.0.0.0/0 minus 127.0.0.0/8
+- - Add logging for establish() failures
+
+- This allows WebView to reach localhost captcha proxy during VPN rotation.
+
+- fix: remove Chrome from VPN exclusions - only WebView components should bypass
+
+- fix: exclude WebView packages from VPN to fix rotation captcha
+
+- WebView runs in separate process (com.google.android.webview) which
+- was not excluded from VPN routing. During rotation, captcha WebView
+- tried to reach localhost:PORT via VPN tunnel, causing ERR_CONNECTION_REFUSED.
+
+- Now excludes: webview, chrome, trichromelibrary packages.
+
+- feat: auto-solve VK captcha via headless WebView
+
+- - Add HeadlessInAppWebView to click checkbox automatically
+- - Multiple selectors with retry every 250ms for 10s
+- - Listen to relay status for cleanup
+- - 30s hard timeout as safety net
+- - Manual CaptchaScreen preserved as fallback
+- - Rotation interval back to 8 minutes
+
+- feat: enable hybrid DC mode and increase rotation to 60 min
+
+- - Switch tunnelMode from 'video' to 'dc' for higher bandwidth
+- - Increase rotation interval from 10 to 60 minutes
+- - DC mode: ~5 Mbps vs ~2-3 Mbps in pure video mode
+
+- feat(tile): sync Quick Settings tile with ParazitX state
+
+- - Listen to ParazitX cross-process broadcasts (BROADCAST_STATUS)
+- - Show ACTIVE when TUNNEL_CONNECTED/TUNNEL_ACTIVE
+- - Show UNAVAILABLE when connecting (READY, CONNECTING, CAPTCHA, etc.)
+- - Fallback to mihomo state when ParazitX is off
+- - Tap to stop ParazitX (start requires MainActivity for VK login)
+- - Ignore taps during handshake to prevent teardown
+
+- feat(parazitx): exponential backoff for auto-reconnect
+
+- Replace fixed 2s debounce with exponential backoff:
+- - Sequence: 2s → 4s → 8s → 16s → 32s → 60s (capped)
+- - Reset to 2s on successful tunnel connection
+- - Log current delay and attempt number for debugging
+
+- Inspired by Lionheart reconnect patterns.
+
+- fix(parazitx): fix auto-reconnect not triggering after tunnel loss
+
+- The reconnect logic was checking if _currentJoinLink == null after
+- _rotateCall(), but _currentJoinLink was never cleared on failure.
+- This caused the fallback to full reactivate() to never trigger.
+
+- Fix: Clear _currentJoinLink before rotation attempt, restore on failure.
+
+- Also added logging for better debugging:
+- - Auto-reconnect: attempting new session
+- - Reconnect: rotation failed, trying full reactivate
+- - Rotation successful, new call started
+
+- feat: YC proxy fallback + toggle state fix
+
+- - Add Yandex.Cloud proxy fallback for TSPU whitelist hours
+- - parazitx_manager: try direct (3s), then YC proxy (30s)
+- - log_uploader: same fallback logic for log uploads
+- - application_setting: show 'Connecting...' when tunnel drops
+-   instead of staying stuck on 'Active'
+
+- feat: add WakeLock, remote logging, and captcha proxy fix
+
+- - Add WAKE_LOCK permission and PARTIAL_WAKE_LOCK in ParazitXVpnService
+-   to prevent Android from freezing the VPN process when screen is off
+- - Add remote logging (log_buffer.dart, log_uploader.dart) for debugging
+-   user issues - logs can be sent to callfactory /v1/logs endpoint
+- - Update relay binary with captcha proxy fix (IP resolution skip)
+- - Fix captcha modal closing on CAPTCHA status
+
+- fix(parazitx): dismiss handoff modal when captcha required
+
+- Handoff modal was blocking captcha input. Now closes modal on CAPTCHA status
+- and only shows it after captcha solved or tunnel ready.
+
+## v0.6.1
+
+- refactor(parazitx): move relay to VpnService process
+
+- Fixes Android freezing relay when app backgrounded.
+
+- - ParazitXVpnService: now owns relay lifecycle, starts it in :parazitx process
+- - MainActivity: removed vktunnel MethodChannel, uses BroadcastReceiver for status IPC
+- - VkTunnelManager: deleted (no longer needed)
+- - Dart: simplified to single start(joinLink) call
+
+- Relay now inherits :parazitx cgroup (FGS protected), survives backgrounding.
+
+- feat(parazitx): auto-reconnect on tunnel failure
+
+- - Dart: add _reconnectAfterFailure() with 2s debounce when TunnelStatus.isFailure()
+- - Kotlin: emit TUNNEL_LOST when relay process dies (finally block)
+
+- feat(parazitx): server pool from subscription with 503 fallback
+
+- - Remove hardcoded 31.57.105.213:8088
+- - Read server list from dropweb-parazitx-servers header
+- - Shuffle pool, try each server, fallback on 503/error
+- - Port changed to 3478 (TURN mimicry)
+- - deactivate() clears server cache for fresh load on next activate
+
+- feat(parazitx): promote out of dev menu, capture input during handoff
+
+- UI changes:
+- - New ParazitX entry in main Settings list (under Connect TV), opens a
+-   dedicated ParazitX page grouped under 'VK Звонки' header so future
+-   transports (Sber Jazz, etc.) slot in next to it.
+- - Removed the redundant 'ParazitX / Обход whitelist через VK' header
+-   from the section — toggle and 'Logout from VK' stand on their own
+-   inside the page.
+- - Removed the entry from the developer menu.
+- - l10n strings (en/ru): parazitx, parazitxDesc.
+
+- Black-screen fix on resume:
+- - ParazitXPage grabs input the moment the captcha is solved (not at
+-   TUNNEL_CONNECTED): a non-dismissible modal with a spinner is shown
+-   via showDialog(useRootNavigator: true) on the next frame, so the
+-   user cannot tap the tab bar / back / list during the WebRTC
+-   handshake + Android network handoff window.
+- - Posting the dialog from addPostFrameCallback gives CaptchaScreen a
+-   chance to actually pop first; both listen to the same status, but
+-   if we showDialog in the same microtask Captcha's pop dismisses our
+-   dialog with it.
+- - After TUNNEL_CONNECTED we still wait 2s for the tun establish() and
+-   Android route reshuffle to settle, then dismiss the modal,
+-   popUntil-isFirst, and toPage(Dashboard). Same path the user takes
+-   manually — and that path was the only one that didn't EGL-crash
+-   Impeller on the next resume.
+- - CaptchaScreen now closes on 'Captcha solved' (or any failure)
+-   instead of waiting for TUNNEL_CONNECTED, so the modal can take over
+-   immediately.
+
+- fix(parazitx): tunnel handoff stable, captcha auto-closes
+
+- Three race/lifecycle fixes that together make the toggle reach
+- TUNNEL_CONNECTED and bring up the VpnService without a black screen
+- on resume:
+
+- - Shared broadcast bus for VkTunnelPlugin.statusStream. Native
+-   EventChannel keeps a single StreamHandler, so a second listener
+-   (CaptchaScreen) was silently stealing events from ParazitXManager.
+-   ParazitXManager then never saw TUNNEL_CONNECTED and tun2socks
+-   never started. Bus fans one native subscription out to many.
+
+- - ParazitXManager now does a one-shot status poll right after
+-   subscribing, in case librelay emitted TUNNEL_CONNECTED before the
+-   Dart listener attached (fast path, cached anonymous token).
+-   _startVpnLayer guards against double-start.
+
+- - CaptchaScreen waits for TUNNEL_CONNECTED before closing (not for
+-   the intermediate 'Captcha solved, retrying...'), then ParazitX
+-   section pops back to the dashboard. Tearing down the InAppWebView
+-   before VpnService triggers Android's network handoff avoids
+-   EGL_BAD_ACCESS on the next resume.
+
+- feat(parazitx): VK WebRTC tunnel as standalone VPN mode
+
+- End-to-end working transport layer that tunnels traffic through a VK
+- video call to bypass TSPU whitelist on LTE/MTS. Autonomous VPN mode,
+- independent from mihomo (Android allows only one VpnService at a time).
+
+- Tunnel pipeline:
+-   librelay (vk-headless-joiner)        — SOCKS5 :1080, VK auth, WebRTC
+-   ParazitXVpnService + Androidbind      — tun2socks forwards tun -> SOCKS5
+-   keksx callfactory creator peer        — exits to internet
+
+- Native components:
+- - libparazitx-relay.so in jniLibs (Go binary from kulikov0/whitelist-bypass)
+- - mobile.aar bundles gomobile androidbind.Androidbind tun2socks
+- - ParazitXRelayController runs librelay via ProcessBuilder, stdin/stdout
+-   protocol (AUTH:, RESOLVE:, STATUS:, CAPTCHA:)
+- - ParazitXVpnService builds tun 172.19.0.1/30 with self-exclusion so
+-   librelay's WebSocket reaches VK SFU via underlying network, then calls
+-   Androidbind.startTun2Socks (non-blocking; spawns goroutines)
+
+- Dart layer:
+- - VkAuthService + VkLoginScreen capture VK session cookies via WebView
+- - CryptoService encrypts cookies (ECDH X25519 + AES-256-GCM) before POST
+-   to callfactory — server keypair is pre-shared
+- - CaptchaScreen handles VK's anonymous-token captcha via local HTTP proxy
+- - ParazitXManager drives activation: POST callfactory -> spawn librelay
+-   -> wait TUNNEL_CONNECTED -> bring up ParazitXVpnService
+- - Optimistic toggle with typed ActivateError for SnackBar feedback
+- - Mihomo VPN is stopped before ParazitX starts via a confirmation dialog
+
+- Known issue:
+- - Black screen on Pixel 10 when backgrounding + resuming with ParazitX
+-   active. EGL_BAD_ACCESS from libEGL / Impeller GLES. Investigation in
+-   progress — likely needs upstream FlClash approach of separating the
+-   VPN core into its own Android process.
+
+- 2ip.ru verified: traffic exits through keksx (Helsinki) with tunnel up.
+
 ## v0.6.0-beta3
 
 - release(v0.6.0-beta3): Win32 WM_SIZING hook — actually cap window width
